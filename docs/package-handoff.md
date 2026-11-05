@@ -49,6 +49,6 @@ This document outlines source-of-truth boundaries, historical repository relatio
 2. Run `npm run check:pack` whenever modifying package exports, `package.json` manifests, dependency ranges, or packed file lists.
 3. Preserve `tool-wrap` runtime compatibility identifiers: while the workspace directory and package name use `tool-wrap` / `@delthin/dsh-tool-wrap`, use `unwrap` as the canonical runtime tool name with `discover_tools` retained as a compatibility alias, and keep service identifiers, settings ID, and config filename `tool-discovery.json` unchanged.
 4. Follow [docs/releasing.md](./releasing.md) for npm publishing and marketplace updates.
-本机共 220 项测试（216 项通过，4 项因 macOS 沙箱限制跳过），4 个插件包的独立 tarball 安装验证全部通过；Linux CI 待运行确认，最低宿主版本兼容性与飞书实际消息发送尚未在真实环境验证。
+基于 Apache-2.0 发布基线提交 `412e219`（不含其他会话未提交的新功能），Node 22 / 24 CI 矩阵与 4 个插件包的独立 tarball 安装验证全部通过；最低宿主版本兼容性与专门的飞书真实消息发送尚未在真实环境验证。
 
-Locally, 216 of 220 tests pass (with 4 skipped due to macOS sandbox restrictions) and standalone tarball installation succeeded across all 4 packages; Linux CI remains pending, and minimum host version compatibility as well as live Feishu message delivery have not yet been verified.
+For the fixed Apache-2.0 release baseline at commit `412e219` (excluding uncommitted features from other sessions), both the Node 22 / 24 CI matrix and standalone tarball installation across all 4 packages have passed; minimum host version compatibility and dedicated live Feishu message delivery have not yet been verified.
