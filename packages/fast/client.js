@@ -1,4 +1,4 @@
-window.__ModuleLoader__.load({ id: 'dsh-fast', factory: require => {
+window.__ModuleLoader__.load({ id: '@delthin/dsh-fast', factory: require => {
   const React = require('react');
   const h = React.createElement;
   const { useState, useEffect, useRef, useId, useSyncExternalStore } = React;
@@ -98,7 +98,7 @@ window.__ModuleLoader__.load({ id: 'dsh-fast', factory: require => {
     const group = data.groups.find(g => g.id === current?.provider);
     const selected = group?.models.find(m => m.id === current?.model);
     const fixed = tier?.locked || locked;
-    const supported = current?.provider === tier?.provider;
+    const supported = tier?.configured === true && current?.provider === tier?.provider;
     const busy = saving || data.status === 'selecting';
     const effortName = effort => effort.id==='' ? t('defaultEffort') : ['off','minimal','low','medium','high','xhigh','max'].includes(effort.id) ? t(effort.id) : effort.name;
     const efforts = selected?.reasoning ? [...(!selected.reasoning.defaultEffort ? [{id:'',name:t('providerDefault')}] : []),...selected.reasoning.efforts] : [];

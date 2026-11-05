@@ -1,5 +1,4 @@
-window.__ModuleLoader__.load({
-  id: 'dsh-tool-discovery',
+window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
@@ -18,7 +17,7 @@ window.__ModuleLoader__.load({
         observationHint: 'token 按字符数 ÷ 4 估算，仅供参考。文本指纹用于核对工具说明是否变化。',
         lastAssembly: '最近一次记录', noAssembly: '还没有记录。', mode: '调用模式', status: '内部状态', hash: '文本校验值', calls: '查找工具次数（本次服务运行）',
         recordScope: '记录来自最近处理的会话，不一定是当前会话；仅统计工具说明。', diagnostics: '原理与核查信息', tokensLabel: '预计节省 token',
-        discoveryFlow: 'discover_tools({plugin: 精确插件名}) 直接返回该插件在当前会话中的整包原始工具定义，再调用原工具。不做关键词检索。',
+        discoveryFlow: 'unwrap({plugin: 精确插件名}) 直接返回该插件在当前会话中的整包原始工具定义，再调用原工具。不做关键词检索。',
         summaryRule: '优先使用开发者说明；缺失时可生成简介草稿。简介可编辑，保存后生效。',
         description: '插件简介', developerSource: '开发者说明', customSource: '自定义简介', missingSource: '缺少简介', missingDescription: '开发者未提供说明，可自行填写或生成草稿。',
         restoreDescription: '恢复开发者说明', descriptionLimit: '最多 2000 字符；清空后删除自定义简介。',
@@ -43,7 +42,7 @@ window.__ModuleLoader__.load({
         observationHint: 'Tokens are estimated as characters ÷ 4, for reference only. The text checksum helps check whether tool descriptions have changed.',
         lastAssembly: 'Latest record', noAssembly: 'No record yet.', mode: 'Tool mode', status: 'Internal status', hash: 'Text checksum', calls: 'Tool lookups (this service run)',
         recordScope: 'This record may come from another conversation. It measures tool descriptions only.', diagnostics: 'How it works and verification', tokensLabel: 'Estimated tokens saved',
-        discoveryFlow: 'discover_tools({plugin: exact plugin name}) returns the plugin’s complete original tool definitions for the current conversation, ready to call. No keyword search.',
+        discoveryFlow: 'unwrap({plugin: exact plugin name}) returns the plugin’s complete original tool definitions for the current conversation, ready to call. No keyword search.',
         summaryRule: 'Use the developer description first. If missing, generate a draft. Descriptions can be edited and take effect after saving.',
         description: 'Plugin description', developerSource: 'Developer description', customSource: 'Custom description', missingSource: 'No description', missingDescription: 'The developer has not provided a description. Write one or generate a draft.',
         restoreDescription: 'Restore developer description', descriptionLimit: 'Up to 2000 characters. Clear to remove the custom description.',

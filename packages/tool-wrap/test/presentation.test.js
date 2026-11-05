@@ -12,7 +12,7 @@ for (const mode of ['ptc', 'native']) test(`disabled ${mode} presentation is byt
   const after = await assemble(ctx, a);
   assert.deepEqual(after, before);
   assert.equal(renderPrompt(after), renderPrompt(before));
-  assert.doesNotMatch(renderPrompt(after), /discover_tools|# On-demand tools/);
+  assert.doesNotMatch(renderPrompt(after), /unwrap|discover_tools|# On-demand tools/);
   assert.ok(!after.tools.some(tool => tool.name === 'discover_tools'));
   assert.ok(tools.get('discover_tools'), 'disabled presentation must not rewrite registry capability');
   const status = (await request()).body;
@@ -32,7 +32,7 @@ test('configuration toggle changes next projection only, preserving every tool i
   const projected = await assemble(ctx, a);
   const projectedSdk = sdkSection(projected).split('\n\n# On-demand tools')[0];
   assert.doesNotMatch(projectedSdk, /ego_capture:/);
-  const expectedVisible = tools.schemas(a).filter(tool => !['run_code', 'ego_capture', 'ego_secret'].includes(tool.name))
+  const expectedVisible = tools.schemas(a).filter(tool => !['run_code', 'discover_tools', 'ego_capture', 'ego_secret'].includes(tool.name))
     .map(tool => ({ ...tool, output: tools.get(tool.name, a).output.schema }));
   assert.equal(projectedSdk, renderToolsSdk(expectedVisible, 'function-body'));
   assert.match(projectedSdk, /always_visible:/);

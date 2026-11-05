@@ -8,10 +8,10 @@
 
 ## 仓库迁移与发布状态
 
-本插件已迁入单仓 `packages/agent-roles` 子目录，完整保留原独立仓库的 Git 历史。包名由 `dsh-agent-roles` 更改为 `@delthin/dsh-agent-roles`，当前版本保持 `0.4.0`，并设置 `private: true` 暂停 npm 公开发布。
+本插件位于单仓 `packages/agent-roles` 子目录，完整保留原独立仓库的 Git 历史。包名为 `@delthin/dsh-agent-roles`，当前版本为 `0.4.1`，配置 `publishConfig.access: "public"` 支持 npm 公开发布。
 
 - 原独立仓库与历史发布记录保留在 [旧仓库](https://github.com/Delthin/dsh-agent-roles) 与 [旧发布](https://github.com/Delthin/dsh-agent-roles/releases)，旧版 GitHub Releases 不会复制或迁移为新仓库发布。
-- `@delthin/dsh-agent-roles` 尚未在 npm 发布，也未提交插件市场收录。
+- 插件市场收录独立于源码打包与 npm 发布。
 - 本次单仓迁移仅整理源码仓库，不自动迁移或改动宿主机现有的运行目录数据。
 
 ## 兼容性与验证状态
@@ -22,7 +22,7 @@
 
 ## 安装
 
-由于 `@delthin/dsh-agent-roles` 当前处于 `private: true` 暂停发布状态，请从单仓根目录构建本地 tarball 安装：
+可通过 npm 安装 `@delthin/dsh-agent-roles` 并按当前 DSH 宿主支持的方式导入，或从单仓根目录构建本地 tarball 安装：
 
 ```sh
 npm ci --ignore-scripts
@@ -30,7 +30,7 @@ npm run check
 npm pack --workspace @delthin/dsh-agent-roles
 ```
 
-执行后会在当前目录生成 `delthin-dsh-agent-roles-0.4.0.tgz`。请通过当前 DSH 宿主支持的本地包安装方式、profile 配置（如 `cordis.patch.yml`）或独立测试环境加载该产物。待后续解除 `private: true` 并正式发布到 npm 后，再按宿主支持的包名方式安装 `@delthin/dsh-agent-roles@0.4.0`。插件市场收录独立于源码打包与 npm 发布。
+使用 npm 安装时，执行 `npm install @delthin/dsh-agent-roles`（或指定 `@delthin/dsh-agent-roles@0.4.1`），再通过 DSH 宿主的插件配置（如 `cordis.patch.yml`）导入并启用 `@delthin/dsh-agent-roles`。本地打包会在当前目录生成 `delthin-dsh-agent-roles-0.4.1.tgz`，可通过宿主支持的本地包安装方式、profile 配置或独立测试环境加载。插件市场收录独立于源码打包与 npm 发布。
 
 安装过程无需编译，也不会执行安装脚本。加载后刷新 DSH Web 页面即可在左侧导航栏看到「多智能体」入口；若宿主未自动加载，请重启对应的 Web profile。
 
@@ -141,6 +141,6 @@ npm run check:pack
 
 ## 许可证
 
-[MIT](LICENSE)，Copyright © 2026 Delthin。
+自 `0.4.1` 起，本包采用 [PolyForm-Noncommercial-1.0.0](./LICENSE)（可查阅源码的 source-available 许可证，非 OSI 批准开源许可证；参见仓库根目录 [LICENSE](../../LICENSE)），Copyright © 2026 Delthin。按许可证定义，允许用于个人研究、学习、非商业评估及许可证条款明确允许的组织非商业用途，并非绝对禁止任何公司或组织使用；任何商业用途须另行获得著作权人书面授权。历史版本 `<= 0.4.0` 已授予的 MIT 许可不撤回，历史 MIT 条款保留在 [LICENSE-MIT-legacy](./LICENSE-MIT-legacy)。
 
 由于 npm 默认 semver 规则会将不同版本元组（tuple）的预发布版本排除在常规 `>=` 范围之外，最低要求为 `>=0.2.1-rc.5` 的包与 DSH `engines.dsh` 宿主范围显式声明为 `>=0.2.1-rc.5 || >=0.2.2-rc.1`；最低要求原本即为 `>=0.2.2-rc.1` 的条目则维持原范围。该配置用于确保当前 RC 与正式新版本均可正常解析，并非承诺兼容未来所有 RC 或 API 变更。

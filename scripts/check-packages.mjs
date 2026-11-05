@@ -28,7 +28,8 @@ for (const slug of slugs) {
   assert.equal(packed.name, pkg.name);
   const files = new Set(packed.files.map(file => file.path));
   for (const file of ['package.json', 'README.md', 'README.en.md', 'CHANGELOG.md', 'index.js', 'client.js', 'cordis.patch.yml']) assert(files.has(file), pkg.name + ' missing packaged file: ' + file);
-  if (pkg.license === 'MIT') assert(files.has('LICENSE'));
+  assert(files.has('LICENSE'));
+  if (['agent-roles', 'fast'].includes(slug)) assert(files.has('LICENSE-MIT-legacy'));
   for (const file of files) {
     assert(!file.includes('..') && !path.isAbsolute(file), 'Unsafe packed path: ' + file);
     assert(!/(?:^|\/)(?:test|tests|node_modules|home|profiles?|scripts|\.github)(?:\/|$)|\.test\.[cm]?js$|\.(?:tgz|log)$/.test(file), 'Unexpected runtime package file: ' + file);
@@ -74,6 +75,7 @@ for (const slug of slugs) {
     'globalThis.window = {__ModuleLoader__:{load:entry => registrations.push(entry)}};',
     "await import(name + '/client');",
     'assert.equal(registrations.length, 1);',
+    'assert.equal(registrations[0].id, name);',
     "assert.equal(typeof registrations[0].factory, 'function');",
     "if (manifest.exports['./origin-bootstrap']) assert.equal(typeof (await import(name + '/origin-bootstrap')).apply, 'function');",
     "console.log('Isolated runtime imports and client registration passed: ' + name);",

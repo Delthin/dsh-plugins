@@ -1,7 +1,7 @@
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { registeredPlugins, toolOrigin } from './origins.js';
 import { generationStatus, generateDescription } from './summaries.js';
-import { ConfigStore, DiscoveryError, DISCOVER, sdkSchemas, renderSdk, project, catalog, discover, digest } from './core.js';
+import { ConfigStore, DiscoveryError, DISCOVER, LEGACY_DISCOVER, isDiscoveryTool, sdkSchemas, renderSdk, project, catalog, discover, digest } from './core.js';
 
 export const name = 'tool-discovery';
 export const inject = ['profileContext', 'tools', 'systemPrompt'];
@@ -28,19 +28,20 @@ export async function apply(ctx) {
     }
     groups.sort((a, b) => a.id.localeCompare(b.id));
     const grouped = new Set(groups.flatMap(group => group.tools.map(tool => tool.name)));
-    const unknown = schemas.filter(tool => tool.name !== DISCOVER && !tool.plugin).length;
+    const unknown = schemas.filter(tool => !isDiscoveryTool(tool.name) && !tool.plugin).length;
     return {
       config: structuredClone(store.config), groups,
-      otherTools: schemas.filter(tool => tool.name !== DISCOVER && !grouped.has(tool.name)).map(tool => ({ name: tool.name, description: tool.description.slice(0, 150) })),
+      otherTools: schemas.filter(tool => !isDiscoveryTool(tool.name) && !grouped.has(tool.name)).map(tool => ({ name: tool.name, description: tool.description.slice(0, 150) })),
       estimate: project(schemas, store.config, runtime() ?? { language: 'typescript', programFormat: 'function-body' }).estimate,
       lastAssembly, discoveryCalls, generation: generationStatus(ctx),
-      coverage: { known: schemas.filter(tool => tool.name !== DISCOVER && tool.plugin).length, unknown },
+      coverage: { known: schemas.filter(tool => !isDiscoveryTool(tool.name) && tool.plugin).length, unknown },
       warnings: unknown ? ['部分既有工具未记录注册来源，暂列为未识别来源；完整补齐需要在加载来源适配后重新注册或重启服务。'] : [],
     };
   };
-  tools.register(defineTool({
-    name: DISCOVER,
-    description: 'Load an on-demand plugin tool pack by its exact plugin id. Returns all deferred tools in that plugin visible to the caller, with original full parameters, return types and usage instructions. No arguments lists plugin briefs, deferred tool names and counts. Use proactively when a task needs a listed tool; the user need not request unpacking. Print/return only one pack per run_code to avoid truncation, then call the original tools in a later run_code. Does not execute tools, grant permissions, or change system prompts.',
+  // Keep the old binding callable for existing sessions, never advertise it in projected SDKs.
+  for (const toolName of [DISCOVER, LEGACY_DISCOVER]) tools.register(defineTool({
+    name: toolName,
+    description: 'Load an on-demand plugin tool pack by its exact plugin id. Returns all deferred tools in that plugin visible to the caller, with original full parameters, return types and usage instructions. No arguments lists plugin briefs, deferred tool names and counts. Use proactively when a task needs a listed tool; the user need not request unpacking. Return only one complete pack per run_code (prefer return await tools.unwrap({plugin: ...})); if printing, serialize the whole pack as JSON instead of console.log(object), which can truncate SDK strings. Then call the original tools in a later run_code. Does not execute tools, grant permissions, or change system prompts.',
     parameters: {
       plugin: { type: 'string', description: 'Exact plugin id from the on-demand overview. Load the whole caller-visible deferred tool pack in one call; no keyword search.' },
       tool: { type: 'string', description: 'Exact name of a deferred standalone tool without an identified plugin, as listed in the overview.' },
@@ -71,7 +72,7 @@ export async function apply(ctx) {
       if (mode === 'ptc') {
         const schemas = sdkSchemas(tools, context.scope, context.toolSet);
         sections = sections.map(section => section.name === 'tools:sdk' && section.text === renderSdk(schemas, runtime())
-          ? { ...section, text: renderSdk(schemas.filter(tool => tool.name !== DISCOVER), runtime()), interpolate: false } : section);
+          ? { ...section, text: renderSdk(schemas.filter(tool => !isDiscoveryTool(tool.name)), runtime()), interpolate: false } : section);
       }
       lastAssembly = { mode, status: store.config.enabled ? 'native-unchanged' : 'disabled', beforeChars: 0, afterChars: 0, savedChars: 0, hash: '', hiddenCount: 0 };
       return { ...assembly, sections };
@@ -80,9 +81,13 @@ export async function apply(ctx) {
     const schemas = sdkSchemas(tools, context.scope, context.toolSet);
     // Fail open to the existing presentation if another plugin owns this section,
     // or the caller cannot invoke the discovery tool. Never change runtime capability visibility.
-    if (!section || !schemas.some(tool => tool.name === DISCOVER) || section.text !== renderSdk(schemas, runtime())) {
+    const exactSdk = section && section.text === renderSdk(schemas, runtime());
+    if (!exactSdk || !schemas.some(tool => tool.name === DISCOVER)) {
       lastAssembly = { mode, status: 'incompatible-sdk', beforeChars: 0, afterChars: 0, savedChars: 0, hash: '', hiddenCount: 0 };
-      return assembly;
+      // Still hide the compatibility binding when the primary transport is restricted.
+      // Never rewrite another plugin's SDK or defer tools without a callable unwrap.
+      return exactSdk ? { ...assembly, sections: assembly.sections.map(item => item === section
+        ? { ...section, text: renderSdk(schemas.filter(tool => tool.name !== LEGACY_DISCOVER), runtime()), interpolate: false } : item) } : assembly;
     }
     const projected = project(schemas, store.config, runtime());
     const replacement = { ...section, text: projected.text, interpolate: false };

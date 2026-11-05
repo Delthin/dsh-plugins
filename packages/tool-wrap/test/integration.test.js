@@ -137,16 +137,16 @@ test('another plugin owning tools:sdk triggers fail-open compatibility fallback'
   const assembly = await assemble(ctx, a);
   assert.equal(sdkSection(assembly), replacement);
   assert.match(renderPrompt(assembly), /OTHER_PLUGIN_SDK exact bytes \{\{literal\}\}/);
-  assert.deepEqual(tools.schemas(a).filter(tool => tool.name !== 'discover_tools'), definitions);
+  assert.deepEqual(tools.schemas(a).filter(tool => !['unwrap', 'discover_tools'].includes(tool.name)), definitions);
   assert.equal((await request()).body.lastAssembly.status, 'incompatible-sdk');
 });
 
 test('restricted discovery transport leaves original full SDK intact rather than hiding unusable definitions', async t => {
   const { ctx, tools, agent, request } = await hostFixture(t);
   const a = agent('no-discovery');
-  a.ctx.tools.restrict({ deny: ['discover_tools'] });
+  a.ctx.tools.restrict({ deny: ['unwrap'] });
   const assembly = await assemble(ctx, a);
-  assert.equal(sdkSection(assembly), renderSdk(sdkSchemas(tools, a), tsRuntime));
+  assert.equal(sdkSection(assembly), renderSdk(sdkSchemas(tools, a).filter(tool => tool.name !== 'discover_tools'), tsRuntime));
   assert.match(sdkSection(assembly), /ego_visit:/);
   assert.doesNotMatch(sdkSection(assembly), /# On-demand tools/);
   assert.equal((await request()).body.lastAssembly.status, 'incompatible-sdk');

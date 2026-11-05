@@ -1,7 +1,6 @@
 {
   "name": "@delthin/dsh-agent-roles",
-  "version": "0.4.0",
-  "private": true,
+  "version": "0.4.1",
   "description": "Role management, per-role models and skills for native DeepSeek Harness Agent Teams.",
   "type": "module",
   "main": "index.js",
@@ -34,7 +33,7 @@
     "@deepseek-ai/dsh-home-paths": ">=0.2.1-rc.5 || >=0.2.2-rc.1",
     "@deepseek-ai/dsh-tool-executor-native": ">=0.2.2-rc.1"
   },
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "author": "Delthin",
   "repository": {
     "type": "git",
@@ -68,7 +67,8 @@
     "README.en.md",
     "LICENSE",
     "CHANGELOG.md",
-    "runtime.js"
+    "runtime.js",
+    "LICENSE-MIT-legacy"
   ],
   "scripts": {
     "check": "node --check index.js && node --check client.js && node --check store.js && node --check skills.js && node --check runtime.js && node --check scripts/check-package.mjs",
@@ -97,5 +97,9 @@
     "@deepseek-ai/dsh-tool-executor-native": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   }
 }

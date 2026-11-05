@@ -5,10 +5,10 @@
 从 DeepSeek Harness（DSH）宿主向飞书自建应用的指定接收方（私聊或群聊）发送单向提醒通知。关闭浏览器不影响自动提醒发送；插件仅用于单向发送提醒，不接收飞书消息，也不建立长连接。
 
 - **包名**：`@delthin/dsh-feishu-notify`
-- **当前版本**：`1.1.0`（`private: true`）
-- **仓库位置**：私有源码仓库 `Delthin/dsh-plugins` 的 `packages/feishu-notify` 子目录
+- **当前版本**：`1.1.0`
+- **仓库位置**：源码仓库 `Delthin/dsh-plugins` 的 `packages/feishu-notify` 子目录
 - **运行环境**：Node.js >= 22，DSH >= 0.2.1-rc.5（当前验证基准 `0.2.2-rc.1`）
-- **许可证状态**：`UNLICENSED`（待确认）
+- **许可证**：`PolyForm-Noncommercial-1.0.0`（见仓库根目录 [`LICENSE`](../../LICENSE)）
 
 ## 功能概览
 
@@ -46,7 +46,15 @@
 
 ## 安装与升级
 
-本包目前位于私有源码仓库 `Delthin/dsh-plugins` 的 `packages/feishu-notify` 目录，尚未发布到公共 npm 注册表或提交插件市场。
+### 安装与导入
+
+通过 npm 安装（或按宿主支持的本地包/压缩包导入方式接入 DSH）：
+
+```sh
+npm install @delthin/dsh-feishu-notify
+```
+
+按当前 DSH 宿主的插件导入或 bundle 挂载方式启用插件。插件复用宿主已有的 `webServer` 服务注册路由，不创建额外监听端口。安装或更新宿主模块后，请刷新设置页面并按宿主提示重启 DSH。
 
 ### 源码检查与打包
 
@@ -66,15 +74,9 @@ node --check client.js
 node --test core.test.js summary.test.js
 ```
 
-### 宿主本地安装与升级约定
+### 从非作用域旧包升级
 
-1. **本地部署验证**：在未正式发布前，请通过 DSH 宿主的本地包导入或本地集成补丁方式，先将插件安装到独立的测试 profile 中验证。插件复用宿主已有的 `webServer` 服务注册路由，不创建额外监听端口。安装或更新宿主模块后，请刷新设置页面并按宿主提示重启 DSH。
-2. **从非作用域旧包升级**：包名已迁移为 `@delthin/dsh-feishu-notify`，但内部服务标识、设置页面 ID 及 profile 配置文件名均保持 `feishu-notify` 不变。升级时只需替换包名与资源路径，切勿在同一环境中同时启用旧版与新版实例。升级前请先备份当前 profile 下已有的 `feishu-notify.json`。
-3. **正式发布后安装**（仅限未来正式发布至 npm 后使用）：
-
-```sh
-npm i @delthin/dsh-feishu-notify
-```
+包名已迁移为 `@delthin/dsh-feishu-notify`，但内部服务标识、设置页面 ID 及 profile 配置文件名均保持 `feishu-notify` 不变。升级时只需替换包名与资源路径，切勿在同一环境中同时启用旧版与新版实例。升级前请先备份当前 profile 下已有的 `feishu-notify.json`。
 
 ## 配置说明
 
@@ -135,6 +137,10 @@ npm i @delthin/dsh-feishu-notify
 
 ## 许可证
 
-当前包标记为 `UNLICENSED`（`private: true`），具体开源或分发许可证待仓库所有者后续确认。
+本软件包采用 [`PolyForm-Noncommercial-1.0.0`](../../LICENSE) 许可证发布（参见本包 [`LICENSE`](./LICENSE) 或仓库根目录 [`LICENSE`](../../LICENSE)）。
+
+- **非商业源码可用（Source-Available）**：本许可证属于非商业源码可用许可，**并非** OSI 批准的开放源代码许可证（Non-OSI Open Source）。
+- **允许的用途**：允许出于个人研究、非商业使用、慈善或教育等符合许可证定义的目的使用、复制、修改与分发，具体权利、条件与允许用途例外以 [`LICENSE`](../../LICENSE) 原文为准。
+- **商业授权**：任何商业用途（Commercial Use）均需另行联系 Delthin 获取书面商业授权。
 
 由于 npm 默认 semver 规则会将不同版本元组（tuple）的预发布版本排除在常规 `>=` 范围之外，最低要求为 `>=0.2.1-rc.5` 的包与 DSH `engines.dsh` 宿主范围显式声明为 `>=0.2.1-rc.5 || >=0.2.2-rc.1`；最低要求原本即为 `>=0.2.2-rc.1` 的条目则维持原范围。该配置用于确保当前 RC 与正式新版本均可正常解析，并非承诺兼容未来所有 RC 或 API 变更。

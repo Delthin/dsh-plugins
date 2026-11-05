@@ -34,6 +34,17 @@ export async function apply(ctx, config = {}) {
   }) : undefined;
   if (transport) ctx.effect(() => () => transport.close());
 
+  const configured = Boolean(route);
+  async function setTier(sessionId, value) {
+    if (!configured && value !== false) {
+      // Resolve unconfigured toggles to an explicit off write so concurrent
+      // toggles can never re-enable a persisted Fast session.
+      if (value === 'toggle' && (await state.get(sessionId)).fast) return state.set(sessionId, false);
+      assertFastProvider(route);
+    }
+    return state.set(sessionId, value);
+  }
+
   ctx.on('llm/stream', async function* (options, next) {
     const tier = options.sessionId ? await state.get(options.sessionId) : { fast: false };
     if (!tier.fast) { yield* next(); return; }
@@ -55,8 +66,8 @@ export async function apply(ctx, config = {}) {
       try {
         const action = rawInput.trim().toLowerCase() || 'toggle';
         if (!['on', 'off', 'toggle', 'status'].includes(action)) throw new Error('用法：/fast on | off | toggle | status');
-        const value = action === 'status' ? await state.get(agent.id) : await state.set(agent.id, action === 'toggle' ? action : action === 'on');
-        return { kind: 'success', text: `${value.fast ? 'Fast' : '标准'}${value.locked ? '（角色固定）' : '（当前会话）'}` };
+        const value = action === 'status' ? await state.get(agent.id) : await setTier(agent.id, action === 'toggle' ? action : action === 'on');
+        return { kind: 'success', text: `${value.fast ? 'Fast' : '标准'}${value.locked ? '（角色固定）' : '（当前会话）'}${configured ? '' : '；Fast 尚未配置'}` };
       } catch (error) { return { kind: 'error', text: error.message }; }
     },
   }));
@@ -71,8 +82,8 @@ export async function apply(ctx, config = {}) {
         if (text.length > 4096) throw new Error('请求过大');
         const body = JSON.parse(text);
         await assertSession(body.sessionId);
-        if (body.action === 'get') return reply({ ...await state.get(body.sessionId), provider: route?.provider ?? '', lastDelivery: deliveries.get(body.sessionId) });
-        if (body.action === 'set') return reply({ ...await state.set(body.sessionId, body.fast), provider: route?.provider ?? '' });
+        if (body.action === 'get') return reply({ ...await state.get(body.sessionId), configured, provider: route?.provider ?? '', lastDelivery: deliveries.get(body.sessionId) });
+        if (body.action === 'set') return reply({ ...await setTier(body.sessionId, body.fast), configured, provider: route?.provider ?? '' });
         throw new Error('未知操作');
       } catch (error) { return reply({ error: error.message }, 400); }
     },

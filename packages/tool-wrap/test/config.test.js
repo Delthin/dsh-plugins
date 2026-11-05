@@ -21,7 +21,7 @@ const invalidConfigs = () => [
     enabledConfig({ [key]: ['control\u0000character'] }), enabledConfig({ [key]: ['line\nbreak'] }),
     enabledConfig({ [key]: ['x'.repeat(key === 'groups' ? 513 : 129)] }), enabledConfig({ [key]: Array(513).fill('x') }),
   ]),
-  ...['tools', 'exclude'].flatMap(key => ['run_code', 'discover_tools'].map(name => enabledConfig({ [key]: [name] }))),
+  ...['tools', 'exclude'].flatMap(key => ['run_code', 'unwrap', 'discover_tools'].map(name => enabledConfig({ [key]: [name] }))),
 ];
 
 test('strict config validation rejects every malformed/protected setting without changing persisted or in-memory config', async t => {

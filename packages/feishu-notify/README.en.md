@@ -5,10 +5,10 @@
 Send outbound notifications from the DeepSeek Harness (DSH) host to a designated recipient (direct message or group chat) via a Feishu custom app. Closing the browser does not affect automated alerts. This plugin is outbound-only: it does not receive incoming Feishu messages and does not maintain persistent connections.
 
 - **Package Name**: `@delthin/dsh-feishu-notify`
-- **Current Version**: `1.1.0` (`private: true`)
-- **Repository Location**: `packages/feishu-notify` subdirectory in the private source repository `Delthin/dsh-plugins`
+- **Current Version**: `1.1.0`
+- **Repository Location**: `packages/feishu-notify` subdirectory in the `Delthin/dsh-plugins` source repository
 - **Runtime Requirements**: Node.js >= 22, DSH >= 0.2.1-rc.5 (current verification baseline `0.2.2-rc.1`)
-- **License Status**: `UNLICENSED` (to be confirmed)
+- **License**: `PolyForm-Noncommercial-1.0.0` (see root [`LICENSE`](../../LICENSE))
 
 ## Features
 
@@ -46,7 +46,15 @@ The `feishu_notify` tool supports inspection and non-sensitive configuration:
 
 ## Installation & Upgrade
 
-This package resides in `packages/feishu-notify` within the private repository `Delthin/dsh-plugins` and has not been published to the public npm registry or the plugin marketplace.
+### Installation & Host Import
+
+Install via npm (or import the package bundle using the local package mechanism supported by your DSH host):
+
+```sh
+npm install @delthin/dsh-feishu-notify
+```
+
+Load or import the plugin bundle according to your DSH host setup. The plugin registers its routes through the host's existing `webServer` service without opening a new port. Refresh the settings page after installation, and restart DSH when prompted after host module updates.
 
 ### Source Verification & Packaging
 
@@ -66,15 +74,9 @@ node --check client.js
 node --test core.test.js summary.test.js
 ```
 
-### Local Host Installation & Upgrade Guidelines
+### Upgrading from the Unscoped Package
 
-1. **Local Deployment Verification**: Before public release, install the package or apply the local integration patch into an isolated test profile on the DSH host. The plugin registers its routes through the host's existing `webServer` service without opening a new port. Refresh the settings page after installation, and restart DSH when prompted after host module updates.
-2. **Upgrading from the Unscoped Package**: While the package name is now `@delthin/dsh-feishu-notify`, internal service IDs, settings page IDs, and the profile configuration filename (`feishu-notify.json`) remain unchanged. When upgrading, replace only the package name and asset paths, never enable both old and new instances simultaneously, and back up your existing `feishu-notify.json` beforehand.
-3. **Post-Release Installation** (only applicable after official publication to npm):
-
-```sh
-npm i @delthin/dsh-feishu-notify
-```
+While the package name is now `@delthin/dsh-feishu-notify`, internal service IDs, settings page IDs, and the profile configuration filename (`feishu-notify.json`) remain unchanged. When upgrading, replace only the package name and asset paths, never enable both old and new instances simultaneously, and back up your existing `feishu-notify.json` beforehand.
 
 ## Configuration
 
@@ -135,6 +137,10 @@ See [CHANGELOG.md](./CHANGELOG.md) for version history and migration details.
 
 ## License
 
-Currently marked as `UNLICENSED` (`private: true`), pending final license confirmation.
+Licensed under [`PolyForm-Noncommercial-1.0.0`](../../LICENSE) (see package [`LICENSE`](./LICENSE) or repository root [`LICENSE`](../../LICENSE)).
+
+- **Source-Available (Non-Commercial)**: This is a source-available noncommercial license and is **not** an OSI-approved open-source license.
+- **Permitted Purpose**: Use, copying, modification, and distribution are permitted for noncommercial purposes (including personal research, charitable, or educational uses) subject to the conditions and permitted-purpose exceptions defined in [`LICENSE`](../../LICENSE).
+- **Commercial Licensing**: Any commercial use requires a separate written commercial license from Delthin.
 
 Because npm's default semver rules exclude prerelease versions of a different version tuple from standard `>=` ranges, package and DSH `engines.dsh` host ranges with a `>=0.2.1-rc.5` minimum explicitly use `>=0.2.1-rc.5 || >=0.2.2-rc.1`, while entries that already start at `>=0.2.2-rc.1` keep their original range. This ensures resolution across the current RC series and newer stable releases without guaranteeing compatibility with every future RC or API change.

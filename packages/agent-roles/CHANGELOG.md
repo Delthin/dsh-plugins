@@ -2,9 +2,11 @@
 
 ## Unreleased
 
-- Migrate package into the monorepo under `packages/agent-roles` with full Git history preserved.
-- Rename package to `@delthin/dsh-agent-roles` (`0.4.0`) and set `private: true` while public npm publishing is paused.
-- Update repository metadata, workspace verification commands, and release documentation for the monorepo workflow.
+## 0.4.1 — 2026-11-05
+
+- Prepare `@delthin/dsh-agent-roles` (`0.4.1`) for public npm release (`publishConfig.access: "public"`, `private` removed from the subpackage while the monorepo root remains `private: true`).
+- Migrate package into the monorepo under `packages/agent-roles` with full Git history preserved, and update repository metadata, workspace verification commands, and release documentation.
+- Change license to `PolyForm-Noncommercial-1.0.0` ([LICENSE](./LICENSE), root [LICENSE](../../LICENSE)) for `0.4.1` and later; prior MIT grants for `<= 0.4.0` are not revoked and remain preserved in [LICENSE-MIT-legacy](./LICENSE-MIT-legacy).
 - Retain links to the legacy standalone repository ([Legacy Repository](https://github.com/Delthin/dsh-agent-roles)) and historical releases ([Legacy Releases](https://github.com/Delthin/dsh-agent-roles/releases)).
 
 ## 0.4.0 — 2026-11-05

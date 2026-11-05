@@ -4,7 +4,7 @@ import { scopeOf, scopeChainOf } from '@deepseek-ai/dsh-scope';
 
 let installation;
 const originalOf = value => value?.[symbols.original] ?? value;
-const protectedNames = new Set(['run_code', 'discover_tools']);
+const protectedNames = new Set(['run_code', 'unwrap', 'discover_tools']);
 
 // 0.2.2-rc.1 stores registration records, not bare definitions. Unsupported layouts stay unidentified.
 function layersOf(runtime) {

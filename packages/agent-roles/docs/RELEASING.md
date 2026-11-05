@@ -4,10 +4,11 @@ This document describes pre-release verification, Changesets versioning, manual 
 
 ## Current Publication Status
 
-- **Package Name & Version**: `@delthin/dsh-agent-roles` (`0.4.0`), located at `packages/agent-roles`.
-- **Private Guard**: `private: true` is currently set in `packages/agent-roles/package.json` to block accidental npm publication.
+- **Package Name & Version**: `@delthin/dsh-agent-roles` (`0.4.1`), located at `packages/agent-roles`.
+- **Publish Access & Workspace Boundary**: The monorepo root remains `"private": true`, while publishable subpackages omit `private` and set `"publishConfig": { "access": "public" }`.
+- **License Files**: Current releases (`>= 0.4.1`) are licensed under `PolyForm-Noncommercial-1.0.0` (`./LICENSE` and root `../../LICENSE`); historical MIT notices for `<= 0.4.0` are retained in `./LICENSE-MIT-legacy` without revoking prior grants.
 - **Legacy History**: The former standalone repository ([Legacy Repository](https://github.com/Delthin/dsh-agent-roles)) and its release list ([Legacy Releases](https://github.com/Delthin/dsh-agent-roles/releases)) remain online for historical reference. Old releases are not re-created in the monorepo.
-- **No Automatic Publishing**: Repository CI runs `npm run check`, `npm run check:public`, and `npm run check:pack` on Node.js 22 and 24. CI never stores publish tokens and never publishes packages automatically.
+- **Manual Publishing Only**: Repository CI runs `npm run check`, `npm run check:public`, and `npm run check:pack` on Node.js 22 and 24. CI never stores publish tokens and never publishes packages automatically; all releases are published manually via local `npm login` + 2FA, `--dry-run` inspection, and `npm publish`.
 
 ## Pre-Release Verification
 
@@ -35,15 +36,17 @@ This document describes pre-release verification, Changesets versioning, manual 
 The monorepo uses **Changesets** for independent package versioning rather than running `npm version` and manually editing lockfiles.
 
 1. Record user-facing changes with Changesets and update `packages/agent-roles/CHANGELOG.md`. Ensure compatibility notes accurately distinguish between minimum declared ranges (`Node.js >= 22.18.0` for this package, `Node.js >= 22.19.0` for the monorepo root, `engines.dsh >= 0.2.1-rc.5`) and actual tested environments.
-2. Keep `private: true` enabled until the user explicitly approves public release for `@delthin/dsh-agent-roles`.
-3. When approved for public release:
-   - Confirm npm organization scope (`@delthin`) access and OIDC / 2FA configuration.
-   - Remove `"private": true` from `packages/agent-roles/package.json` for the approved package only.
-   - Re-run `npm run check`, `npm test --workspace @delthin/dsh-agent-roles`, `npm run check:public`, and `npm run check:pack`.
+2. Verify package metadata and workspace boundaries:
+   - Keep `"private": true` in the monorepo root `package.json`.
+   - Ensure `packages/agent-roles/package.json` has no `private` field, sets `"publishConfig": { "access": "public" }`, and includes both `LICENSE` and `LICENSE-MIT-legacy` in the packed files.
+3. Run pre-release verification and dry-run checks before tagging:
+   - Authenticate interactively with `npm login` and confirm `@delthin` scope access with 2FA enabled.
+   - Run `npm run check`, `npm test --workspace @delthin/dsh-agent-roles`, `npm run check:public`, and `npm run check:pack`.
+   - Run `npm publish --workspace @delthin/dsh-agent-roles --access public --dry-run` to inspect the exact tarball contents and version.
    - Commit the reviewed release state before tagging.
-4. Perform manual release and publication:
+4. Perform manual release and publication (complete interactive 2FA when prompted):
    ```sh
-   VERSION=0.4.0
+   VERSION=0.4.1
    TARBALL="delthin-dsh-agent-roles-${VERSION}.tgz"
 
    npm pack --workspace @delthin/dsh-agent-roles
@@ -63,7 +66,7 @@ The monorepo uses **Changesets** for independent package versioning rather than 
 GitHub Releases, npm public registry availability, and DSH plugin marketplace listing are separate states and must be verified independently:
 
 - **GitHub Release**: Verify uploaded release assets on GitHub before referencing the release URL.
-- **npm Public Package**: After publishing, run `npm view "@delthin/dsh-agent-roles@${VERSION}" dist.integrity` and confirm that the returned integrity digest matches the local `${TARBALL}`. Never claim the scoped package is on npm while `private: true` is set or before `npm view` succeeds.
+- **npm Public Package**: After manual `npm publish` with 2FA completes, run `npm view "@delthin/dsh-agent-roles@${VERSION}" dist.integrity` and confirm that the returned integrity digest matches the local `${TARBALL}`. Never claim a new version is published on npm before `npm view` succeeds.
 
 ## DSH Plugin Marketplace
 

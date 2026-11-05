@@ -26,7 +26,7 @@ test('real NodePtcRuntime run_code discovers, then invokes original omitted bind
   if (!await requireNodeSandbox(t, host, a)) return;
   a.ctx.tools.restrict({ deny: ['ego_secret'] });
   const before = renderPrompt(await assemble(ctx, a));
-  const discovery = success(await run(host, a, 'return await tools.discover_tools({plugin: "dsh-ego-browser"});'));
+  const discovery = success(await run(host, a, 'return await tools.unwrap({plugin: "dsh-ego-browser"});'));
   assert.deepEqual([...discovery.result.tools].sort(), ['ego_capture', 'ego_visit']);
   assert.match(discovery.result.sdk, /globalMarker: string/);
   assert.equal(calls.length, 0);
@@ -47,7 +47,7 @@ test('real NodePtcRuntime run_code discovers, then invokes original omitted bind
   }
   assert.ok(events.some(event => event.type === 'tool/ptc-dispatch-start' && event.data.name === 'ego_visit'));
   assert.ok(events.some(event => event.type === 'tool/ptc-dispatch' && event.data.name === 'ego_visit' && !event.data.isError));
-  const unavailable = success(await run(host, a, 'return {binding: typeof tools.ego_secret, discovery: await tools.discover_tools({plugin: "dsh-ego-browser"})};'));
+  const unavailable = success(await run(host, a, 'return {binding: typeof tools.ego_secret, discovery: await tools.unwrap({plugin: "dsh-ego-browser"})};'));
   assert.equal(unavailable.result.binding, 'undefined');
   assert.deepEqual([...unavailable.result.discovery.tools].sort(), ['ego_capture', 'ego_visit']);
   assert.doesNotMatch(unavailable.result.discovery.sdk, /ego_secret:/);
@@ -62,7 +62,7 @@ test('real run_code uses scoped shadow definitions and cannot bypass original gu
   const a = agent('node-policy');
   if (!await requireNodeSandbox(t, host, a)) return;
   await fixturePlugin(a.ctx, 'dsh-ego-browser', [fixtureTool('ego_visit', { description: 'Node scoped shadow browser', marker: 'nodeShadowMarker' })]);
-  const info = success(await run(host, a, 'return await tools.discover_tools({plugin: "dsh-ego-browser"});'));
+  const info = success(await run(host, a, 'return await tools.unwrap({plugin: "dsh-ego-browser"});'));
   assert.match(info.result.sdk, /nodeShadowMarker: string/);
   assert.doesNotMatch(info.result.sdk, /globalMarker/);
   const shadow = success(await run(host, a, 'return await tools.ego_visit({input: "shadow value"});'));
@@ -100,7 +100,7 @@ test('real run_code cancellation reaches nested tool signal and drains the body 
     settled = true;
     return { globalMarker: 'drained', details: { values: [] } };
   } })]);
-  success(await run(host, a, 'return await tools.discover_tools({plugin: "dsh-ego-browser"});'));
+  success(await run(host, a, 'return await tools.unwrap({plugin: "dsh-ego-browser"});'));
   const controller = new AbortController();
   const pending = run(host, a, 'return await tools.ego_wait({input: "wait"});', controller.signal);
   const nested = await entered.promise;
@@ -142,7 +142,7 @@ test('host PTC scheduler keeps opted-in parallel overlap and exclusive barriers 
     trace.push('exclusive');
     return { globalMarker: args.input, details: { values: [] } };
   } })]);
-  success(await run(host, a, 'return await tools.discover_tools({plugin: "dsh-ego-browser"});'));
+  success(await run(host, a, 'return await tools.unwrap({plugin: "dsh-ego-browser"});'));
   const result = success(await run(host, a, 'return await Promise.all([tools.ego_parallel({input: "one"}), tools.ego_parallel({input: "two"}), tools.ego_exclusive({input: "barrier"})]);'));
   assert.equal(maximum, 2);
   assert.deepEqual(result.result.map(value => value.globalMarker), ['one', 'two', 'barrier']);

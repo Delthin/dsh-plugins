@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Independent DSH plugins maintained in one workspace",
-  "license": "UNLICENSED",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "workspaces": [
     "packages/*"
   ],

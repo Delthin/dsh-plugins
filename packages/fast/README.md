@@ -2,7 +2,7 @@
 
 [English](<./README.en.md>) | [变更日志](<./CHANGELOG.md>)
 
-`@delthin/dsh-fast` 是 DeepSeek Harness (DSH) 的会话服务档位切换与请求转发插件（当前版本 `0.1.0`，包状态 `private: true`，许可 `UNLICENSED`）。它为当前会话提供 `Standard` 与 `Fast` 档位切换能力，并在配置完整时将指定供应商的 Responses 请求附加 `service_tier: "priority"` 后转发至管理员配置的目标地址。
+`@delthin/dsh-fast` 是 DeepSeek Harness (DSH) 的会话服务档位切换与请求转发插件（当前版本 `0.1.3`，许可 `PolyForm-Noncommercial-1.0.0`）。它为当前会话提供 `Standard` 与 `Fast` 档位切换能力，并在配置完整时将指定供应商的 Responses 请求附加 `service_tier: "priority"` 后转发至管理员配置的目标地址。
 
 > **重要声明**：`Fast` 档位仅负责注入 `service_tier: "priority"` 参数并将匹配请求转发至目标端点，**不构成模型生成速度或响应性能的承诺**。上游服务是否支持该参数、是否实际加速以及如何计费，均由管理员配置的上游供应商决定，需由管理员自行核实，本插件不保证加速效果或更低费用。
 
@@ -17,7 +17,7 @@
 
 ## 安装说明
 
-当前包处于未公开发布状态（`private: true`），尚未发布至 npm 公共仓库，也未提交插件市场申请。源码位于仓库子目录 `packages/fast`。
+源码位于单仓子目录 `packages/fast`，配置 `publishConfig.access: "public"` 支持 npm 公共仓库发布。可通过 `npm i @delthin/dsh-fast`（或指定 `@delthin/dsh-fast@0.1.3`）安装，并在 DSH 宿主配置（如 `cordis.patch.yml`）中导入启用 `@delthin/dsh-fast`。插件市场收录独立于 npm 发布。
 
 ### 从源码仓库打包验证
 
@@ -31,9 +31,9 @@ npm pack --workspace @delthin/dsh-fast
 
 打包完成后，请使用 DSH 宿主支持的本地 tarball 导入方式或配置 patch 入口，将生成的包加载到**独立的测试 profile** 中进行验证。
 
-### npm 安装（仅限未来正式发布后）
+### npm 安装
 
-待未来正式发布至 npm 后，方可通过包管理器安装：
+发布至 npm 后，可通过包管理器安装：
 
 ```bash
 # 仅在包正式公开或配置私有源发布后可用
@@ -115,6 +115,6 @@ A：`roleRunsPath` 是相对于 **DSH 服务进程的当前工作目录（`cwd`�
 
 ## 许可说明
 
-当前包配置为 `"private": true`，许可证状态为 **`UNLICENSED`**（开源或分发许可尚未最终确定）。未经授权，请勿将其声明为 MIT 或其他开源许可，也勿公开发布至公共包管理平台。
+自 `0.1.3` 起，本包采用 [PolyForm-Noncommercial-1.0.0](./LICENSE)（可查阅源码的 source-available 许可证，非 OSI 批准开源许可证；参见仓库根目录 [LICENSE](../../LICENSE)），Copyright © 2026 Delthin。按许可证定义，允许用于个人研究、学习、非商业评估及许可证条款明确允许的组织非商业用途，并非绝对禁止任何公司或组织使用；任何商业用途须另行获得著作权人书面授权。历史版本 `<= 0.1.2`（含 npm 已发布的 `0.1.2`）已授予的 MIT 许可不撤回，历史 MIT 通知保留在 [LICENSE-MIT-legacy](./LICENSE-MIT-legacy)。
 
 由于 npm 默认 semver 规则会将不同版本元组（tuple）的预发布版本排除在常规 `>=` 范围之外，最低要求为 `>=0.2.1-rc.5` 的包与 DSH `engines.dsh` 宿主范围显式声明为 `>=0.2.1-rc.5 || >=0.2.2-rc.1`；最低要求原本即为 `>=0.2.2-rc.1` 的条目则维持原范围。该配置用于确保当前 RC 与正式新版本均可正常解析，并非承诺兼容未来所有 RC 或 API 变更。

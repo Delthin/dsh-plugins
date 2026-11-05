@@ -7,12 +7,13 @@ const root=new URL('../',import.meta.url);
 const read=file=>readFile(new URL(file,root),'utf8');
 const pkg=JSON.parse(await read('package.json'));
 const expected=[
-  'CHANGELOG.md','LICENSE','README.en.md','README.md','client.js',
+  'CHANGELOG.md','LICENSE','LICENSE-MIT-legacy','README.en.md','README.md','client.js',
   'cordis.patch.yml','index.js','package.json','runtime.js','skills.js','store.js',
 ].sort();
 assert.equal(pkg.name,'@delthin/dsh-agent-roles');
-assert.equal(pkg.private,true);
-assert.equal(pkg.license,'MIT');
+assert.notEqual(pkg.private,true);
+assert.equal(pkg.license,'PolyForm-Noncommercial-1.0.0');
+assert.equal(pkg.publishConfig.access,'public');
 assert.deepEqual(pkg.repository,{
   type:'git',url:'git+https://github.com/Delthin/dsh-plugins.git',directory:'packages/agent-roles',
 });
@@ -43,12 +44,13 @@ const source=await read('index.js');
 assert.match(source,/store\.load\(\[\]\)/,'Fresh installs must have an empty catalog');
 assert.doesNotMatch(source,/seed-roles/,'Private seeds must not be loaded');
 assert.match(source,/export const name='agent-roles'/,'Internal plugin ID must remain stable');
-assert.match(await read('client.js'),/load\(\{id:'dsh-agent-roles'/,'Internal client ID must remain stable');
+assert.match(await read('client.js'),/load\(\{id:'@delthin\/dsh-agent-roles'/,'Client module ID must match the scoped package');
 
 // Verify the actual npm file list without uploading or running lifecycle scripts.
 const npm=process.platform==='win32'?'npm.cmd':'npm';
 const result=JSON.parse(execFileSync(npm,['pack','--dry-run','--json','--ignore-scripts'],{
   cwd:fileURLToPath(root),encoding:'utf8',shell:process.platform==='win32',
+  env:{...process.env,npm_config_cache:fileURLToPath(new URL('../../../.cache/npm',import.meta.url))},
 }))[0];
 assert.equal(result.name,pkg.name);
 assert.equal(result.version,pkg.version);

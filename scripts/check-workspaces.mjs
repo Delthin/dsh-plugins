@@ -7,7 +7,7 @@ import yaml from 'js-yaml';
 import semver from 'semver';
 
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
-process.env.npm_config_cache ??= path.join(rootDir, '.cache/npm');
+process.env.npm_config_cache = path.join(rootDir, '.cache/npm');
 const readJson = async (file) => JSON.parse(await readFile(path.join(rootDir, file), 'utf8'));
 const root = await readJson('package.json');
 assert.equal(root.private, true, 'The root workspace must never be published');
@@ -30,7 +30,11 @@ for (const [slug, name] of expected) {
   const directory = path.join(rootDir, 'packages', slug);
   const pkg = await readJson('packages/' + slug + '/package.json');
   assert.equal(pkg.name, name);
-  assert.equal(pkg.private, true, name + ' must remain unpublished until authorized');
+  assert.notEqual(pkg.private, true, name + ' must be publishable');
+  assert.equal(pkg.license, 'PolyForm-Noncommercial-1.0.0');
+  assert.equal(pkg.publishConfig?.access, 'public');
+  assert.equal(pkg.publishConfig?.registry, 'https://registry.npmjs.org');
+  await access(path.join(directory, 'LICENSE'));
   assert.equal(pkg.repository?.url, 'git+https://github.com/Delthin/dsh-plugins.git');
   assert.equal(pkg.repository?.directory, 'packages/' + slug);
   assert(semver.valid(pkg.version), name + ' needs a valid independent version');

@@ -159,7 +159,8 @@ test('measured records retain exact character figures and explain discovery in f
   assert.match(JSON.stringify(record), /1,200 字符/);
   const details = ui.find(node => node.type === 'details' && node.children[0].children.includes('原理与核查信息'));
   assert.equal(details.props.open, undefined);
-  assert.match(JSON.stringify(details), /discover_tools/);
+  assert.match(JSON.stringify(details), /unwrap[(]/);
+  assert.doesNotMatch(JSON.stringify(details), /discover_tools/);
   assert.match(JSON.stringify(details), /整包原始工具定义/);
   assert.match(JSON.stringify(details), /plugin: 精确插件名/);
   assert.doesNotMatch(JSON.stringify(details), /前三条|150 字符|240 字符/);

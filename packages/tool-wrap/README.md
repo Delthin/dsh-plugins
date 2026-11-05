@@ -2,14 +2,14 @@
 
 [English](<README.en.md>) | [变更日志](<CHANGELOG.md>)
 
-`@delthin/dsh-tool-wrap` 是面向 DeepSeek Harness（DSH）`>= 0.2.2-rc.1` PTC 会话的工具按需发现插件。插件根据工具实际注册来源生成目录、选择项和发现概览，在兼容的 PTC SDK 提示词中将所选插件精简为模块简介与工具名称列表，并在模型调用 `discover_tools` 时按精确插件 ID 返回调用者可见的原始工具定义。
+`@delthin/dsh-tool-wrap` 是面向 DeepSeek Harness（DSH）`>= 0.2.2-rc.1` PTC 会话的工具按需发现插件。插件根据工具实际注册来源生成目录、选择项和发现概览，在兼容的 PTC SDK 提示词中将所选插件精简为模块简介与工具名称列表，并在模型调用 `unwrap` 时按精确插件 ID 返回调用者可见的原始工具定义。
 
 插件默认关闭。原生工具调用模式、关闭状态以及不兼容的 SDK 组装路径均保留宿主原有展示。
 
 ## 功能概览
 
 - **按插件精简 PTC SDK 展示**：启用后，所选插件在系统提示词的 `tools:sdk` 中仅保留插件 ID、插件简介及全部工具名称，不常驻完整参数与返回值定义。
-- **按精确 ID 整包发现**：模型在 `run_code` 中调用 `discover_tools`，按精确插件 ID（或未识别来源工具的精确工具名）读取当前调用者可见的完整工具定义。发现过程不提供关键词搜索，不直接执行目标工具，也不扩张调用权限。
+- **按精确 ID 整包发现**：模型在 `run_code` 中调用 `unwrap`，按精确插件 ID（或未识别来源工具的精确工具名）读取当前调用者可见的完整工具定义。发现过程不提供关键词搜索，不直接执行目标工具，也不扩张调用权限。
 - **灵活的范围控制**：支持按插件（`groups`）整包纳入、按工具名（`tools`）显式纳入，以及按工具名（`exclude`）优先排除。选中整个插件后，该插件后续新增的工具会自动纳入按需发现范围；被排除的工具始终保持完整定义展示。
 - **插件简介管理**：优先读取插件包自带的开发者说明，支持为每个插件保存自定义简介（1–2000 字符），或调用当前部署默认模型根据插件全局工具名与描述生成简介草稿。
 - **平滑迁移与原子落盘**：自动将历史 `v1`、`v2` 配置升级为 `v3` 结构，通过同目录临时文件原子重命名（权限 `0600`）写入当前 profile 的 `tool-discovery.json`。
@@ -29,16 +29,20 @@
 ### 版本测试与兼容说明
 
 - **契约依赖**：DSH `0.2.2-rc.1` 将 `renderToolsSdk` 与 `renderToolsSdkPy` 移至 `@deepseek-ai/dsh-tool-executor-ptc`，移除了旧版 `tools.modeFor`，并引入按调用步骤解析的条件工具集合。本插件基于上述新版契约实现，不支持 `0.2.2-rc.1` 之前的宿主版本。
-- **实测基线**：本轮版本已在 `cordis 4.1.0` + `DSH 0.2.2-rc.1` 环境下完成定点测试（共 108 项测试，104 项通过，4 项因本机 `sandbox-exec` 触发 `sandbox_apply: Operation not permitted` 跳过；未包含浏览器端到端自动化验证，验证详情见仓库验收交接记录）。
+- **实测基线**：本轮版本已在 `cordis 4.1.0` + `DSH 0.2.2-rc.1` 环境下完成定点测试（共 114 项测试，114 项通过、0 跳过，退出码 0，包含真实 Node PTC 验证；未包含浏览器端到端自动化验证，验证详情见仓库验收交接记录）。
 - **开放上限说明**：依赖范围采用开放上限（`>=`）以便在后续小版本中安装，但开放范围不代表对未来尚未发布的宿主破坏性 API 变更提供事前保证。
 
 ## 安装与从旧包迁移
 
-本包当前位于私有源码仓库（`Delthin/dsh-plugins`），状态为 `1.2.0`（`private: true`，`UNLICENSED`），尚未发布至公共 npm 仓库，也未提交插件市场申请。
+### 安装与宿主接入
 
-### 从源码构建与本地安装
+通过 npm 安装（或按宿主支持的本地包/bundle 导入方式接入 DSH）：
 
-在仓库根目录执行以下命令完成依赖安装、静态检查与打包：
+```bash
+npm install @delthin/dsh-tool-wrap
+```
+
+从源码仓库执行依赖安装、静态检查与打包：
 
 ```bash
 npm ci --ignore-scripts
@@ -46,13 +50,11 @@ npm run check
 npm pack --workspace @delthin/dsh-tool-wrap
 ```
 
-打包完成后，请依照你所使用的 DSH 宿主环境支持的本地包加载或启动 patch 方式，将插件安装到独立的测试 profile 中进行验证。
-
-> **注意**：`npm install @delthin/dsh-tool-wrap` 等公共仓库安装方式仅在未来正式发布至 npm 后可用。
+请按照当前 DSH 宿主环境支持的插件 bundle 导入或启动门控挂载方式加载 `@delthin/dsh-tool-wrap/origin-bootstrap` 与 `@delthin/dsh-tool-wrap` 主插件，并在安装或更新后重启 DSH 服务。
 
 ### 从 `dsh-tool-discovery` 升级注意事项
 
-本包由原本地包名 `dsh-tool-discovery` 迁移而来。为保证平滑过渡，迁移后保留了原有的内部工具名（`discover_tools`）、服务名、页面路由 ID 以及 profile 配置文件名（`tool-discovery.json`），客户端、图标与多语言（locale）导出均已收敛至 `@delthin/dsh-tool-wrap` 命名空间下。
+本包由原本地包名 `dsh-tool-discovery` 迁移而来。模型工具正式名称现为 `unwrap`，旧会话的 `discover_tools` 保留兼容调用但不出现在新普通 PTC 提示词中；服务名、页面路由 ID 以及 profile 配置文件名（`tool-discovery.json`）保持不变，客户端、图标与多语言（locale）导出均已收敛至 `@delthin/dsh-tool-wrap` 命名空间下。
 
 升级时请严格遵循以下步骤：
 
@@ -68,7 +70,7 @@ npm pack --workspace @delthin/dsh-tool-wrap
    - 必须在宿主 `tools` 服务完成工具注册**之前**加载。
    - 负责拦截并记录各插件注册工具时的真实 Loader 插件身份，并注册内部就绪服务 `toolDiscoveryOriginsReady`。
 2. **`@delthin/dsh-tool-wrap`（主插件入口）**
-   - 提供 `discover_tools` 工具注册、`tools:sdk` 提示词瀑布流（waterfall）精简、设置页 Web API 以及客户端界面。
+   - 提供 `unwrap` 工具注册、`tools:sdk` 提示词瀑布流（waterfall）精简、设置页 Web API 以及客户端界面。
    - 依赖 `toolDiscoveryOriginsReady` 建立加载顺序。
 
 ### 自定义启动组装（Composition / Patch）说明
@@ -90,12 +92,14 @@ npm pack --workspace @delthin/dsh-tool-wrap
 
 ### 模型端按需发现流程
 
-在兼容的 PTC 会话中，当任务需要某个按需插件的能力时，模型会主动调用 `discover_tools` 读取定义（无需用户在对话中手动提及“解包”或“发现”）：
+在兼容的 PTC 会话中，当任务需要某个按需插件的能力时，模型会主动调用 `unwrap` 读取定义（无需用户在对话中手动提及“解包”或“发现”）：
 
-1. **查看按需目录**（可选）：在 `run_code` 中执行 `console.log(await tools.discover_tools({}))`，列出当前调用者可见的按需插件列表。
-2. **按插件 ID 获取完整定义**：执行 `console.log(await tools.discover_tools({ plugin: "插件精确ID" }))`，一次性获取该插件下所有对当前调用者可见的按需工具完整定义（含描述、参数与返回类型）。建议每次 `run_code` 仅加载一个插件包，避免多包叠加导致输出截断。
-3. **获取未识别来源的单工具定义**：对于无插件归属的工具，执行 `console.log(await tools.discover_tools({ tool: "精确工具名" }))`。
+1. **查看按需目录**（可选）：在 `run_code` 中执行 `return await tools.unwrap({});`，列出当前调用者可见的按需插件列表。
+2. **按插件 ID 获取完整定义**：执行 `return await tools.unwrap({ plugin: "插件精确ID" });`，一次性获取该插件下所有对当前调用者可见的按需工具完整定义（含描述、参数与返回类型）。建议每次 `run_code` 仅加载一个插件包，避免多包叠加导致输出截断。
+3. **获取未识别来源的单工具定义**：对于无插件归属的工具，执行 `return await tools.unwrap({ tool: "精确工具名" });`。
 4. **正常调用工具**：在后续 `run_code` 步骤中直接调用 `tools.<name>(...)`。
+
+返回值由宿主完整 JSON 序列化。如需打印，使用 `console.log(JSON.stringify(await tools.unwrap({plugin: "exact-plugin-id"})))`，不要直接 `console.log(object)`，避免 Node inspect 截断长 SDK；Python 使用 `json.dumps`。新旧入口都保留原有条件准入、scope、`toolSet` 与权限检查。
 
 ## 插件简介与默认模型生成
 
@@ -129,7 +133,7 @@ npm pack --workspace @delthin/dsh-tool-wrap
 - `groups`：字符串数组（上限 512 项），保存精确插件 ID。选中后该插件当前及未来新增的工具均纳入按需发现。
 - `tools`：字符串数组（上限 512 项），保存显式指定纳入按需发现的工具精确名称。
 - `exclude`：字符串数组（上限 512 项），保存显式排除的工具精确名称。**`exclude` 优先级最高**，其中的工具始终保留完整 SDK 展示，不进入折叠目录。
-- **保留工具限制**：`run_code` 与 `discover_tools` 为核心传输与发现入口，不可放入 `groups`、`tools` 或 `exclude` 中进行按需折叠配置。
+- **保留工具限制**：`run_code`、`unwrap` 与兼容名 `discover_tools` 不可放入 `tools` 或 `exclude`；按插件选择时也不会折叠这些保留入口。
 - `descriptions`：键值映射对象（上限 512 项），键为精确插件 ID，值为自定义简介字符串（trim 后 `1–2000` 字符）。
 
 ### 版本迁移与文件安全
@@ -141,7 +145,7 @@ npm pack --workspace @delthin/dsh-tool-wrap
 ## 安全、权限与隔离边界
 
 - **管理接口安全**：设置读写与简介生成 API 均受宿主认证与同源策略（Same-Origin）保护，请求体大小限制为 `64 KiB`。
-- **不扩张执行权限**：本插件仅记录工具注册来源并改写 `tools:sdk` 展示文本，不包装工具执行器，也不调用 `tools.restrict`。`discover_tools` 的输出严格从当前调用者的 `scope` 与宿主按步骤解析的 `toolSet` 交集中读取，完整保留条件工具准入、作用域覆盖（scoped shadow）、参数校验、审批流、guard、取消机制与沙箱限制。
+- **不扩张执行权限**：本插件仅记录工具注册来源并改写 `tools:sdk` 展示文本，不包装工具执行器，也不调用 `tools.restrict`。`unwrap` 的输出严格从当前调用者的 `scope` 与宿主按步骤解析的 `toolSet` 交集中读取，完整保留条件工具准入、作用域覆盖（scoped shadow）、参数校验、审批流、guard、取消机制与沙箱限制。
 - **会话级隔离**：发现结果仅作为工具调用输出返回给发起调用的当前对话，不存在跨会话共享的“已解锁工具池”，也不会回写修改全局系统提示词。其他会话的准入快照或已释放快照无法用于读取或执行工具。
 - **保留动态上下文**：图片默认供应商、画布连接状态等由原插件注入的动态上下文原样保留，本插件仅精简工具 SDK 定义文本。
 
@@ -151,15 +155,15 @@ npm pack --workspace @delthin/dsh-tool-wrap
 
 设置页提供「全局估算」与「最近组装」两类 SDK 投影字符对比（包含 SHA-256 截断摘要，不记录提示词正文、工具参数或会话 ID）：
 
-- 页面展示的字符差值与粗估数值仅反映 **PTC SDK 投影字符数**的变化（已计入 `discover_tools` 自身定义与概览目录的字符开销；仅勾选极少量短工具时，目录开销可能大于节省的字符数）。
+- 页面展示的字符差值与粗估数值仅反映 **PTC SDK 投影字符数**的变化（已计入 `unwrap` 自身定义与概览目录的字符开销；仅勾选极少量短工具时，目录开销可能大于节省的字符数）。
 - **重要说明**：SDK 投影字符数及摘要对比不等同于模型服务商的实际计费 token 数，也不能直接等同于真实的上下文缓存（Prompt Cache）命中率。固定配置与可见工具集时，SDK 按确定性顺序渲染以保持系统提示词前缀稳定；但实际缓存命中与净收益请以模型路由返回的真实 usage / cache 统计为准。
 
 ### 自动回退场景
 
-在以下任一情况下，插件会自动跳过精简并保留宿主原始工具展示：
+在以下任一情况下，插件会自动跳过业务工具精简并保留其完整定义；原文 SDK 精确匹配时仍隐藏兼容 alias：
 
 1. 插件总开关处于关闭状态，或当前会话运行在原生（非 PTC）工具调用模式。
-2. 当前调用上下文中 `discover_tools` 不可见，或缺少 PTC `run_code` 传输支持。
+2. 当前调用上下文中 `unwrap` 不可见，或缺少 PTC `run_code` 传输支持。
 3. 其他插件已先行改写 `tools:sdk` 文本导致结构不匹配（此时观测状态标记为 `incompatible-sdk`）。
 4. 使用了会在 waterfall 组装后强制覆盖完整系统提示词的 preset（例如 `complete` persona）。
 
@@ -169,7 +173,7 @@ npm pack --workspace @delthin/dsh-tool-wrap
 因为 `@delthin/dsh-tool-wrap/origin-bootstrap` 需要在宿主加载并注册各业务工具插件之前运行。如果仅热加载插件或只刷新了浏览器页面，启动前已注册的工具无法补记来源。请确认启动配置中已包含 `origin-bootstrap` 并**重启 DSH 服务**。
 
 ### 2. 开启插件后，正在进行的对话会立刻变成按需发现模式吗？
-已在运行中的单次请求不会被回溯修改；保存设置后，该 profile 下各会话的后续提示词组装会按新配置生效。运行过程中模型调用 `discover_tools` 不会修改 `tool-discovery.json` 配置文件。
+已在运行中的单次请求不会被回溯修改；保存设置后，该 profile 下各会话的后续提示词组装会按新配置生效。运行过程中模型调用 `unwrap` 不会修改 `tool-discovery.json` 配置文件。
 
 ### 3. 为什么勾选了某个插件，但其中某一个工具仍然完整出现在提示词里？
 请检查该工具是否被加入了 `exclude`（排除列表）。`exclude` 的优先级高于 `groups` 和 `tools`，被排除的工具始终保持完整定义展示。
@@ -183,6 +187,10 @@ npm pack --workspace @delthin/dsh-tool-wrap
 
 ## 许可证（License）
 
-`UNLICENSED`（`private: true`）。当前软件包许可证尚未最终确认，保留所有权利，未经授权不得分发或用于未获准的用途。
+本软件包采用 [`PolyForm-Noncommercial-1.0.0`](../../LICENSE) 许可证发布（参见本包 [`LICENSE`](./LICENSE) 或仓库根目录 [`LICENSE`](../../LICENSE)）。
+
+- **非商业源码可用（Source-Available）**：本许可证属于非商业源码可用许可，**并非** OSI 批准的开放源代码许可证（Non-OSI Open Source）。
+- **允许的用途**：允许出于个人研究、非商业使用、慈善或教育等符合许可证定义的目的使用、复制、修改与分发，具体权利、条件与允许用途例外以 [`LICENSE`](../../LICENSE) 原文为准。
+- **商业授权**：任何商业用途（Commercial Use）均需另行联系 Delthin 获取书面商业授权。
 
 由于 npm 默认 semver 规则会将不同版本元组（tuple）的预发布版本排除在常规 `>=` 范围之外，最低要求为 `>=0.2.1-rc.5` 的包与 DSH `engines.dsh` 宿主范围显式声明为 `>=0.2.1-rc.5 || >=0.2.2-rc.1`；最低要求原本即为 `>=0.2.2-rc.1` 的条目则维持原范围。该配置用于确保当前 RC 与正式新版本均可正常解析，并非承诺兼容未来所有 RC 或 API 变更。

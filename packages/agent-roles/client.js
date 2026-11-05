@@ -1,4 +1,4 @@
-window.__ModuleLoader__.load({id:'dsh-agent-roles',factory:(require)=>{
+window.__ModuleLoader__.load({id:'@delthin/dsh-agent-roles',factory:(require)=>{
   const React=require('react'),h=React.createElement;
   const {useState,useEffect}=React;
   const {Button,Switch,Checkbox,SegmentedControl,Modal}=require('@deepseek-ai/dsh-client-ui-primitives');

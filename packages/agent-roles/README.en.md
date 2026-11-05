@@ -8,10 +8,10 @@ In this plugin, a **Role** is a reusable configuration template that stores a re
 
 ## Repository Migration and Publication Status
 
-This plugin now lives under `packages/agent-roles` in the monorepo with its full Git history preserved. The package has been renamed from `dsh-agent-roles` to `@delthin/dsh-agent-roles` at version `0.4.0`, with `private: true` set to pause public npm publishing.
+This plugin lives under `packages/agent-roles` in the monorepo with its full Git history preserved. The package is named `@delthin/dsh-agent-roles` at version `0.4.1`, configured with `publishConfig.access: "public"` for public npm distribution.
 
 - The former standalone repository and historical releases remain available at [Legacy Repository](https://github.com/Delthin/dsh-agent-roles) and [Legacy Releases](https://github.com/Delthin/dsh-agent-roles/releases); historical GitHub Releases are not migrated or re-created in the monorepo.
-- `@delthin/dsh-agent-roles` has not been published to npm and is not listed in the plugin marketplace.
+- `@delthin/dsh-agent-roles` is published manually to npm by the maintainer and is not currently listed in the plugin marketplace.
 - This repository migration does not automatically migrate or modify existing runtime data directories on your host.
 
 ## Compatibility and Verification Status
@@ -22,7 +22,7 @@ This plugin now lives under `packages/agent-roles` in the monorepo with its full
 
 ## Installation
 
-Because `@delthin/dsh-agent-roles` is currently marked `private: true`, build a local tarball from the monorepo root:
+You can install `@delthin/dsh-agent-roles` via npm and import it into your DSH host, or build a local tarball from the monorepo root:
 
 ```sh
 npm ci --ignore-scripts
@@ -30,7 +30,7 @@ npm run check
 npm pack --workspace @delthin/dsh-agent-roles
 ```
 
-This produces `delthin-dsh-agent-roles-0.4.0.tgz`. Load the tarball or workspace package through the local package mechanism or profile configuration (`cordis.patch.yml`) supported by your DSH host, or stage it in an isolated test environment. Once `private: true` is removed and the scoped package is published to npm, you will be able to install `@delthin/dsh-agent-roles@0.4.0` through your host's standard package installation flow. Marketplace listing is independent of local packing and npm publication.
+To install via npm, run `npm install @delthin/dsh-agent-roles` (or `@delthin/dsh-agent-roles@0.4.1`) and import `@delthin/dsh-agent-roles` in your DSH host profile configuration (such as `cordis.patch.yml`). Local packing produces `delthin-dsh-agent-roles-0.4.1.tgz`, which can be loaded through your DSH host's local package mechanism, profile configuration, or an isolated test environment. Marketplace listing is independent of local packing and npm publication.
 
 Installation requires no build step and runs no install scripts. After loading the plugin, refresh the DSH Web page to find「多智能体」in the left navigation bar; if the host does not reload plugins automatically, restart the corresponding Web profile.
 
@@ -141,6 +141,6 @@ See the [Releasing Guide](docs/RELEASING.md) for pre-release checks, Changesets 
 
 ## License
 
-[MIT](LICENSE), Copyright © 2026 Delthin.
+Starting with `0.4.1`, this package is licensed under [PolyForm-Noncommercial-1.0.0](./LICENSE) (a source-available license, not an OSI-approved open-source license; see also root [LICENSE](../../LICENSE)), Copyright © 2026 Delthin. As defined in the license, noncommercial uses—including personal study, evaluation, and organizational uses expressly permitted as noncommercial by the license terms—are allowed rather than prohibiting all organizational use outright; any commercial use requires separate written permission from the copyright holder. Prior MIT grants for historical releases `<= 0.4.0` are not revoked, and the legacy notice is retained in [LICENSE-MIT-legacy](./LICENSE-MIT-legacy).
 
 Because npm's default semver rules exclude prerelease versions of a different version tuple from standard `>=` ranges, package and DSH `engines.dsh` host ranges with a `>=0.2.1-rc.5` minimum explicitly use `>=0.2.1-rc.5 || >=0.2.2-rc.1`, while entries that already start at `>=0.2.2-rc.1` keep their original range. This ensures resolution across the current RC series and newer stable releases without guaranteeing compatibility with every future RC or API change.

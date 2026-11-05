@@ -1,5 +1,4 @@
-window.__ModuleLoader__.load({
-  id: 'dsh-feishu-notify',
+window.__ModuleLoader__.load({id:'@delthin/dsh-feishu-notify',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
