@@ -11,8 +11,8 @@ All notable verified changes to `@delthin/dsh-tool-wrap` are documented in this 
 - **Validation / 验证**: `npm test` (macOS): 114 tests, 110 passed, 0 failed, 4 skipped (`sandbox_apply: Operation not permitted`); exit code 0.
 
 ### Package & Repository Migration / 包名与仓库迁移
-- **CN**: 由原本地包 `dsh-tool-discovery` 迁移至 `Delthin/dsh-plugins` 工作区包 `@delthin/dsh-tool-wrap`（`1.2.0`，配置 `publishConfig.access: "public"`），许可证统一为 `PolyForm-Noncommercial-1.0.0`（参见 [`LICENSE`](../../LICENSE)，非商业源码可用，商业用途需另行联系 Delthin 授权）。
-- **EN**: Migrated from legacy local package `dsh-tool-discovery` to `@delthin/dsh-tool-wrap` (`1.2.0`, configured with `publishConfig.access: "public"`) in the `Delthin/dsh-plugins` monorepo under the `PolyForm-Noncommercial-1.0.0` license (see [`LICENSE`](../../LICENSE); source-available noncommercial terms, commercial use requires separate authorization from Delthin).
+- **CN**: 由原本地包 `dsh-tool-discovery` 迁移至 `Delthin/dsh-plugins` 工作区包 `@delthin/dsh-tool-wrap`（`1.2.0`，配置 `publishConfig.access: "public"`），许可证统一为 `Apache-2.0` 开源许可证（参见 [`LICENSE`](../../LICENSE)，允许商业使用、修改与分发，需保留版权与许可声明并标明修改，专利与完整条款以许可证原文为准）。
+- **EN**: Migrated from legacy local package `dsh-tool-discovery` to `@delthin/dsh-tool-wrap` (`1.2.0`, configured with `publishConfig.access: "public"`) in the `Delthin/dsh-plugins` monorepo under the `Apache-2.0` open-source license (see [`LICENSE`](../../LICENSE); permits commercial use, modification, and distribution subject to retaining copyright/license notices, stating file modifications, and the patent terms in the license).
 - **CN**: 保留旧工具名（`discover_tools`）兼容调用、服务标识、设置页路由 ID、启动门控服务名（`toolDiscoveryOriginsReady`）及 profile 配置文件名（`tool-discovery.json`）；客户端、图标与 locale 导出统一收敛为 `@delthin/dsh-tool-wrap` 作用域路径。升级时需先备份原配置并移除旧包，避免新旧实例同时启用。
 - **EN**: Preserved legacy tool alias (`discover_tools`), service IDs, settings page route ID, startup readiness service (`toolDiscoveryOriginsReady`), and profile config filename (`tool-discovery.json`), while scoping client, icon, and locale exports under `@delthin/dsh-tool-wrap`. Users must back up existing configuration and disable the legacy package before enabling the new package.
 

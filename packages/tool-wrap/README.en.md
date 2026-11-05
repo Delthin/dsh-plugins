@@ -187,10 +187,10 @@ See [CHANGELOG.md](<CHANGELOG.md>) for release and migration details.
 
 ## License
 
-Licensed under [`PolyForm-Noncommercial-1.0.0`](../../LICENSE) (see package [`LICENSE`](./LICENSE) or repository root [`LICENSE`](../../LICENSE)).
+Licensed under [`Apache-2.0`](../../LICENSE) (see package [`LICENSE`](./LICENSE) or repository root [`LICENSE`](../../LICENSE)).
 
-- **Source-Available (Non-Commercial)**: This is a source-available noncommercial license and is **not** an OSI-approved open-source license.
-- **Permitted Purpose**: Use, copying, modification, and distribution are permitted for noncommercial purposes (including personal research, charitable, or educational uses) subject to the conditions and permitted-purpose exceptions defined in [`LICENSE`](../../LICENSE).
-- **Commercial Licensing**: Any commercial use requires a separate written commercial license from Delthin.
+- **Permitted Use**: Commercial and noncommercial use, copying, modification, and distribution are permitted without requiring a separate paid commercial license or forcing derivative works as a whole to be open-sourced.
+- **Notices & Modification Marks**: Redistributing source code or derivative works requires retaining the license, copyright, and related notices, and stating changes in modified files.
+- **Patent & Full Terms**: Patent grants, termination provisions, and warranty disclaimers are governed by the full text in [`LICENSE`](../../LICENSE).
 
 Because npm's default semver rules exclude prerelease versions of a different version tuple from standard `>=` ranges, package and DSH `engines.dsh` host ranges with a `>=0.2.1-rc.5` minimum explicitly use `>=0.2.1-rc.5 || >=0.2.2-rc.1`, while entries that already start at `>=0.2.2-rc.1` keep their original range. This ensures resolution across the current RC series and newer stable releases without guaranteeing compatibility with every future RC or API change.

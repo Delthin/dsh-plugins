@@ -10,18 +10,18 @@
 
 | 工作区目录 | 包名 | 当前版本 | 许可证 | DSH 宿主范围 (`engines.dsh`) | 核心职责与关键约束 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| [`packages/feishu-notify`](./packages/feishu-notify/README.md) | `@delthin/dsh-feishu-notify` | `1.1.0` | `PolyForm-Noncommercial-1.0.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 飞书通知与完成提醒。`notify_user` 仅在整体工作持续至少 3 分钟收尾时调用一次；`feishu_notify` 的 `status` 不发消息，`test` 真实发送且绕过开关与免打扰；`AppSecret` 仅通过 Web UI 录入并以 `0600` 权限原子写入私有存储。 |
-| [`packages/agent-roles`](./packages/agent-roles/README.md) | `@delthin/dsh-agent-roles` | `0.4.1` | `PolyForm-Noncommercial-1.0.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 基于 DSH 原生 Agent Team 的角色管理与委派。首次启动默认为空角色列表，保留数据目录中的角色与运行记录，运行数据不入库。 |
-| [`packages/fast`](./packages/fast/README.md) | `@delthin/dsh-fast` | `0.1.3` | `PolyForm-Noncommercial-1.0.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Fast 优先路由与 `service_tier: "priority"` 转发。`provider`、`sourceURL`、`targetURL` 必须显式完整填写后才启用 Fast，否则 Standard 模式正常工作、Fast 请求直接报错；`roleRunsPath` 为可选只读配置，不存在时普通会话照常运行。 |
-| [`packages/tool-wrap`](./packages/tool-wrap/README.md) | `@delthin/dsh-tool-wrap` | `1.2.0` | `PolyForm-Noncommercial-1.0.0` | `>=0.2.2-rc.1` | 按需工具定义发现与 PTC 桥接。正式工具名 `unwrap`（`discover_tools` 为旧会话兼容别名）、服务名、设置 ID 及配置文件名 `tool-discovery.json` 保持稳定；插件默认关闭（非宿主 PTC 模式关闭），`origin-bootstrap` 先于 `tools` 注册；仅首次安装或升级涉及 `toolDiscoveryOriginsReady` 来源门控时需重启生效，设置页启用开关与配置保存对后续 prompt 立即生效。 |
+| [`packages/feishu-notify`](./packages/feishu-notify/README.md) | `@delthin/dsh-feishu-notify` | `1.1.0` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 飞书通知与完成提醒。`notify_user` 仅在整体工作持续至少 3 分钟收尾时调用一次；`feishu_notify` 的 `status` 不发消息，`test` 真实发送且绕过开关与免打扰；`AppSecret` 仅通过 Web UI 录入并以 `0600` 权限原子写入私有存储。 |
+| [`packages/agent-roles`](./packages/agent-roles/README.md) | `@delthin/dsh-agent-roles` | `0.4.1` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 基于 DSH 原生 Agent Team 的角色管理与委派。首次启动默认为空角色列表，保留数据目录中的角色与运行记录，运行数据不入库。 |
+| [`packages/fast`](./packages/fast/README.md) | `@delthin/dsh-fast` | `0.1.3` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Fast 优先路由与 `service_tier: "priority"` 转发。`provider`、`sourceURL`、`targetURL` 必须显式完整填写后才启用 Fast，否则 Standard 模式正常工作、Fast 请求直接报错；`roleRunsPath` 为可选只读配置，不存在时普通会话照常运行。 |
+| [`packages/tool-wrap`](./packages/tool-wrap/README.md) | `@delthin/dsh-tool-wrap` | `1.2.0` | `Apache-2.0` | `>=0.2.2-rc.1` | 按需工具定义发现与 PTC 桥接。正式工具名 `unwrap`（`discover_tools` 为旧会话兼容别名）、服务名、设置 ID 及配置文件名 `tool-discovery.json` 保持稳定；插件默认关闭（非宿主 PTC 模式关闭），`origin-bootstrap` 先于 `tools` 注册；仅首次安装或升级涉及 `toolDiscoveryOriginsReady` 来源门控时需重启生效，设置页启用开关与配置保存对后续 prompt 立即生效。 |
 
 各包英文文档：[`packages/feishu-notify/README.en.md`](./packages/feishu-notify/README.en.md)、[`packages/agent-roles/README.en.md`](./packages/agent-roles/README.en.md)、[`packages/fast/README.en.md`](./packages/fast/README.en.md)、[`packages/tool-wrap/README.en.md`](./packages/tool-wrap/README.en.md)。
 
 ## 许可证与授权边界
 
-本仓库及四个子包当前版本统一采用 `PolyForm-Noncommercial-1.0.0`（[LICENSE](./LICENSE)）。该许可证属于源码可见（source-available）许可，允许查看源码并在许可条款定义的非商业用途（含许可证原文规定的合格非商业组织、教育、科研与个人使用等情形）下使用、修改与分发，但并非 OSI 认证开源许可证。
+本仓库及四个子包的新版本统一采用 `Apache-2.0` 开源许可证（[LICENSE](./LICENSE)）。在遵守许可证条款的前提下，允许个人与商业用途的使用、修改与分发；重新分发源码或衍生作品时需保留许可证、版权及相关声明，并对修改过的文件作出说明，专利授权与终止条款等均以 [LICENSE](./LICENSE) 原文为准。
 
-如需用于商业用途，请另行联系 Delthin 获取商业授权。历史已按 `MIT` 许可证发布的旧版本（如 `@delthin/dsh-agent-roles` 历史 MIT 版本及 `@delthin/dsh-fast` `<= 0.1.2` 已发布版本），其对应版本的既有 MIT 授权不撤回。
+商业使用无需另行付费获取授权，衍生作品整体亦不强制开源。历史已按 `MIT` 许可证发布的旧版本（含 `@delthin/dsh-agent-roles` `<= 0.4.0` 历史版本及 `@delthin/dsh-fast` `<= 0.1.2` 已发布版本），其对应版本的既有 MIT 授权不撤回。
 
 ## 安装与加载
 

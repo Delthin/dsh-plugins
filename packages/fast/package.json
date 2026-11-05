@@ -7,7 +7,7 @@
   },
   "type": "module",
   "description": "Session-scoped Standard / Fast model tier with opt-in Codex priority forwarding",
-  "license": "PolyForm-Noncommercial-1.0.0",
+  "license": "Apache-2.0",
   "author": "Delthin",
   "keywords": [
     "dsh-plugin",
@@ -47,6 +47,7 @@
     "README.en.md",
     "CHANGELOG.md",
     "LICENSE",
+    "NOTICE",
     "LICENSE-MIT-legacy"
   ],
   "scripts": {

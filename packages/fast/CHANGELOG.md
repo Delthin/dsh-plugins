@@ -10,12 +10,12 @@ See also: [中文说明](<./README.md>) | [English README](<./README.en.md>)
   - 合并 npm 已发布 `0.1.2`（MIT）的修复并推进版本至 `0.1.3`，避免相对已发布版本降级；移除子包 `private: true` 并配置 `publishConfig.access: "public"`。
   - 包名定为 `@delthin/dsh-fast`（源码位于 `packages/fast`），保持插件内部 ID `fast`、客户端模块 ID `@delthin/dsh-fast` 与多语言标识 `dsh-fast`、接口路径 `/api/fast`、存储域 `dsh_fast`（版本 `1`，`sessions` 表）及既有配置键名不变。
   - 移除个人环境默认值：`provider`、`sourceURL`、`targetURL` 默认均为空字符串。旧版若依赖默认配置，升级前需先备份配置并显式补齐三项字段；本次升级不包含自动数据迁移，请勿将新旧插件实例同时启用。
-  - 自 `0.1.3` 起许可证改为 `PolyForm-Noncommercial-1.0.0`（[LICENSE](./LICENSE)、根仓库 [LICENSE](../../LICENSE)）；`<= 0.1.2` 历史版本的 MIT 授权不撤回，通知保留在 [LICENSE-MIT-legacy](./LICENSE-MIT-legacy)。
+  - 自 `0.1.3` 起许可证改为 `Apache-2.0`（[LICENSE](./LICENSE)、根仓库 [LICENSE](../../LICENSE)）；`<= 0.1.2` 历史版本的 MIT 授权不撤回，通知保留在 [LICENSE-MIT-legacy](./LICENSE-MIT-legacy)。
 - **English**:
   - Merged fixes from the published npm `0.1.2` (MIT) release and bumped version to `0.1.3` to avoid downgrading relative to published history; removed subpackage `private: true` and set `publishConfig.access: "public"`.
   - Scoped package name as `@delthin/dsh-fast` (under `packages/fast`), preserving internal plugin ID `fast`, client module ID `@delthin/dsh-fast` and locale ID `dsh-fast`, HTTP route `/api/fast`, storage domain `dsh_fast` (version `1`, `sessions` table), and existing config keys.
   - Removed personal environment defaults: `provider`, `sourceURL`, and `targetURL` now default to empty. Back up your configuration before upgrading, explicitly supply all three fields if previously relying on defaults, and do not run old and new plugin instances concurrently (no automatic data migration is performed).
-  - Changed license to `PolyForm-Noncommercial-1.0.0` ([LICENSE](./LICENSE), root [LICENSE](../../LICENSE)) starting with `0.1.3`; prior MIT grants for `<= 0.1.2` are not revoked and remain in [LICENSE-MIT-legacy](./LICENSE-MIT-legacy).
+  - Changed license to `Apache-2.0` ([LICENSE](./LICENSE), root [LICENSE](../../LICENSE)) starting with `0.1.3`; prior MIT grants for `<= 0.1.2` are not revoked and remain in [LICENSE-MIT-legacy](./LICENSE-MIT-legacy).
 
 ## [0.1.0]
 

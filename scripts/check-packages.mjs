@@ -29,6 +29,7 @@ for (const slug of slugs) {
   const files = new Set(packed.files.map(file => file.path));
   for (const file of ['package.json', 'README.md', 'README.en.md', 'CHANGELOG.md', 'index.js', 'client.js', 'cordis.patch.yml']) assert(files.has(file), pkg.name + ' missing packaged file: ' + file);
   assert(files.has('LICENSE'));
+  assert(files.has('NOTICE'));
   if (['agent-roles', 'fast'].includes(slug)) assert(files.has('LICENSE-MIT-legacy'));
   for (const file of files) {
     assert(!file.includes('..') && !path.isAbsolute(file), 'Unsafe packed path: ' + file);

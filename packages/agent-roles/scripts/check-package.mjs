@@ -7,12 +7,12 @@ const root=new URL('../',import.meta.url);
 const read=file=>readFile(new URL(file,root),'utf8');
 const pkg=JSON.parse(await read('package.json'));
 const expected=[
-  'CHANGELOG.md','LICENSE','LICENSE-MIT-legacy','README.en.md','README.md','client.js',
+  'CHANGELOG.md','LICENSE','LICENSE-MIT-legacy','NOTICE','README.en.md','README.md','client.js',
   'cordis.patch.yml','index.js','package.json','runtime.js','skills.js','store.js',
 ].sort();
 assert.equal(pkg.name,'@delthin/dsh-agent-roles');
 assert.notEqual(pkg.private,true);
-assert.equal(pkg.license,'PolyForm-Noncommercial-1.0.0');
+assert.equal(pkg.license,'Apache-2.0');
 assert.equal(pkg.publishConfig.access,'public');
 assert.deepEqual(pkg.repository,{
   type:'git',url:'git+https://github.com/Delthin/dsh-plugins.git',directory:'packages/agent-roles',

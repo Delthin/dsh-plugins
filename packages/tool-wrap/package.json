@@ -3,7 +3,7 @@
   "version": "1.2.0",
   "type": "module",
   "description": "Configurable on-demand tool definitions for DSH PTC sessions",
-  "license": "PolyForm-Noncommercial-1.0.0",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Delthin/dsh-plugins.git",
@@ -39,7 +39,8 @@
     "README.md",
     "README.en.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "check": "node --check index.js && node --check core.js && node --check summaries.js && node --check origins.js && node --check origin-bootstrap.js && node --check client.js && node --check test/fixture.js",

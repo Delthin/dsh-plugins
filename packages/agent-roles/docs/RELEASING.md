@@ -6,7 +6,7 @@ This document describes pre-release verification, Changesets versioning, manual 
 
 - **Package Name & Version**: `@delthin/dsh-agent-roles` (`0.4.1`), located at `packages/agent-roles`.
 - **Publish Access & Workspace Boundary**: The monorepo root remains `"private": true`, while publishable subpackages omit `private` and set `"publishConfig": { "access": "public" }`.
-- **License Files**: Current releases (`>= 0.4.1`) are licensed under `PolyForm-Noncommercial-1.0.0` (`./LICENSE` and root `../../LICENSE`); historical MIT notices for `<= 0.4.0` are retained in `./LICENSE-MIT-legacy` without revoking prior grants.
+- **License Files**: Current releases (`>= 0.4.1`) are licensed under `Apache-2.0` (`./LICENSE` and root `../../LICENSE`); historical MIT notices for `<= 0.4.0` are retained in `./LICENSE-MIT-legacy` without revoking prior grants.
 - **Legacy History**: The former standalone repository ([Legacy Repository](https://github.com/Delthin/dsh-agent-roles)) and its release list ([Legacy Releases](https://github.com/Delthin/dsh-agent-roles/releases)) remain online for historical reference. Old releases are not re-created in the monorepo.
 - **Manual Publishing Only**: Repository CI runs `npm run check`, `npm run check:public`, and `npm run check:pack` on Node.js 22 and 24. CI never stores publish tokens and never publishes packages automatically; all releases are published manually via local `npm login` + 2FA, `--dry-run` inspection, and `npm publish`.
 

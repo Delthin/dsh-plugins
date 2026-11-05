@@ -123,9 +123,9 @@ Never store long-lived npm tokens in the repository or commit `.npmrc` credentia
 - **`dshopen`（Issue 申报模式）**：
   - 每个插件包单独提交一个 Issue。
   - 支持基于已发布的 npm 包名申报，或基于完整 40 位 Git commit SHA 加子包 `path` 申报；若采用固定 commit SHA 方式，后续每次版本升级均需提交更新并重新触发复审。
-- **许可证准入说明**：
-  - 四个包当前均采用 `PolyForm-Noncommercial-1.0.0`（源码可见、非商业许可，非 OSI 开源许可证）。
-  - 外部市场对非 OSI 源码可见许可证的准入政策由各市场维护者（maintainer）决定，尚待确认，不能假定或保证必然获准收录。历史已按 MIT 发布的旧版本（`@delthin/dsh-agent-roles` 旧版、`@delthin/dsh-fast` `<= 0.1.2`）不影响当前新版本的许可证声明。
+- **许可证与市场审核说明**：
+  - 仓库根目录与四个子包新版本统一采用 `Apache-2.0` 开源许可证；历史已按 MIT 发布的旧版本（`@delthin/dsh-agent-roles` `<= 0.4.0`、`@delthin/dsh-fast` `<= 0.1.2`）保留其对应版本的既有 MIT 授权。
+  - 外部市场的收录结果仍由各市场维护者（maintainer）按其审核流程独立决定。
 
 ### English
 
@@ -138,6 +138,6 @@ Although all four plugins live in a single monorepo (`Delthin/dsh-plugins`), eac
 - **`dshopen` (Issue Workflow)**:
   - Open one Issue per plugin package.
   - Reference either the published npm package or a full 40-character Git commit SHA plus workspace `path`. Note that commit-pinned Git entries require submitting an update and passing review again on every version upgrade.
-- **License Eligibility Caveat**:
-  - Current releases use `PolyForm-Noncommercial-1.0.0` (source-available, noncommercial, non-OSI).
-  - Marketplace acceptance of non-OSI source-available licenses is subject to upstream maintainer confirmation and cannot be guaranteed in advance.
+- **License & Marketplace Review**:
+  - Current releases across the repository root and all four packages use the `Apache-2.0` open-source license; historical MIT releases (`@delthin/dsh-agent-roles` `<= 0.4.0` and `@delthin/dsh-fast` `<= 0.1.2`) retain their prior MIT grants.
+  - Marketplace listing decisions remain subject to each upstream maintainer's independent review process.

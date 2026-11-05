@@ -141,6 +141,6 @@ npm run check:pack
 
 ## 许可证
 
-自 `0.4.1` 起，本包采用 [PolyForm-Noncommercial-1.0.0](./LICENSE)（可查阅源码的 source-available 许可证，非 OSI 批准开源许可证；参见仓库根目录 [LICENSE](../../LICENSE)），Copyright © 2026 Delthin。按许可证定义，允许用于个人研究、学习、非商业评估及许可证条款明确允许的组织非商业用途，并非绝对禁止任何公司或组织使用；任何商业用途须另行获得著作权人书面授权。历史版本 `<= 0.4.0` 已授予的 MIT 许可不撤回，历史 MIT 条款保留在 [LICENSE-MIT-legacy](./LICENSE-MIT-legacy)。
+自 `0.4.1` 起，本包采用 [Apache-2.0](./LICENSE) 开源许可证（参见仓库根目录 [LICENSE](../../LICENSE)），Copyright © 2026 Delthin。在遵守许可证条款的前提下，允许商业与非商业使用、修改及分发，无需另行付费获取商业授权，亦不强制衍生作品整体开源；分发时需保留许可证、版权及相关声明并标明修改文件，专利条款等以 [LICENSE](./LICENSE) 原文为准。历史版本 `<= 0.4.0` 已授予的 MIT 许可不撤回，历史 MIT 条款保留在 [LICENSE-MIT-legacy](./LICENSE-MIT-legacy)。
 
 由于 npm 默认 semver 规则会将不同版本元组（tuple）的预发布版本排除在常规 `>=` 范围之外，最低要求为 `>=0.2.1-rc.5` 的包与 DSH `engines.dsh` 宿主范围显式声明为 `>=0.2.1-rc.5 || >=0.2.2-rc.1`；最低要求原本即为 `>=0.2.2-rc.1` 的条目则维持原范围。该配置用于确保当前 RC 与正式新版本均可正常解析，并非承诺兼容未来所有 RC 或 API 变更。

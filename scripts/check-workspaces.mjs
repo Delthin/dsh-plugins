@@ -31,7 +31,7 @@ for (const [slug, name] of expected) {
   const pkg = await readJson('packages/' + slug + '/package.json');
   assert.equal(pkg.name, name);
   assert.notEqual(pkg.private, true, name + ' must be publishable');
-  assert.equal(pkg.license, 'PolyForm-Noncommercial-1.0.0');
+  assert.equal(pkg.license, 'Apache-2.0');
   assert.equal(pkg.publishConfig?.access, 'public');
   assert.equal(pkg.publishConfig?.registry, 'https://registry.npmjs.org');
   await access(path.join(directory, 'LICENSE'));

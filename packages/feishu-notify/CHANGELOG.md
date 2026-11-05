@@ -10,8 +10,8 @@
 
 - **工作区与作用域包名迁移 / Scoped Package & Workspace Migration**：将包名迁移为 `@delthin/dsh-feishu-notify`，纳入 `Delthin/dsh-plugins` 仓库 `packages/feishu-notify` 子目录管理，配置公共包发布元数据（`publishConfig.access: "public"`）；内部服务标识、设置页 ID 与 profile 配置文件名 `feishu-notify.json` 保持不变。
   Migrated package name to `@delthin/dsh-feishu-notify` under `packages/feishu-notify` in `Delthin/dsh-plugins` with public package metadata (`publishConfig.access: "public"`), while preserving internal service IDs, settings page IDs, and the `feishu-notify.json` profile configuration filename.
-- **许可证声明 / License Declaration**：统一采用 `PolyForm-Noncommercial-1.0.0` 非商业源码可用许可证（参见 [`LICENSE`](../../LICENSE)，商业用途需另行联系 Delthin 授权）。
-  Licensed under `PolyForm-Noncommercial-1.0.0` source-available noncommercial terms (see [`LICENSE`](../../LICENSE); commercial use requires separate authorization from Delthin).
+- **许可证声明 / License Declaration**：统一采用 `Apache-2.0` 开源许可证（参见 [`LICENSE`](../../LICENSE)，允许商业使用、修改与分发，需保留版权与许可声明并标明修改，专利与完整条款以许可证原文为准）。
+  Licensed under the `Apache-2.0` open-source license (see [`LICENSE`](../../LICENSE); permits commercial use, modification, and distribution subject to retaining copyright/license notices, stating file modifications, and the patent terms in the license).
 - **运行基线声明 / Runtime Baseline Declaration**：明确运行要求为 Node.js `>= 22` 与 DSH `>= 0.2.1-rc.5`（当前验证基准 `0.2.2-rc.1`），并通过 `core.test.js` 与 `summary.test.js` 共 38 项单元测试。
   Declared runtime requirements as Node.js `>= 22` and DSH `>= 0.2.1-rc.5` (verified on `0.2.2-rc.1`), validated by 38 unit tests across `core.test.js` and `summary.test.js`.
 

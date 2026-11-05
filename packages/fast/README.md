@@ -2,7 +2,7 @@
 
 [English](<./README.en.md>) | [变更日志](<./CHANGELOG.md>)
 
-`@delthin/dsh-fast` 是 DeepSeek Harness (DSH) 的会话服务档位切换与请求转发插件（当前版本 `0.1.3`，许可 `PolyForm-Noncommercial-1.0.0`）。它为当前会话提供 `Standard` 与 `Fast` 档位切换能力，并在配置完整时将指定供应商的 Responses 请求附加 `service_tier: "priority"` 后转发至管理员配置的目标地址。
+`@delthin/dsh-fast` 是 DeepSeek Harness (DSH) 的会话服务档位切换与请求转发插件（当前版本 `0.1.3`，许可 `Apache-2.0`）。它为当前会话提供 `Standard` 与 `Fast` 档位切换能力，并在配置完整时将指定供应商的 Responses 请求附加 `service_tier: "priority"` 后转发至管理员配置的目标地址。
 
 > **重要声明**：`Fast` 档位仅负责注入 `service_tier: "priority"` 参数并将匹配请求转发至目标端点，**不构成模型生成速度或响应性能的承诺**。上游服务是否支持该参数、是否实际加速以及如何计费，均由管理员配置的上游供应商决定，需由管理员自行核实，本插件不保证加速效果或更低费用。
 
@@ -115,6 +115,6 @@ A：`roleRunsPath` 是相对于 **DSH 服务进程的当前工作目录（`cwd`�
 
 ## 许可说明
 
-自 `0.1.3` 起，本包采用 [PolyForm-Noncommercial-1.0.0](./LICENSE)（可查阅源码的 source-available 许可证，非 OSI 批准开源许可证；参见仓库根目录 [LICENSE](../../LICENSE)），Copyright © 2026 Delthin。按许可证定义，允许用于个人研究、学习、非商业评估及许可证条款明确允许的组织非商业用途，并非绝对禁止任何公司或组织使用；任何商业用途须另行获得著作权人书面授权。历史版本 `<= 0.1.2`（含 npm 已发布的 `0.1.2`）已授予的 MIT 许可不撤回，历史 MIT 通知保留在 [LICENSE-MIT-legacy](./LICENSE-MIT-legacy)。
+自 `0.1.3` 起，本包采用 [Apache-2.0](./LICENSE) 开源许可证（参见仓库根目录 [LICENSE](../../LICENSE)），Copyright © 2026 Delthin。在遵守许可证条款的前提下，允许商业与非商业使用、修改及分发，无需另行付费获取商业授权，亦不强制衍生作品整体开源；分发时需保留许可证、版权及相关声明并标明修改文件，专利条款等以 [LICENSE](./LICENSE) 原文为准。历史版本 `<= 0.1.2`（含 npm 已发布的 `0.1.2`）已授予的 MIT 许可不撤回，历史 MIT 通知保留在 [LICENSE-MIT-legacy](./LICENSE-MIT-legacy)。
 
 由于 npm 默认 semver 规则会将不同版本元组（tuple）的预发布版本排除在常规 `>=` 范围之外，最低要求为 `>=0.2.1-rc.5` 的包与 DSH `engines.dsh` 宿主范围显式声明为 `>=0.2.1-rc.5 || >=0.2.2-rc.1`；最低要求原本即为 `>=0.2.2-rc.1` 的条目则维持原范围。该配置用于确保当前 RC 与正式新版本均可正常解析，并非承诺兼容未来所有 RC 或 API 变更。

@@ -8,7 +8,7 @@ test('release metadata retains standalone exports and declares the authorized 0.
   const pkg = await json('./package.json');
   assert.equal(pkg.name, '@delthin/dsh-fast');
   assert.equal(pkg.version, '0.1.3');
-  assert.equal(pkg.license, 'PolyForm-Noncommercial-1.0.0');
+  assert.equal(pkg.license, 'Apache-2.0');
   assert.equal(Object.hasOwn(pkg, 'private'), false);
   assert.equal(pkg.publishConfig.access, 'public');
   assert.equal(pkg.engines.dsh, '>=0.2.1-rc.5 || >=0.2.2-rc.1');

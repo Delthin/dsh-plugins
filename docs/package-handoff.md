@@ -25,12 +25,12 @@ This document outlines source-of-truth boundaries, historical repository relatio
 ### 中文说明
 
 - **历史仓库状态**：`@delthin/dsh-agent-roles` 与 `@delthin/dsh-fast` 早期曾在独立 Git 仓库中开发（其中 `agent-roles` 迁入时通过 `git subtree` 保留了提交历史）。原独立仓库保留其历史记录与早期 release，未作破坏性修改；后续所有开发、维护与新版本发布均已统一转入本 monorepo。
-- **许可证切换与既有授权**：自统一采用 `PolyForm-Noncommercial-1.0.0` 起，本仓库及四个子包的新版本均按 [LICENSE](../LICENSE) 授权（非商业用途源码可见，商业用途需另行向 Delthin 获取授权）。此前已在独立仓库或 npm 按 `MIT` 许可证发布的历史版本（含 `@delthin/dsh-agent-roles` 历史 MIT 版本与 `@delthin/dsh-fast` `<= 0.1.2`）不撤回其对应旧版本的 MIT 授权。
+- **许可证切换与既有授权**：自统一采用 `Apache-2.0` 起，本仓库及四个子包的新版本均按 [LICENSE](../LICENSE) 开源许可证授权（允许商业使用、修改与分发，需保留版权与许可声明并标明修改文件，专利条款以许可证原文为准，无需另行付费获取商业授权，亦不强制衍生作品整体开源）。此前已在独立仓库或 npm 按 `MIT` 许可证发布的历史版本（含 `@delthin/dsh-agent-roles` `<= 0.4.0` 历史版本与 `@delthin/dsh-fast` `<= 0.1.2`）不撤回其对应旧版本的 MIT 授权。
 
 ### English
 
 - **Historical Repositories**: `@delthin/dsh-agent-roles` and `@delthin/dsh-fast` were previously developed in standalone repositories (`agent-roles` history was imported via `git subtree`). Those standalone repositories remain intact to preserve historical commits and releases, while all ongoing development and future releases take place in this monorepo.
-- **License Continuity**: Current versions in this monorepo are licensed under `PolyForm-Noncommercial-1.0.0` ([LICENSE](../LICENSE)), requiring a separate license from Delthin for commercial use. Historical versions previously released under `MIT` (including prior MIT releases of `@delthin/dsh-agent-roles` and `@delthin/dsh-fast` `<= 0.1.2`) retain their original MIT license grants for those specific versions.
+- **License Continuity**: Current versions in this monorepo are licensed under the `Apache-2.0` open-source license ([LICENSE](../LICENSE)), permitting commercial use, modification, and distribution without requiring a separate paid license or forcing derivative works as a whole to be open-sourced, subject to retaining notices, marking modified files, and the patent terms in the license. Historical versions previously released under `MIT` (including prior MIT releases of `@delthin/dsh-agent-roles` `<= 0.4.0` and `@delthin/dsh-fast` `<= 0.1.2`) retain their original MIT license grants for those specific versions.
 
 ---
 

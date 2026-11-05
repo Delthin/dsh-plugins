@@ -2,7 +2,7 @@
 
 [中文说明](<./README.md>) | [Changelog](<./CHANGELOG.md>)
 
-`@delthin/dsh-fast` is a session service-tier toggle and request forwarding plugin for DeepSeek Harness (DSH) (current version `0.1.3`, license `PolyForm-Noncommercial-1.0.0`). It enables switching between `Standard` and `Fast` tiers within the current session and, when fully configured, attaches `service_tier: "priority"` to targeted Responses requests and forwards them to an administrator-configured target endpoint.
+`@delthin/dsh-fast` is a session service-tier toggle and request forwarding plugin for DeepSeek Harness (DSH) (current version `0.1.3`, license `Apache-2.0`). It enables switching between `Standard` and `Fast` tiers within the current session and, when fully configured, attaches `service_tier: "priority"` to targeted Responses requests and forwards them to an administrator-configured target endpoint.
 
 > **Important Notice**: The `Fast` tier only sets `service_tier: "priority"` and forwards matching requests to the configured target endpoint. **It is not a promise of model performance or generation speed.** Whether the upstream provider supports this parameter, delivers faster responses, or applies different billing depends entirely on the upstream service and must be verified by the administrator. This plugin does not guarantee acceleration or lower costs.
 
@@ -114,6 +114,6 @@ See [CHANGELOG.md](<./CHANGELOG.md>) for release history and migration notes.
 
 ## License
 
-Starting with `0.1.3`, this package is licensed under [PolyForm-Noncommercial-1.0.0](./LICENSE) (a source-available license, not an OSI-approved open-source license; see also root [LICENSE](../../LICENSE)), Copyright © 2026 Delthin. As defined in the license, noncommercial uses—including personal study, evaluation, and organizational uses expressly permitted as noncommercial by the license terms—are allowed rather than prohibiting all organizational use outright; any commercial use requires separate written permission from the copyright holder. Prior MIT grants for historical releases `<= 0.1.2` (including `0.1.2` on npm) are not revoked, and the legacy MIT notice is retained in [LICENSE-MIT-legacy](./LICENSE-MIT-legacy).
+Starting with `0.1.3`, this package is licensed under the [Apache-2.0](./LICENSE) open-source license (see also root [LICENSE](../../LICENSE)), Copyright © 2026 Delthin. Commercial and noncommercial use, modification, and distribution are permitted without requiring a separate paid commercial license or forcing derivative works as a whole to be open-sourced, provided that copyright and license notices are retained, modified files are marked, and the patent terms in [LICENSE](./LICENSE) are followed. Prior MIT grants for historical releases `<= 0.1.2` (including `0.1.2` on npm) are not revoked, and the legacy MIT notice is retained in [LICENSE-MIT-legacy](./LICENSE-MIT-legacy).
 
 Because npm's default semver rules exclude prerelease versions of a different version tuple from standard `>=` ranges, package and DSH `engines.dsh` host ranges with a `>=0.2.1-rc.5` minimum explicitly use `>=0.2.1-rc.5 || >=0.2.2-rc.1`, while entries that already start at `>=0.2.2-rc.1` keep their original range. This ensures resolution across the current RC series and newer stable releases without guaranteeing compatibility with every future RC or API change.

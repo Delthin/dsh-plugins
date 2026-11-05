@@ -3,7 +3,7 @@
   "version": "1.1.0",
   "type": "module",
   "description": "Host-side Feishu application notifications with profile settings",
-  "license": "PolyForm-Noncommercial-1.0.0",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Delthin/dsh-plugins.git",
@@ -36,7 +36,8 @@
     "README.md",
     "README.en.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "check": "node --check index.js && node --check core.js && node --check summary.js && node --check client.js",
