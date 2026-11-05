@@ -1,0 +1,10 @@
+- insert:
+    - id: tool-discovery-origins
+      name: '@delthin/dsh-tool-wrap/origin-bootstrap'
+    - id: tool-discovery
+      name: '@delthin/dsh-tool-wrap'
+# A dependency gate, not insertion order, guarantees capture before tool plugins start.
+- id: tools
+  name: '@deepseek-ai/dsh-tools'
+  inject:
+    toolDiscoveryOriginsReady: null

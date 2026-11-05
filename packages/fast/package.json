@@ -1,0 +1,71 @@
+{
+  "name": "@delthin/dsh-fast",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Session-scoped Standard / Fast model tier with opt-in Codex priority forwarding",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Delthin/dsh-plugins.git",
+    "directory": "packages/fast"
+  },
+  "homepage": "https://github.com/Delthin/dsh-plugins/tree/main/packages/fast#readme",
+  "bugs": {
+    "url": "https://github.com/Delthin/dsh-plugins/issues"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "index.js",
+    "config.js",
+    "state.js",
+    "transport.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check config.js && node --check state.js && node --check transport.js && node --check client.js",
+    "test": "node --test config.test.js state.test.js transport.test.js index.test.js",
+    "prepack": "npm run check && npm test"
+  },
+  "dependencies": {
+    "undici": "7.30.1",
+    "zod": "4.6.7"
+  },
+  "engines": {
+    "node": ">=22.19.0",
+    "dsh": ">=0.2.1-rc.5 || >=0.2.2-rc.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": ">=3.18.5",
+    "@deepseek-ai/cordis": ">=4.0.5"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/schemastery": "3.19.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-model-selection"
+      ]
+    }
+  }
+}

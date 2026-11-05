@@ -1,0 +1,3 @@
+- insert:
+    - id: feishu-notify
+      name: '@delthin/dsh-feishu-notify'

@@ -1,0 +1,4 @@
+- insert:
+    - id: fast
+      name: "@delthin/dsh-fast"
+      config: {}

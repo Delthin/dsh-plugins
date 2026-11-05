@@ -1,4 +1,4 @@
-# DSH Agent Roles
+# DSH Agent Roles (`@delthin/dsh-agent-roles`)
 
 [English](README.en.md) · [发布记录](CHANGELOG.md) · [发布指南](docs/RELEASING.md)
 
@@ -6,19 +6,33 @@
 
 在本插件中，**角色（Role）**是可复用的配置模板，用于保存职责提示词、模型与思考强度、工具白名单及 Skills；**成员（Member）**是由主代理按角色启动的具体运行实例。主代理在会话中能够看到所有已启用角色的职责、模型和已选 Skills，并根据当前任务判断何时调用 `spawn_role` 创建成员，无需预设固定工作流。
 
+## 仓库迁移与发布状态
+
+本插件已迁入单仓 `packages/agent-roles` 子目录，完整保留原独立仓库的 Git 历史。包名由 `dsh-agent-roles` 更改为 `@delthin/dsh-agent-roles`，当前版本保持 `0.4.0`，并设置 `private: true` 暂停 npm 公开发布。
+
+- 原独立仓库与历史发布记录保留在 [旧仓库](https://github.com/Delthin/dsh-agent-roles) 与 [旧发布](https://github.com/Delthin/dsh-agent-roles/releases)，旧版 GitHub Releases 不会复制或迁移为新仓库发布。
+- `@delthin/dsh-agent-roles` 尚未在 npm 发布，也未提交插件市场收录。
+- 本次单仓迁移仅整理源码仓库，不自动迁移或改动宿主机现有的运行目录数据。
+
+## 兼容性与验证状态
+
+- **环境声明**：插件包声明 `Node.js >= 22.18.0`（单仓根工作区要求 `Node.js >= 22.19.0`）、`engines.dsh >= 0.2.1-rc.5`，且宿主需配置至少一个模型供应商。底层 Agent Team 接口仍处于实验阶段，最低版本约束不保证未来所有宿主版本 API 均无变化。
+- **已验证项**：已在 `Node.js 25.9.0` 与 `DSH 0.2.2-rc.1` 环境下完成本包全部 28 项单元测试（0 跳过）及 `npm pack` 打包文件白名单校验。
+- **待验证项**：尚未在最低声明宿主版本（`0.2.1-rc.5`）的干净环境中执行全新安装验证，也尚未完成浏览器端 UI 与真实在线模型的端到端验收记录。
+
 ## 安装
 
-环境要求：Node.js 22.18+、DSH Web **0.2.1-rc.5 及以上**，以及至少一个已配置的模型供应商。宿主及 DSH 依赖使用最低版本约束，不再锁定单个版本；底层 Agent Team 接口仍处于实验阶段。
-
-通过 GitHub Release 归档安装 `v0.4.0`：
+由于 `@delthin/dsh-agent-roles` 当前处于 `private: true` 暂停发布状态，请从单仓根目录构建本地 tarball 安装：
 
 ```sh
-dsh plugin --profile web add https://github.com/Delthin/dsh-agent-roles/releases/download/v0.4.0/dsh-agent-roles-0.4.0.tgz
+npm ci --ignore-scripts
+npm run check
+npm pack --workspace @delthin/dsh-agent-roles
 ```
 
-如对应版本已在 npm 发布，也可执行 `dsh plugin --profile web add dsh-agent-roles@0.4.0`。可通过 `npm view dsh-agent-roles@0.4.0 version` 核对 npm 可用性；若尚不可用，使用上面的 GitHub Release 地址。插件市场收录独立于这两种安装方式。
+执行后会在当前目录生成 `delthin-dsh-agent-roles-0.4.0.tgz`。请通过当前 DSH 宿主支持的本地包安装方式、profile 配置（如 `cordis.patch.yml`）或独立测试环境加载该产物。待后续解除 `private: true` 并正式发布到 npm 后，再按宿主支持的包名方式安装 `@delthin/dsh-agent-roles@0.4.0`。插件市场收录独立于源码打包与 npm 发布。
 
-安装过程无需编译，也不会执行安装脚本。安装后刷新 DSH Web 页面即可在左侧导航栏看到「多智能体」入口；若宿主未自动加载，请重启对应的 Web profile。
+安装过程无需编译，也不会执行安装脚本。加载后刷新 DSH Web 页面即可在左侧导航栏看到「多智能体」入口；若宿主未自动加载，请重启对应的 Web profile。
 
 首次安装提供**空角色目录**，不包含作者的角色、提示词、模型配置或运行记录；升级已有安装则会保留本地数据。插件 bundle 会启用 DSH 原生团队服务、团队工具与界面，并停用旧的 `tool-subagent`、`tool-subagent-fork`、`tool-subagent-control`、`tool-subagent-list-agents` 条目，切换方式与官方实验团队 profile 一致。若当前环境已有自定义团队 bundle，请检查是否存在相同 ID 的配置覆盖。
 
@@ -77,7 +91,7 @@ Skills 仅提供文本指令，不会自动赋予工具权限，技能所需的�
 
 ### 限制主代理可委派的模型
 
-在 **多智能体 → 设置** 中添加规则：选择主代理模型，勾选禁止的子代理模型，保存后立即生效。模型选项来自 DSH 已配置目录；默认没有规则，不限制委派。配置通过 DSH 原生配置服务写入当前 profile，并检测并发修改。
+在 **多智能体 → 设置** 中添加规则：选择主代理模型，勾选禁止的子代理模型，保存后立即生效。模型选项来自 DSH 已配置目录；默认 `delegationRules: []`（不限制委派）。配置通过 DSH 原生配置服务写入当前 profile，并检测并发修改；若宿主环境缺失 `configEditor` 服务，设置界面与接口将退化为只读模式。
 
 也可直接设置通用的 `delegationRules`，如下列示例 ID（请替换成自己的模型 ID）：
 
@@ -95,25 +109,38 @@ Skills 仅提供文本指令，不会自动赋予工具权限，技能所需的�
 ## 运行限制与安全边界
 
 - **原生配额与委派深度**：单个团队最多支持 32 个已创建成员和 256 个共享任务。并发数与委派深度受 DSH 原生 subagent 配置约束；若宿主将委派深度设为 `0`，需先在宿主配置中允许委派。本插件不会越权修改全局配额或系统权限。
-- **实现机制与接口认证**：插件通过原生 `agent/created` 钩子在成员首个请求发出前挂载模型路由、系统提示词与工具白名单守卫，不接管或替换 DSH 原生模型执行循环。角色管理 API 复用 DSH Web 连接服务的身份验证，拒绝未认证请求。
+- **实现机制与接口认证**：插件通过原生 `agent/created` 钩子在成员首个请求发出前挂载模型路由、系统提示词与工具白名单守卫，不接管或替换 DSH 原生模型执行循环。角色管理 API 复用 DSH Web 连接服务的身份验证，拒绝未认证请求，且 JSON POST 请求体上限为 `1 MiB`。
 - **权限与安全边界**：角色工具白名单仅约束模型可调用的工具集，并非操作系统级文件或目录沙箱；具体文件读写与命令执行仍受 DSH 全局权限与文件策略控制。角色提示词和 Skills 是提供给模型的受信任指令；插件代码运行在宿主进程权限下。请勿将同一个已登录的 DSH Web 会话暴露给不可信用户。
 - **数据生命周期**：`runs.json` 中的成员快照包含提示词、技能全文和输出摘要，备份时请按私人敏感数据妥善保护。卸载插件不会自动删除数据目录，删除角色也不会清理已生成的成员运行记录。运行记录目前不自动过期，列表 API 默认返回最近 200 条记录。
 
+## 常见问题（FAQ）
+
+- **安装或升级后会自带作者的角色配置吗？**
+  不会。仓库与打包产物不含任何真实角色、提示词或会话记录，首次安装始终为空目录；已有安装升级或切换为 `@delthin/dsh-agent-roles` 时保留原 `dataDir` 下的数据。
+- **为什么「多智能体 → 设置」提示只读或无法保存？**
+  在线保存委派规则依赖宿主的 `configEditor` 服务；当宿主未启用该服务时，界面仅展示当前生效规则，请直接修改 profile 的 `cordis.patch.yml`。
+- **为什么模型旁边的 Fast 按钮无法点击？**
+  `fastProviders` 默认为空数组 `[]`。只有将支持 priority 传输适配的供应商 ID 显式配置到 `fastProviders` 后，对应供应商模型旁才会启用 Fast 切换。
+
+
 ## 开发与校验
 
+在单仓根目录执行：
+
 ```sh
-git clone https://github.com/Delthin/dsh-agent-roles.git
-cd dsh-agent-roles
 npm ci --ignore-scripts
 npm run check
-npm test
-npm run release:check
+npm test --workspace @delthin/dsh-agent-roles
+npm run check:public
+npm run check:pack
 ```
 
 仓库服务端与客户端均直接分发 JavaScript 源码，无编译构建步骤；前端界面直接使用 DSH Web 内置的 React 与原生 UI 组件。测试套件使用虚构角色与模拟模型，不调用外部付费模型接口。
 
-发布前检查、隐私检查、npm/GitHub Release 流程及市场收录说明见 [发布指南](docs/RELEASING.md)。提交问题报告时请附上 DSH 版本、插件版本及脱敏后的错误日志，切勿上传私有角色配置、访问令牌或完整会话数据。
+单仓发布前检查、Changesets 版本管理、隐私检查及市场收录说明见 [发布指南](docs/RELEASING.md)。提交问题报告时请附上 DSH 版本、插件版本及脱敏后的错误日志，切勿上传私有角色配置、访问令牌或完整会话数据。
 
 ## 许可证
 
 [MIT](LICENSE)，Copyright © 2026 Delthin。
+
+由于 npm 默认 semver 规则会将不同版本元组（tuple）的预发布版本排除在常规 `>=` 范围之外，最低要求为 `>=0.2.1-rc.5` 的包与 DSH `engines.dsh` 宿主范围显式声明为 `>=0.2.1-rc.5 || >=0.2.2-rc.1`；最低要求原本即为 `>=0.2.2-rc.1` 的条目则维持原范围。该配置用于确保当前 RC 与正式新版本均可正常解析，并非承诺兼容未来所有 RC 或 API 变更。

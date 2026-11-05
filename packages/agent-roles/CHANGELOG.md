@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Migrate package into the monorepo under `packages/agent-roles` with full Git history preserved.
+- Rename package to `@delthin/dsh-agent-roles` (`0.4.0`) and set `private: true` while public npm publishing is paused.
+- Update repository metadata, workspace verification commands, and release documentation for the monorepo workflow.
+- Retain links to the legacy standalone repository ([Legacy Repository](https://github.com/Delthin/dsh-agent-roles)) and historical releases ([Legacy Releases](https://github.com/Delthin/dsh-agent-roles/releases)).
+
 ## 0.4.0 — 2026-11-05
 
 - Add configurable model delegation rules with a native settings UI, conflict-safe profile persistence, and enforcement for new and existing members. Fresh installations remain unrestricted.

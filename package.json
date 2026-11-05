@@ -14,11 +14,15 @@
   },
   "scripts": {
     "check": "node scripts/check-workspaces.mjs",
+    "check:pack": "node scripts/check-packages.mjs",
+    "check:public": "node scripts/check-public.mjs",
     "changeset": "changeset",
     "version:packages": "changeset version"
   },
   "devDependencies": {
-    "@changesets/cli": "2.29.7"
+    "@changesets/cli": "2.29.7",
+    "js-yaml": "4.3.2",
+    "semver": "7.8.5"
   },
   "repository": {
     "type": "git",

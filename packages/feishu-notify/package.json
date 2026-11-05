@@ -1,0 +1,72 @@
+{
+  "name": "@delthin/dsh-feishu-notify",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Host-side Feishu application notifications with profile settings",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Delthin/dsh-plugins.git",
+    "directory": "packages/feishu-notify"
+  },
+  "homepage": "https://github.com/Delthin/dsh-plugins/tree/main/packages/feishu-notify#readme",
+  "bugs": {
+    "url": "https://github.com/Delthin/dsh-plugins/issues"
+  },
+  "engines": {
+    "node": ">=22",
+    "dsh": ">=0.2.1-rc.5 || >=0.2.2-rc.1"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "index.js",
+    "core.js",
+    "summary.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check core.js && node --check summary.js && node --check client.js",
+    "test": "node --test core.test.js summary.test.js",
+    "prepack": "npm run check && npm test"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.5 || >=0.2.2-rc.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-tool-ask-user": "0.2.2-rc.1"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  }
+}
