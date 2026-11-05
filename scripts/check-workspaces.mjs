@@ -71,5 +71,10 @@ for (const [slug, name] of expected) {
     if (result.error) throw result.error;
     assert.equal(result.status, 0, name + ': ' + script + ' failed');
   }
+  if (slug === 'agent-roles') {
+    const result = spawnSync(process.execPath, ['scripts/check-package.mjs'], {cwd:directory, stdio:'inherit'});
+    if (result.error) throw result.error;
+    assert.equal(result.status, 0, name + ': package contract check failed');
+  }
 }
 console.log('All four independent workspace manifests, patches, locales and tests passed.');

@@ -23,13 +23,13 @@ The plugin is disabled by default. Native tool-calling mode, disabled state, and
 | `@deepseek-ai/cordis` | `>= 4.0.5` | Service and plugin lifecycle framework |
 | `@deepseek-ai/dsh-tools` | `>= 0.2.2-rc.1` | Required for step-resolved conditional toolsets |
 | `@deepseek-ai/dsh-tool-executor-ptc` | `>= 0.2.2-rc.1` | Required for `renderToolsSdk` / `renderToolsSdkPy` exports |
-| `@deepseek-ai/dsh-scope` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | Scope isolation and tool admission checks |
-| `@deepseek-ai/dsh-llm` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | Default model invocation for description drafting |
+| `@deepseek-ai/dsh-scope` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Scope isolation and tool admission checks |
+| `@deepseek-ai/dsh-llm` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Default model invocation for description drafting |
 
 ### Verification Baseline & Open Version Ranges
 
 - **Host Contract Dependencies**: Starting in DSH `0.2.2-rc.1`, `renderToolsSdk` and `renderToolsSdkPy` moved to `@deepseek-ai/dsh-tool-executor-ptc`, `tools.modeFor` was removed, and step-resolved conditional toolsets were introduced. This plugin relies on these contracts and does not support earlier DSH versions.
-- **Targeted Test Baseline**: Verified against `cordis 4.1.0` + `DSH 0.2.2-rc.1` with 108 targeted tests (104 passed, 4 skipped locally due to macOS `sandbox-exec` `sandbox_apply: Operation not permitted`; browser E2E automation was not run, and isolated public CI verification is pending).
+- **Targeted Test Baseline**: Verified against `cordis 4.1.0` + `DSH 0.2.2-rc.1` with 108 targeted tests (104 passed, 4 skipped locally due to macOS `sandbox-exec` `sandbox_apply: Operation not permitted`; browser E2E automation was not run, and see the repository handoff acceptance record for validation details).
 - **Open Upper Bounds**: Peer and host version ranges use open upper bounds (`>=`) to permit installation on subsequent releases, but do not guarantee compatibility ahead of time against future breaking host API changes.
 
 ## Installation & Migration from Legacy Package

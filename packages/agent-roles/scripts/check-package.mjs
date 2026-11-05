@@ -29,10 +29,10 @@ assert.deepEqual(pkg.dsh.client.inject,[
   '@deepseek-ai/dsh-client-ui-primitives','@deepseek-ai/dsh-client-ui-layout',
   '@deepseek-ai/dsh-client-ui-sidebar','@deepseek-ai/dsh-client-ui-workspace',
 ]);
-assert.equal(pkg.engines.dsh,'>=0.2.1-rc.5');
+assert.equal(pkg.engines.dsh,'>=0.2.1-rc.5 || >=0.2.2-rc.1');
 assert.equal(pkg.engines.node,'>=22.18.0');
 for(const [name,range] of Object.entries({...pkg.dependencies,...pkg.peerDependencies})){
-  if(name.startsWith('@deepseek-ai/dsh-'))assert.equal(range,name==='@deepseek-ai/dsh-tool-executor-native'?'>=0.2.2-rc.1':'>=0.2.1-rc.5','DSH dependency must not pin the host: '+name);
+  if(name.startsWith('@deepseek-ai/dsh-'))assert.equal(range,name==='@deepseek-ai/dsh-tool-executor-native'?'>=0.2.2-rc.1':'>=0.2.1-rc.5 || >=0.2.2-rc.1','DSH dependency must not pin the host: '+name);
 }
 const patch=await read('cordis.patch.yml');
 assert.match(patch,/- id: agent-roles\s+name: '@delthin\/dsh-agent-roles'/);

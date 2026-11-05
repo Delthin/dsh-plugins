@@ -17,9 +17,9 @@
 
 | 工作区目录 | 包名 | 当前版本 | 许可证 | DSH 宿主范围 (`engines.dsh`) | 核心职责与关键约束 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| [`packages/feishu-notify`](./packages/feishu-notify/README.md) | `@delthin/dsh-feishu-notify` | `1.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | 飞书通知与完成提醒。`notify_user` 仅在整体工作持续至少 3 分钟收尾时调用一次；`feishu_notify` 的 `status` 不发消息，`test` 真实发送且绕过开关与免打扰；`AppSecret` 仅通过 Web UI 录入并以 `0600` 权限原子写入私有存储。 |
-| [`packages/agent-roles`](./packages/agent-roles/README.md) | `@delthin/dsh-agent-roles` | `0.4.0` | `MIT` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | 角色管理与委派。通过 `git subtree` 完整保留原独立仓库的 Git 历史（原仓库未修改、未归档，历史 release 保留在原仓库）；首次启动默认为空角色列表，保留数据目录中的角色与运行记录，运行数据不入库。 |
-| [`packages/fast`](./packages/fast/README.md) | `@delthin/dsh-fast` | `0.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | Fast 路由与 `service_tier: "priority"` 转发。已移除个人默认 URL、provider 与本机绝对路径；`provider`、`sourceURL`、`targetURL` 必须显式完整填写后才启用 Fast，否则 Standard 模式正常工作、Fast 请求直接报错；`roleRunsPath` 为可选只读配置，不存在时普通会话照常运行。 |
+| [`packages/feishu-notify`](./packages/feishu-notify/README.md) | `@delthin/dsh-feishu-notify` | `1.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 飞书通知与完成提醒。`notify_user` 仅在整体工作持续至少 3 分钟收尾时调用一次；`feishu_notify` 的 `status` 不发消息，`test` 真实发送且绕过开关与免打扰；`AppSecret` 仅通过 Web UI 录入并以 `0600` 权限原子写入私有存储。 |
+| [`packages/agent-roles`](./packages/agent-roles/README.md) | `@delthin/dsh-agent-roles` | `0.4.0` | `MIT` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 角色管理与委派。通过 `git subtree` 完整保留原独立仓库的 Git 历史（原仓库未修改、未归档，历史 release 保留在原仓库）；首次启动默认为空角色列表，保留数据目录中的角色与运行记录，运行数据不入库。 |
+| [`packages/fast`](./packages/fast/README.md) | `@delthin/dsh-fast` | `0.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Fast 路由与 `service_tier: "priority"` 转发。已移除个人默认 URL、provider 与本机绝对路径；`provider`、`sourceURL`、`targetURL` 必须显式完整填写后才启用 Fast，否则 Standard 模式正常工作、Fast 请求直接报错；`roleRunsPath` 为可选只读配置，不存在时普通会话照常运行。 |
 | [`packages/tool-wrap`](./packages/tool-wrap/README.md) | `@delthin/dsh-tool-wrap` | `1.2.0` | `UNLICENSED` | `>=0.2.2-rc.1` | 按需工具发现与 PTC 桥接。原本地目录名 `dsh-tool-discovery` 迁入后改为 `tool-wrap`，但工具名 `discover_tools`、服务名、设置 ID 及配置文件名 `tool-discovery.json` 保持不变；插件默认关闭（非宿主 PTC 模式关闭），`origin-bootstrap` 先于 `tools` 注册；仅首次安装或升级涉及 `toolDiscoveryOriginsReady` 来源门控时需重启生效，设置页启用开关与配置保存对后续 prompt 立即生效。 |
 
 各包英文文档入口：[`packages/feishu-notify/README.en.md`](./packages/feishu-notify/README.en.md)、[`packages/agent-roles/README.en.md`](./packages/agent-roles/README.en.md)、[`packages/fast/README.en.md`](./packages/fast/README.en.md)、[`packages/tool-wrap/README.en.md`](./packages/tool-wrap/README.en.md)。

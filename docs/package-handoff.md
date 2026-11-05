@@ -14,9 +14,9 @@
 
 | 工作区路径 | 包名与版本 | 许可证 | DSH 依赖范围 | 迁入来源与结构变更要点 |
 | :--- | :--- | :--- | :--- | :--- |
-| [`packages/feishu-notify`](../packages/feishu-notify/README.md) | `@delthin/dsh-feishu-notify` `1.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | 迁入自维护飞书通知插件；补齐中英双语 README 与 CHANGELOG；保持独立导出、客户端 bundle、图标与 locale。 |
-| [`packages/agent-roles`](../packages/agent-roles/README.md) | `@delthin/dsh-agent-roles` `0.4.0` | `MIT` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | 通过 `git subtree` 完整迁入并保留原独立仓库的全部 Git 历史；原独立仓库未修改、未归档，历史 release 仍在原仓库保留。 |
-| [`packages/fast`](../packages/fast/README.md) | `@delthin/dsh-fast` `0.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | 迁入 Fast 路由插件；清理个人默认配置与本机绝对路径，改为显式三项配置启用机制。 |
+| [`packages/feishu-notify`](../packages/feishu-notify/README.md) | `@delthin/dsh-feishu-notify` `1.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 迁入自维护飞书通知插件；补齐中英双语 README 与 CHANGELOG；保持独立导出、客户端 bundle、图标与 locale。 |
+| [`packages/agent-roles`](../packages/agent-roles/README.md) | `@delthin/dsh-agent-roles` `0.4.0` | `MIT` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 通过 `git subtree` 完整迁入并保留原独立仓库的全部 Git 历史；原独立仓库未修改、未归档，历史 release 仍在原仓库保留。 |
+| [`packages/fast`](../packages/fast/README.md) | `@delthin/dsh-fast` `0.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 迁入 Fast 路由插件；清理个人默认配置与本机绝对路径，改为显式三项配置启用机制。 |
 | [`packages/tool-wrap`](../packages/tool-wrap/README.md) | `@delthin/dsh-tool-wrap` `1.2.0` | `UNLICENSED` | `>=0.2.2-rc.1` | 原本地目录名 `dsh-tool-discovery` 迁入为 `packages/tool-wrap`（包名 `@delthin/dsh-tool-wrap`），但对外工具名 `discover_tools`、服务标识、设置 ID 与配置文件名 `tool-discovery.json` 保持不变。 |
 
 ### 2. 各包关键行为与安全边界加固
@@ -52,17 +52,17 @@
 | `@delthin/dsh-fast` 单元测试 | 29 | 0 | 0 | 29 | 全部通过 |
 | `@delthin/dsh-tool-wrap` 单元测试 | 104 | 4 | 0 | 108 | 104 通过；4 项因当前本机环境 `sandbox-exec` 权限限制按预期 skip |
 
-本地验证基于 Node `25.9.0` 与 DSH `0.2.2-rc.1` 基准环境完成：`npm run check` 以退出码 `0` 通过，四包合计 203 项测试（199 通过、4 跳过）；`npm run check:pack` 以退出码 `0` 通过，四个包的 tarball 均在空 profile、无 `NODE_PATH`、未使用 `--force` 或 `--legacy-peer-deps` 的隔离环境下独立安装，并直接加载打包产物运行全部测试通过。Node 22 与 Node 24 矩阵验证待代码推送后由远端 CI 执行。
+本地验证基于 Node `25.9.0` 与 DSH `0.2.2-rc.1` 基准环境完成：`npm run check` 以退出码 `0` 通过，四包合计 203 项测试（199 通过、4 跳过）；`npm run check:pack` 以退出码 `0` 通过，四个包的 tarball 均在空 profile、无 `NODE_PATH`、未使用 `--force` 或 `--legacy-peer-deps` 的隔离环境下独立安装，并直接加载打包产物运行全部测试通过。[远端 CI](<https://github.com/Delthin/dsh-plugins/actions/runs/41978144170>) 的 Node 22 与 Node 24 矩阵验证均已通过（涵盖 `npm ci`、`check`、`public` 与 `pack` 检查）。
 
 ### 4. 尚未完成的验证与已知限制（切勿视同已完成）
 
 以下事项在本轮尚待执行或未覆盖，验收与后续接手时需明确区分：
 
-2. **macOS `sandbox-exec` 受限用例**：
+1. **macOS `sandbox-exec` 受限用例**：
    - `@delthin/dsh-tool-wrap` 中有 4 个涉及 `sandbox-exec` 的测试用例在当前沙箱受限环境中被跳过（skip），需在具备非受限 macOS `sandbox-exec` 权限的宿主环境中补跑确认。
-3. **最低宿主版本矩阵未实测**：
+2. **最低宿主版本矩阵未实测**：
    - 声明的最低宿主版本（`0.2.1-rc.5` 与 `0.2.2-rc.1`）目前仅基于代码契约与当前 `0.2.2-rc.1` 依赖基准核对，尚未在各历史最低版本宿主实例上逐一挂载实测。
-4. **真实外部依赖与浏览器端到端（E2E）未验**：
+3. **真实外部依赖与浏览器端到端（E2E）未验**：
    - 尚未在真实浏览器 Web GUI、真实飞书开放平台机器人 API 以及真实上游大模型 API（含 Fast `priority` 转发链路与 `tool-wrap` 模型生成介绍链路）下执行端到端联调。
    - 即使后续 GitHub CI 与 `check:pack` 全部通过，也仅证明打包结构与模拟单测合格，**不等于真实外部 API 与未来宿主版本全兼容**。
 
@@ -76,9 +76,9 @@ The private GitHub repository `Delthin/dsh-plugins` has been initialized and all
 
 | Workspace Path | Package & Version | License | DSH Range | Migration Origin & Key Structural Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| [`packages/feishu-notify`](../packages/feishu-notify/README.en.md) | `@delthin/dsh-feishu-notify` `1.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | Migrated with bilingual READMEs, CHANGELOG, standalone exports, client bundle, icons, and locales. |
-| [`packages/agent-roles`](../packages/agent-roles/README.en.md) | `@delthin/dsh-agent-roles` `0.4.0` | `MIT` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | Imported via `git subtree` preserving full commit history; legacy standalone repository remains untouched and unarchived with prior releases intact. |
-| [`packages/fast`](../packages/fast/README.en.md) | `@delthin/dsh-fast` `0.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | Migrated with personal default URLs/providers and machine-specific absolute paths stripped. |
+| [`packages/feishu-notify`](../packages/feishu-notify/README.en.md) | `@delthin/dsh-feishu-notify` `1.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Migrated with bilingual READMEs, CHANGELOG, standalone exports, client bundle, icons, and locales. |
+| [`packages/agent-roles`](../packages/agent-roles/README.en.md) | `@delthin/dsh-agent-roles` `0.4.0` | `MIT` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Imported via `git subtree` preserving full commit history; legacy standalone repository remains untouched and unarchived with prior releases intact. |
+| [`packages/fast`](../packages/fast/README.en.md) | `@delthin/dsh-fast` `0.1.0` | `UNLICENSED` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Migrated with personal default URLs/providers and machine-specific absolute paths stripped. |
 | [`packages/tool-wrap`](../packages/tool-wrap/README.en.md) | `@delthin/dsh-tool-wrap` `1.2.0` | `UNLICENSED` | `>=0.2.2-rc.1` | Renamed from local directory `dsh-tool-discovery` to `packages/tool-wrap` (`@delthin/dsh-tool-wrap`), keeping tool name `discover_tools`, service IDs, settings IDs, and `tool-discovery.json` unchanged. |
 
 ### 2. Hardening & Behavioral Guarantees
@@ -99,9 +99,9 @@ Executed under the current local baseline (`Node.js 25.9.0`, `Cordis 4.1.0`, DSH
 | `@delthin/dsh-fast` | 29 | 0 | 0 | 29 | All passed |
 | `@delthin/dsh-tool-wrap` | 104 | 4 | 0 | 108 | 4 skipped due to local `sandbox-exec` permission restrictions |
 
-Local validation passed against the Node `25.9.0` and DSH `0.2.2-rc.1` baseline: `npm run check` exited with `0` across all four packages with 203 total tests (199 passed, 4 skipped), and `npm run check:pack` exited with `0` after installing each of the four package tarballs in isolated environments—with an empty profile, no `NODE_PATH`, and without `--force` or `--legacy-peer-deps`—and running the full test suite directly against the packed runtime artifacts. Remote CI matrix runs for Node 22 and Node 24 are pending push.
+Local validation passed against the Node `25.9.0` and DSH `0.2.2-rc.1` baseline: `npm run check` exited with `0` across all four packages with 203 total tests (199 passed, 4 skipped), and `npm run check:pack` exited with `0` after installing each of the four package tarballs in isolated environments—with an empty profile, no `NODE_PATH`, and without `--force` or `--legacy-peer-deps`—and running the full test suite directly against the packed runtime artifacts. [Remote CI](<https://github.com/Delthin/dsh-plugins/actions/runs/41978144170>) matrix runs for both Node 22 and Node 24 have passed (covering `npm ci`, `check`, `public`, and `pack` checks).
 
 ### 4. Pending Verifications & Known Limitations
 
-2. **Local `sandbox-exec` skips**: 4 tests in `@delthin/dsh-tool-wrap` were skipped under current sandbox constraints and require execution on an unrestricted macOS host.
-3. **Minimum host version matrix & live E2E**: Minimum DSH host versions (`0.2.1-rc.5` / `0.2.2-rc.1`), live browser UI flows, live Feishu API delivery, and live upstream model API calls have not yet been end-to-end verified. Future CI success does not guarantee full compatibility with live external APIs or future host versions.
+1. **Local `sandbox-exec` skips**: 4 tests in `@delthin/dsh-tool-wrap` were skipped under current sandbox constraints and require execution on an unrestricted macOS host.
+2. **Minimum host version matrix & live E2E**: Minimum DSH host versions (`0.2.1-rc.5` / `0.2.2-rc.1`), live browser UI flows, live Feishu API delivery, and live upstream model API calls have not yet been end-to-end verified. Future CI success does not guarantee full compatibility with live external APIs or future host versions.

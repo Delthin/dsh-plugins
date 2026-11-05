@@ -23,13 +23,13 @@
 | `@deepseek-ai/cordis` | `>= 4.0.5` | 插件与服务生命周期容器 |
 | `@deepseek-ai/dsh-tools` | `>= 0.2.2-rc.1` | 依赖条件工具集合解析契约 |
 | `@deepseek-ai/dsh-tool-executor-ptc` | `>= 0.2.2-rc.1` | 依赖 `renderToolsSdk` / `renderToolsSdkPy` 渲染导出 |
-| `@deepseek-ai/dsh-scope` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | 作用域隔离与工具准入读取 |
-| `@deepseek-ai/dsh-llm` | `>=0.2.1-rc.5 || >=0.2.2-rc.1` | 默认模型简介生成调用 |
+| `@deepseek-ai/dsh-scope` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 作用域隔离与工具准入读取 |
+| `@deepseek-ai/dsh-llm` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 默认模型简介生成调用 |
 
 ### 版本测试与兼容说明
 
 - **契约依赖**：DSH `0.2.2-rc.1` 将 `renderToolsSdk` 与 `renderToolsSdkPy` 移至 `@deepseek-ai/dsh-tool-executor-ptc`，移除了旧版 `tools.modeFor`，并引入按调用步骤解析的条件工具集合。本插件基于上述新版契约实现，不支持 `0.2.2-rc.1` 之前的宿主版本。
-- **实测基线**：本轮版本已在 `cordis 4.1.0` + `DSH 0.2.2-rc.1` 环境下完成定点测试（共 108 项测试，104 项通过，4 项因本机 `sandbox-exec` 触发 `sandbox_apply: Operation not permitted` 跳过；未包含浏览器端到端自动化验证，公共 CI 隔离验证待运行确认）。
+- **实测基线**：本轮版本已在 `cordis 4.1.0` + `DSH 0.2.2-rc.1` 环境下完成定点测试（共 108 项测试，104 项通过，4 项因本机 `sandbox-exec` 触发 `sandbox_apply: Operation not permitted` 跳过；未包含浏览器端到端自动化验证，验证详情见仓库验收交接记录）。
 - **开放上限说明**：依赖范围采用开放上限（`>=`）以便在后续小版本中安装，但开放范围不代表对未来尚未发布的宿主破坏性 API 变更提供事前保证。
 
 ## 安装与从旧包迁移
