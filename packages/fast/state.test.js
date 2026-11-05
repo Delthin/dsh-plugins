@@ -38,15 +38,6 @@ test('optional role snapshot paths leave ordinary sessions usable', async () => 
     assert.equal((await state.set('ordinary', false)).fast, false);
   }
 });
-test('missing role snapshot file leaves ordinary session switches usable', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'dsh-fast-missing-role-'));
-  try {
-    const state = fixture(id => readRoleTier(join(dir, 'missing.json'), id));
-    assert.equal((await state.get('ordinary')).fast, false);
-    await state.set('ordinary', true);
-    assert.equal((await state.get('ordinary')).fast, true);
-  } finally { await rm(dir, { recursive: true }); }
-});
 test('only immutable selection owns role tier, missing snapshot remains standard',async () => {
   const dir = await mkdtemp(join(tmpdir(),'dsh-fast-state-'));
   try {

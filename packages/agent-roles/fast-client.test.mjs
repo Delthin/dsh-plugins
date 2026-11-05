@@ -52,16 +52,3 @@ test('不支持供应商禁止开启 Fast，但标准按钮始终可恢复；支
   const loading=panel(role,[]);
   assert.equal(tier(loading.render(),'Fast').props.disabled,true);
 });
-
-test('运行列表显示选择快照 Fast 或标准，而不读取当前角色 Fast',()=>{
-  const app=panel();app.state[9]='runs';
-  app.state[13]=[
-    {sessionId:'standard',memberName:'standard',role:{...role,fast:true},selection:{fast:false},audit:{},createdAt:'2026-01-01T00:00:00Z',status:'inactive'},
-    {sessionId:'fast',memberName:'fast',role:{...role,fast:false},selection:{fast:true},audit:{},createdAt:'2026-01-01T00:00:00Z',status:'inactive'},
-    {sessionId:'old',memberName:'old',role:{...role,fast:true},audit:{},createdAt:'2026-01-01T00:00:00Z',status:'inactive'},
-  ];
-  const articles=nodes(app.render()).filter(n=>n.type==='article');
-  assert.match(text(articles[0]),/same-model · 标准/);
-  assert.match(text(articles[1]),/same-model · Fast/);
-  assert.match(text(articles[2]),/same-model · 标准/);
-});

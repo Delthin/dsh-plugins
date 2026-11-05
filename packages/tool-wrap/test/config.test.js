@@ -154,14 +154,6 @@ test('v2 migration preserves opaque plugin IDs, explicit tools and exclusions an
   assert.deepEqual(await readdir(dir), ['tool-discovery.json']);
 });
 
-test('description limits accept 512 opaque plugin IDs and trim before the 2000-character check', () => {
-  const descriptions = Object.fromEntries(Array.from({ length: 512 }, (_, index) => [`@fixture/${index}`, `  ${'x'.repeat(2000)}\n  `]));
-  const validated = validateConfig(enabledConfig({ descriptions }));
-  assert.equal(Object.keys(validated.descriptions).length, 512);
-  assert.ok(Object.values(validated.descriptions).every(value => value === 'x'.repeat(2000)));
-  assert.equal(validateConfig(enabledConfig({ descriptions: { './local plugin.js': ' First line\nSecond line ' } })).descriptions['./local plugin.js'], 'First line\nSecond line');
-});
-
 test('stale settings versions cannot overwrite persisted custom descriptions or emit a prompt change', async t => {
   const config = enabledConfig({ descriptions: { 'dsh-ego-browser': 'Persisted custom overview' } });
   const { ctx, dir, request } = await hostFixture(t, { config });

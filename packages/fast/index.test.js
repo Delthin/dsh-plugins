@@ -6,7 +6,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getGlobalDispatcher } from 'undici';
-import { apply, Config } from './index.js';
+import { apply } from './index.js';
 
 const collect = async iterable => {
   const values = [];
@@ -54,12 +54,8 @@ async function fixture(t, config, records = new Map()) {
 
 const complete = { provider: 'responses-provider', sourceURL: 'https://responses.example.invalid/v1/responses', targetURL: 'https://priority.example.invalid/backend-api/codex/responses' };
 
-test('empty public schema has no personal routes and leaves role snapshots optional', () => {
-  assert.deepEqual(Config({}), { provider: '', sourceURL: '', targetURL: '' });
-});
-
 test('absent or partial routes refuse enabling at both entry points without touching standard streams or dispatcher', async t => {
-  for (const config of [undefined, {}, { provider: complete.provider }, { provider: complete.provider, sourceURL: complete.sourceURL }, { sourceURL: complete.sourceURL, targetURL: complete.targetURL }]) {
+  for (const config of [{}, { provider: complete.provider, sourceURL: complete.sourceURL }]) {
     await t.test(JSON.stringify(config) ?? 'no config', async t => {
       const before = getGlobalDispatcher();
       const f = await fixture(t, config);

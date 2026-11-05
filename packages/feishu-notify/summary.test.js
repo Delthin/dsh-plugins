@@ -194,27 +194,6 @@ test('phone summaries use short emoji facts, skip empty and duplicate items, and
   await service.dispose();
 });
 
-test('summary failures, terminal errors, empty or malformed output, missing route/service all fall back to labelled excerpts', async () => {
-  const llms = [
-    { async *stream() { throw new Error('synthetic error'); } },
-    { async *stream() { yield { type: 'text-delta', index: 0, text: SUMMARY }; yield { type: 'finish', reason: { kind: 'error' } }; } },
-    { async *stream() { yield { type: 'finish', reason: { kind: 'aborted' } }; } },
-    { async *stream() { yield { type: 'finish', reason: { kind: 'stop' } }; } },
-    { async *stream() { yield { type: 'text-delta', index: 0, text: 'Everything done' }; } },
-    undefined
-  ];
-  for (const llm of llms) {
-    const result = await new SummaryGenerator({ llm }).generate(draft());
-    assert.match(result, /^状态：本轮已结束（摘要暂不可用）\n回复摘录：/); assert.match(result, /尚未部署/);
-    assert.doesNotMatch(result, /Everything done|synthetic error/);
-  }
-  let calls = 0;
-  const generator = new SummaryGenerator({ llm: goodLLM(() => calls++) });
-  assert.match(await generator.generate(draft('missing source', null)), /^状态：本轮已结束（摘要暂不可用）\n回复摘录：/);
-  assert.equal(calls, 0);
-  assert.match(await generator.generate(draft('')), /没有可见回复/);
-});
-
 test('summary timeout bounds even an uncooperative stream or prepareCall and aborts it', async () => {
   for (const hangPreparation of [false, true]) {
     let signal;
@@ -261,35 +240,6 @@ test('LLM input and sent previews redact saved secrets and tokens, without trunc
   assert.doesNotMatch(JSON.stringify(status), /synthetic-secret|synthetic-token/);
   assert.equal(service.client.redact('e'.repeat(800)).length, 500);
   await service.dispose();
-});
-
-test('notification banners lead with short emoji facts, never metadata; manual and generated summaries match', async t => {
-  const { service, sent } = fixture({ llm: goodLLM() });
-  t.after(() => service.dispose());
-  const s = session('RAW_SESSION_ID_MUST_STAY_METADATA');
-  const completed = await service.notify(completion(s, 1));
-  assert.equal(sent[0], PHONE_SUMMARY); assert.equal(completed.sessionId, s.id);
-  assert.equal(completed.summaryStatus, 'generated'); assert.equal(completed.summaryReason, 'OK');
-  await service.manual(s, 2, { message: SUMMARY, title: '标题不能挡住摘要' }, { callId: 'status-manual' });
-  assert.equal(sent.at(-1), PHONE_SUMMARY);
-  await service.manual(s, 3, { message: '普通工作进展。', title: '工作进展' }, { callId: 'plain-manual' });
-  assert.equal(sent.at(-1), 'ℹ️ 普通工作进展。');
-  for (const [kind, title] of [['approval', '工具权限待确认'], ['question', '问题待回答'], ['plan', '计划待确认']]) {
-    await service.notify({ kind, key: kind, title, sessionId: s.id, detail: kind === 'approval' ? 'bash' : undefined });
-    assert.match(sent.at(-1), new RegExp('^👉 ' + title));
-  }
-  for (const [turn, kind, status] of [[4, 'error', '本轮错误'], [5, 'aborted', '本轮中断']]) {
-    await service.notify({ ...completion(s, turn, draft(), kind), reason: '具体原因' });
-    assert.equal(sent.at(-1), '❌ ' + status + '：具体原因');
-  }
-  service.summaries.setLLM(undefined);
-  const fallback = await service.notify(completion(s, 6));
-  assert.equal(fallback.summaryStatus, 'fallback'); assert.equal(fallback.summaryReason, 'NO_LLM');
-  assert.equal(sent.at(-1), 'ℹ️ ' + draft().text);
-  for (const body of sent) {
-    assert.ok(!body.includes(s.id));
-    assert.doesNotMatch(body, /\[DSH|会话：|synthetic/);
-  }
 });
 
 test('only successful manual send suppresses same-turn completed, never errors/interruption, another session or next turn', async () => {

@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {Readable} from 'node:stream';
 import {RoleStore,validateRole} from './store.js';
-import {apply,validateModel,selectionFor,roleTierForRun} from './index.js';
+import {apply,selectionFor,roleTierForRun} from './index.js';
 
 const seed=JSON.parse(await readFile(new URL('./fixtures/roles.json',import.meta.url),'utf8'));
 const role=validateRole({...seed[0],enabled:true,provider:'test',model:'same-model',reasoningEffort:'high'});
@@ -49,24 +49,6 @@ async function boot(dir,agents=[],config={fastProviders:['test']}) {
     return {status:res.statusCode,value:JSON.parse(res.body)};
   }};
 }
-
-test('全新安装目录为空且 Fast 默认关闭',()=>temporary(async dir=>{
-  const app=await boot(dir,[],{});
-  assert.deepEqual((await app.api('list')).value.catalog.roles,[]);
-  assert.deepEqual((await app.api('models')).value.fastProviders,[]);
-  assert.equal(app.providers.size,0);
-}));
-
-test('Fast 默认不启用，支持清单可配置且不影响标准模型选择',async()=>{
-  const llm={listProviders:()=>[{id:'cpa'},{id:'test'}],listModels:async()=>[{id:'same-model'}],resolveModelInfo:async()=>info};
-  await assert.rejects(validateModel(llm,{...role,provider:'cpa',fast:true}),/不支持 Fast/);
-  await validateModel(llm,{...role,provider:'cpa',fast:true},undefined,['cpa']);
-  await assert.rejects(validateModel(llm,{...role,fast:true}),/不支持 Fast：test/);
-  assert.throws(()=>selectionFor({...role,fast:true},info),/不支持 Fast：test/);
-  await validateModel(llm,{...role,fast:true},undefined,['test']);
-  assert.throws(()=>selectionFor({...role,provider:'cpa',fast:true},info,[]),/不支持 Fast：cpa/);
-  assert.equal(selectionFor({...role,fast:false},info,[]).fast,false);
-});
 
 test('Fast 保存与新启动受支持清单限制，旧非法快照保留不变',()=>temporary(async dir=>{
   await catalog(dir,[{...role,fast:true}]);

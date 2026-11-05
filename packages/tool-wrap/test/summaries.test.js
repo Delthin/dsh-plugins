@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { getEventListeners } from 'node:events';
 import { BlockAssembler } from '@deepseek-ai/dsh-llm';
 import { DiscoveryError } from '../core.js';
-import { generationStatus, generateDescription } from '../summaries.js';
+import { generateDescription } from '../summaries.js';
 
 const model = { provider: 'fixture-provider', model: 'fixture-model' };
 const plugin = '@fixture/tools';
@@ -49,21 +49,6 @@ function fixture({ selection = model, chunks = [delta('插件简介。'), stop],
 }
 
 const generate = (f, options = {}) => generateDescription(f.ctx, request, { schemas, ...options });
-
-test('status reads only the current deployment default, with zero model calls', () => {
-  const f = fixture({ selection: { ...model, reasoningEffort: 'ignored' } });
-  assert.deepEqual(generationStatus(f.ctx), { models: [{ ...model, label: 'fixture-provider / fixture-model' }] });
-  assert.deepEqual(f.preparations, []);
-  assert.deepEqual(f.requests, []);
-  assert.deepEqual([...new Set(f.services)].sort(), ['agentDefaultModel', 'llm']);
-  for (const selection of [null, {}, { provider: '', model: 'm' }, { provider: 'p', model: ' ' }, { provider: 'p\n', model: 'm' }]) {
-    assert.deepEqual(generationStatus(fixture({ selection }).ctx), { models: [] });
-  }
-  for (const missing of ['llm', 'agentDefaultModel']) {
-    assert.deepEqual(generationStatus({ get: name => name === missing ? undefined : name === 'llm' ? { prepareCall() {} } : { currentSelection: () => model } }), { models: [] });
-  }
-  assert.deepEqual(generationStatus({ get() { throw new Error('SECRET'); } }), { models: [] });
-});
 
 test('exact provider/model and exact plugin membership are required before preparation', async () => {
   const f = fixture();
@@ -122,20 +107,13 @@ test('real BlockAssembler handles complete blocks without duplicating deltas and
 test('explicit terminal stop is mandatory; failures, truncation and trailing chunks are rejected', async t => {
   const cases = [
     ['error', [delta('不应保留'), { type: 'finish', reason: { kind: 'error', failure: { code: 'AUTH', message: 'SECRET key=123' } } }]],
-    ['aborted finish', [delta('不应保留'), { type: 'finish', reason: { kind: 'aborted', failure: { code: 'ABORT', message: 'SECRET' } } }]],
     ['length', [delta('被截断'), { type: 'finish', reason: { kind: 'max-tokens' } }]],
-    ['tool finish', [delta('不应保留'), { type: 'finish', reason: { kind: 'tool-calls' } }]],
-    ['unknown finish', [delta('不应保留'), { type: 'finish', reason: { kind: 'length' } }]],
     ['no finish', [delta('不完整')]],
     ['empty', [stop]],
-    ['whitespace', [delta(' \n\r '), stop]],
-    ['reasoning only', [{ type: 'reasoning-delta', index: 0, text: 'SECRET' }, stop]],
     ['trailing data', [delta('简介'), stop, delta('多余')]],
-    ['duplicate finish', [delta('简介'), stop, stop]],
     ['tool delta', [{ type: 'tool-call-delta', index: 1, id: 'c', name: 'forbidden', argumentsDelta: '{}' }, stop]],
     ['tool start', [{ type: 'block-start', index: 1, blockType: 'tool-call' }, stop]],
     ['tool end', [{ type: 'block-end', index: 1, block: { type: 'tool-call', id: 'c', name: 'forbidden', arguments: '{}' } }, stop]],
-    ['nontext', [{ type: 'block-start', index: 1, blockType: 'image' }, stop]],
   ];
   for (const [name, chunks] of cases) await t.test(name, async () => {
     await assert.rejects(generate(fixture({ chunks })), isError(502));

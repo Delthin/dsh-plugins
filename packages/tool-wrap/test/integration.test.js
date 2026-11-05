@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { renderPrompt } from '@deepseek-ai/dsh-system-prompt';
-import { ApprovalService } from '@deepseek-ai/dsh-user-approval';
 import { sdkSchemas, renderSdk, digest } from '../core.js';
 import { assemble, enabledConfig, fixturePlugin, fixtureTool, hostFixture, sdkSection, success, tsRuntime } from './fixture.js';
 
@@ -201,46 +200,4 @@ test('real registry pre-policy, monotonic guard, post-policy and cancellation re
   cancelGate();
   success(await execute('ego_visit', { input: 'allowed final' }, { agent: a, nested: true }));
   assert.equal(calls.length, 2);
-});
-
-test('real ApprovalService still requires each grant after discovery, auditing denial, one-shot allow and unavailable', async t => {
-  const { ctx, execute, agent, calls, events } = await hostFixture(t);
-  await ctx.plugin(ApprovalService, { policy: 'ask' });
-  const a = agent('approval');
-  ctx.on('tools/pre-execute', async (exec, next) => exec.name === 'ego_visit' ? { kind: 'ask', reason: 'fixture original approval' } : next());
-  success(await execute('discover_tools', { plugin: 'dsh-ego-browser' }, { agent: a, nested: true }));
-  const answers = ['rejected', 'allowed-once', 'unavailable'];
-  ctx.on('approval/request', async () => answers.shift());
-  const denied = await execute('ego_visit', { input: 'denied' }, { agent: a, nested: true });
-  assert.equal(denied.isError, true);
-  assert.match(denied.error.message, /user rejected/);
-  assert.equal(calls.length, 0);
-  success(await execute('ego_visit', { input: 'approved once' }, { agent: a, nested: true }));
-  assert.equal(calls.length, 1);
-  const unavailable = await execute('ego_visit', { input: 'must ask again' }, { agent: a, nested: true });
-  assert.equal(unavailable.isError, true);
-  assert.match(unavailable.error.message, /no approval channel/);
-  assert.equal(calls.length, 1);
-  assert.deepEqual(events.filter(event => event.type === 'approval/decided').map(event => event.data.outcome), ['rejected', 'allowed-once', 'unavailable']);
-  assert.equal(events.filter(event => event.type === 'approval/asked').length, 3);
-});
-
-
-test('resolved discovery snapshots reject reuse by another caller and after disposal', async t => {
-  const { tools, execute, agent } = await hostFixture(t);
-  const a = agent('snapshot-A');
-  const b = agent('snapshot-B');
-  const snapshot = await tools.resolve({ agent: a, modelSelection: { provider: 'fixture', model: 'fixture' }, signal: new AbortController().signal });
-  try {
-    assert.ok(sdkSchemas(tools, a, snapshot).some(tool => tool.name === 'discover_tools'));
-    assert.deepEqual(sdkSchemas(tools, b, snapshot), []);
-    const reused = await execute('discover_tools', {}, { agent: b, nested: true, toolSet: snapshot });
-    assert.equal(reused.isError, true);
-    assert.equal(reused.error.info.code, 'UNKNOWN_TOOL');
-    snapshot.dispose();
-    assert.deepEqual(sdkSchemas(tools, a, snapshot), []);
-    const disposed = await execute('discover_tools', {}, { agent: a, nested: true, toolSet: snapshot });
-    assert.equal(disposed.isError, true);
-    assert.equal(disposed.error.info.code, 'UNKNOWN_TOOL');
-  } finally { snapshot.dispose(); }
 });

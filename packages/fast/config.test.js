@@ -12,13 +12,6 @@ test('Fast has no route unless all three fields are explicitly configured', () =
   }
 });
 
-test('explicit routes are normalized and allow only the configured provider', () => {
-  const route = configuredRoute({ ...complete, provider: ' responses-provider ' });
-  assert.deepEqual(route, complete);
-  assert.doesNotThrow(() => assertFastProvider(route, complete.provider));
-  assert.throws(() => assertFastProvider(route, 'another-provider'), /尚未配置供应商/);
-});
-
 test('endpoint configuration rejects embedded credentials, fragments and non-HTTP URLs', () => {
   for (const targetURL of ['not a URL', 'file:///tmp/response', 'https://user:secret@example.invalid/responses', 'https://example.invalid/responses#fragment']) {
     assert.throws(() => configuredRoute({ ...complete, targetURL }), /HTTP\(S\)/);

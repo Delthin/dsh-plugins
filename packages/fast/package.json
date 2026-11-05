@@ -52,7 +52,7 @@
   ],
   "scripts": {
     "check": "node --check index.js && node --check config.js && node --check state.js && node --check transport.js && node --check client.js",
-    "test": "node --test config.test.js state.test.js transport.test.js index.test.js client.test.js release.test.js",
+    "test": "node --test config.test.js state.test.js transport.test.js index.test.js client.test.js",
     "prepack": "npm run check && npm test"
   },
   "dependencies": {

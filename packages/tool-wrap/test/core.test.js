@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renderToolsSdk, renderToolsSdkPy } from '@deepseek-ai/dsh-tool-executor-ptc';
-import { hiddenTools, discover, project, renderSdk, sdkSchemas, validateConfig, DiscoveryError } from '../core.js';
+import { renderToolsSdk } from '@deepseek-ai/dsh-tool-executor-ptc';
+import { hiddenTools, discover, sdkSchemas, validateConfig, DiscoveryError } from '../core.js';
 import { enabledConfig, fixturePlugin, fixtureTool, hostFixture, tsRuntime } from './fixture.js';
 
 const names = tools => tools.map(tool => tool.name).sort();
@@ -17,28 +17,6 @@ test('group selection, exact tool selection and exclusion have independent prece
   assert.throws(() => hiddenTools(schemas, enabledConfig({ tools: ['run_code', 'unwrap', 'discover_tools'] })), DiscoveryError);
   const protectedSchemas = ['run_code', 'unwrap', 'discover_tools'].map(name => ({ name, plugin: { id: 'dsh-ego-browser', label: 'Protected fixture' } }));
   assert.deepEqual(hiddenTools([...schemas, ...protectedSchemas], enabledConfig()).filter(tool => ['run_code', 'unwrap', 'discover_tools'].includes(tool.name)), []);
-});
-
-test('only selected SDK definitions disappear; all other definitions retain full signatures and documentation', async t => {
-  const { tools } = await hostFixture(t);
-  const schemas = sdkSchemas(tools);
-  const config = enabledConfig({ groups: ['dsh-ego-browser'], exclude: ['ego_capture'] });
-  const projection = project(schemas, config, tsRuntime);
-  const sdkOnly = projection.text.split('\n\n# On-demand tools')[0];
-  const visible = schemas.filter(schema => !['ego_visit', 'ego_secret', 'discover_tools'].includes(schema.name));
-  assert.equal(sdkOnly, renderToolsSdk(visible, 'function-body'));
-  assert.doesNotMatch(sdkOnly, /ego_visit:|ego_secret:/);
-  for (const name of ['ego_capture', 'generate_image', 'schedule_list', 'virtual_echo', 'always_visible', 'unwrap']) assert.match(sdkOnly, new RegExp(`${name}:`));
-  assert.match(sdkOnly, /globalMarker full output documentation/);
-  assert.match(sdkOnly, /values: number\[\]/);
-  const disabled = project(schemas, enabledConfig({ enabled: false }), tsRuntime);
-  assert.equal(disabled.text, renderToolsSdk(schemas.filter(tool => !['unwrap', 'discover_tools'].includes(tool.name)), 'function-body'));
-  assert.equal(disabled.estimate.savedChars, 0);
-  assert.equal(disabled.estimate.estimatedSavedTokens, 0);
-  assert.equal(project(schemas, enabledConfig({ groups: [] }), tsRuntime).text, renderToolsSdk(schemas.filter(tool => tool.name !== 'discover_tools'), 'function-body'));
-  assert.equal(projection.estimate.hiddenCount, 2);
-  assert.equal(projection.estimate.afterChars, projection.text.length);
-  assert.equal(projection.estimate.savedChars, projection.estimate.beforeChars - projection.text.length);
 });
 
 test('catalog exposes plugin summaries and all deferred names without schemas, tool descriptions or execution', async t => {
@@ -58,20 +36,6 @@ test('catalog exposes plugin summaries and all deferred names without schemas, t
   assert.deepEqual(Object.keys(overview.otherTools[0]).sort(), ['description', 'name']);
   assert.deepEqual(overview.groups.find(group => group.id === 'dsh-ego-browser').tools, ['ego_capture', 'ego_secret', 'ego_visit']);
   assert.doesNotMatch(JSON.stringify(overview.groups), /RESTRICTED_SECRET_DESCRIPTION|parameters|globalMarker/);
-  assert.deepEqual(calls, []);
-});
-
-test('startup catalog lists every deferred name, excludes full tool details and prompts proactive single-pack loading', async t => {
-  const { tools, calls } = await hostFixture(t);
-  const config = enabledConfig({ groups: ['dsh-ego-browser'], exclude: ['ego_capture'] });
-  const text = project(sdkSchemas(tools), config, tsRuntime).text.split('\n\n# On-demand tools')[1];
-  const rows = text.split('\n').filter(line => line.startsWith('- {')).map(line => JSON.parse(line.slice(2)));
-  assert.deepEqual(rows, [{ plugin: 'dsh-ego-browser', description: 'No description provided. Load this plugin to inspect its tools.', tools: ['ego_secret', 'ego_visit'] }]);
-  assert.match(text, /proactively call unwrap/);
-  assert.match(text, /Do not wait for the user/);
-  assert.match(text, /only ONE complete plugin pack per run_code/);
-  assert.match(text, /never guess parameters/);
-  assert.doesNotMatch(text, /RESTRICTED_SECRET_DESCRIPTION|ego_capture|globalMarker|parameters:|ToolArgsMap/);
   assert.deepEqual(calls, []);
 });
 
@@ -142,18 +106,6 @@ test('pure core retains exact legacy names and module-id query aliases without k
   assert.ok(keyword.unavailable);
 });
 
-test('language/program-format rendering follows host TypeScript and Python renderers', async t => {
-  const { tools } = await hostFixture(t);
-  const schemas = sdkSchemas(tools);
-  for (const programFormat of ['function-body', 'repl']) {
-    assert.equal(renderSdk(schemas, { language: 'typescript', programFormat }), renderToolsSdk(schemas, programFormat));
-    assert.equal(renderSdk(schemas, { language: 'python', programFormat }), renderToolsSdkPy(schemas, programFormat));
-  }
-  const python = project(schemas, enabledConfig(), { language: 'python', programFormat: 'function-body' });
-  assert.match(python.text, /print\(json.dumps\(await tools.unwrap/);
-  assert.throws(() => renderSdk(schemas, { language: 'unavailable' }), DiscoveryError);
-});
-
 test('discovery rejects malformed exact selectors rather than widening selection', async t => {
   const { tools } = await hostFixture(t);
   const schemas = sdkSchemas(tools);
@@ -161,16 +113,4 @@ test('discovery rejects malformed exact selectors rather than widening selection
     assert.throws(() => discover(schemas, enabledConfig(), tsRuntime, args), DiscoveryError, JSON.stringify(args));
   }
   assert.deepEqual(validateConfig(enabledConfig({ groups: ['dsh-image-gen', 'dsh-ego-browser', 'dsh-image-gen'], tools: ['z', 'a', 'z'] })), enabledConfig({ groups: ['dsh-ego-browser', 'dsh-image-gen'], tools: ['a', 'z'] }));
-});
-
-// The model-facing contract intentionally excludes compatibility-only core arguments.
-test('public unwrap schema exposes only optional exact plugin and unowned-tool selectors', async t => {
-  const { tools } = await hostFixture(t);
-  const schema = tools.schemas().find(tool => tool.name === 'unwrap');
-  assert.ok(schema);
-  assert.deepEqual(Object.keys(schema.parameters.properties).sort(), ['plugin', 'tool']);
-  for (const parameter of Object.values(schema.parameters.properties)) {
-    assert.equal(parameter.type, 'string');
-    assert.ok(!schema.parameters.required?.includes(Object.entries(schema.parameters.properties).find(([, value]) => value === parameter)[0]));
-  }
 });

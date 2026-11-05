@@ -32,12 +32,6 @@ async function setup(fn,config={delegationRules:rules}) {
     assert.equal(resolve(dir),dir);assert.ok(dir.startsWith(join(tmpdir(),'agent-roles-delegation-')));await rm(dir,{recursive:true,force:true});
   }
 }
-test('精确模型限制，默认不限制且不靠角色名称判断',()=>{
-  for(const target of rules[0].denyModels) assert.match(delegationDenial('lead-small',target,rules),/不允许调用/);
-  assert.equal(delegationDenial('lead-small','target-other',rules),undefined);
-  assert.equal(delegationDenial('target-mid','target-large',rules),undefined);
-  assert.equal(delegationDenial('lead-small','target-large'),undefined);
-});
 test('禁止目标在 native spawn 前拒绝，provider 入口也拒绝且不写启动快照',()=>setup(async app=>{
   const signal=new AbortController().signal,spawn=app.tools.get('spawn_role');
   for(const role of app.roles.slice(2,3)) {

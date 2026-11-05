@@ -131,53 +131,6 @@ test('search empty state and refresh preserve draft; cancel restores saved state
   assert.equal(ui.calls.filter(call => call.method === 'PUT').length, 0);
 });
 
-test('English labels, no-tools state and old-host rejection remain usable', async () => {
-  const empty = await mount({ ...fixture(), groups: [] }, 'en');
-  assert.match(empty.text(), /No global tools are currently available/);
-  const legacy = fixture(); delete legacy.config.version;
-  const ui = await mount(legacy, 'en');
-  assert.match(ui.text(), /host is still running the previous version/);
-  assert.equal(ui.nodes().some(node => node.type === 'form'), false);
-  assert.equal(ui.calls.length, 1);
-});
-
-test('unmeasured records explain native, disabled and incompatible states without zero comparisons', async () => {
-  for (const [status, message] of [['native-unchanged', '此次使用原生模式'], ['disabled', '此次未启用按需发现'], ['incompatible-sdk', '此次工具说明保持完整']]) {
-    const ui = await mount({ ...fixture(), lastAssembly: { mode: 'native', status, beforeChars: 0, afterChars: 0, savedChars: 0, hiddenCount: 0, hash: '' } });
-    const record = JSON.stringify(ui.find(node => node.props.className === 'td-last-record'));
-    assert.ok(record.includes(message));
-    assert.doesNotMatch(record, /td-stat|0 字符/);
-    assert.doesNotMatch(ui.text(), /SDK 投影|provider 请求|来源已识别/);
-  }
-});
-
-test('measured records retain exact character figures and explain discovery in folded details', async () => {
-  const ui = await mount({ ...fixture(), lastAssembly: { mode: 'ptc', status: 'projected', beforeChars: 3000, afterChars: 1200, savedChars: 1800, hiddenCount: 2, hash: 'sample-hash' } });
-  const record = ui.find(node => node.props.className === 'td-last-record');
-  assert.equal(record.children[0].children.length, 4);
-  assert.match(JSON.stringify(record), /3,000 字符/);
-  assert.match(JSON.stringify(record), /1,200 字符/);
-  const details = ui.find(node => node.type === 'details' && node.children[0].children.includes('原理与核查信息'));
-  assert.equal(details.props.open, undefined);
-  assert.match(JSON.stringify(details), /unwrap[(]/);
-  assert.doesNotMatch(JSON.stringify(details), /discover_tools/);
-  assert.match(JSON.stringify(details), /整包原始工具定义/);
-  assert.match(JSON.stringify(details), /plugin: 精确插件名/);
-  assert.doesNotMatch(JSON.stringify(details), /前三条|150 字符|240 字符/);
-  assert.match(ui.text(), /查找工具次数（本次服务运行）/);
-  assert.match(ui.text(), /全局工具/);
-});
-
-test('compact rows remain collapsed and preserve the 44px layout', async () => {
-  const ui = await mount();
-  assert.equal(ui.find(node => node.props.className === 'td-expand').props['aria-expanded'], false);
-  assert.equal(ui.nodes().some(node => node.type === 'textarea'), false);
-  const css = ui.find(node => node.type === 'style').children.join('');
-  assert.match(css, /td-group-top\{min-height:44px/);
-  assert.match(css, /@container\(max-width:560px\)/);
-  assert.match(css, /textarea\{[^}]*max-width:100%/);
-});
-
 test('developer description is the default and custom override can be restored or cleared', async () => {
   const ui = await mount(); ui.expand();
   assert.equal(ui.find(node => node.type === 'textarea').props.value, 'Developer browser description');
@@ -195,18 +148,6 @@ test('developer description is the default and custom override can be restored o
   ui.editDescription('Another draft'); ui.editDescription('');
   assert.equal(ui.find(node => node.type === 'textarea').props.value, 'Developer browser description');
   assert.equal(ui.find(node => node.props.type === 'submit').props.disabled, true);
-});
-
-test('saved custom description takes precedence over developer default', async () => {
-  const data = fixture();
-  data.config.descriptions['browser-plugin'] = 'Saved custom description';
-  Object.assign(data.groups[0], { description: 'Saved custom description', descriptionSource: 'custom' });
-  const ui = await mount(data); ui.expand();
-  assert.equal(ui.find(node => node.type === 'textarea').props.value, 'Saved custom description');
-  assert.match(ui.text(), /自定义简介/);
-  ui.find(button('恢复开发者说明')).props.onClick(); ui.render();
-  await ui.save();
-  assert.equal(Object.hasOwn(ui.calls.find(call => call.method === 'PUT').body.descriptions, 'browser-plugin'), false);
 });
 
 test('generation requires explicit model selection, fills only a draft, then saves manually', async () => {

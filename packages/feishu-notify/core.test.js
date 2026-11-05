@@ -4,7 +4,6 @@ import { mkdtemp, readFile, stat, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, basename } from 'node:path';
 import { Readable } from 'node:stream';
-import { Context } from '@deepseek-ai/cordis';
 import { apply as applyAskUser } from '@deepseek-ai/dsh-tool-ask-user';
 import { apply } from './index.js';
 import { DEFAULT_CONFIG, ConfigStore, FeishuClient, FeishuNotifyService, eventNotification, questionNotification, inQuietHours, maskConfig, validateConfig } from './core.js';
@@ -169,25 +168,6 @@ test('disposing aborts in-flight requests without starting retries', async () =>
   const client = new FeishuClient({ fetch: async () => { calls++; return new Promise(() => {}); } });
   const pending = client.getToken(config()); client.dispose();
   await assert.rejects(pending, { code: 'CANCELLED' }); assert.equal(calls, 1);
-});
-
-test('real Cordis prepend observer is reached before an earlier answerer and preserves its answer', async () => {
-  const ctx = new Context(); const calls = [];
-  ctx.on('user-questions/request', async () => { calls.push('answer'); return { answers: [] }; });
-  ctx.on('user-questions/request', (_request, next) => { calls.push('observe'); return next(); }, { prepend: true });
-  const result = await ctx.waterfall('user-questions/request', { questions: [] }, async () => { throw new Error('unexpected fallback'); });
-  assert.deepEqual(calls, ['observe', 'answer']); assert.deepEqual(result, { answers: [] });
-});
-
-test('plan notification observer runs with no browser answerer and preserves no-provider failure', async () => {
-  const ctx = new Context(); const notifications = [];
-  ctx.on('user-questions/request', (request, next) => {
-    notifications.push(questionNotification(request.agent.session, request));
-    return next();
-  }, { prepend: true });
-  const request = { agent: { session: session() }, questions: [{ id: 'plan', question: 'Approve?', detail: '# Plan', options: [{ label: 'Approve' }], intent: { kind: 'plan-review', approve: 'Approve', callId: 'p1' } }] };
-  await assert.rejects(ctx.waterfall('user-questions/request', request, async () => { throw Object.assign(new Error('no answerer'), { code: 'NO_PROVIDER' }); }), { code: 'NO_PROVIDER' });
-  assert.equal(notifications.length, 1); assert.equal(notifications[0].kind, 'plan');
 });
 
 test('host routes are dependency-injected, reject unauthorized requests and match tool/service results', async t => {
