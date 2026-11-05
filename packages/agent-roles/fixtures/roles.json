@@ -1,0 +1,30 @@
+[
+  {
+    "id": "reviewer",
+    "name": "reviewer",
+    "displayName": "Reviewer",
+    "description": "Review an explicitly supplied artifact and report evidence.",
+    "prompt": "Review only the assigned artifact. Report findings, evidence, and uncertainties. Do not modify files.",
+    "enabled": false,
+    "provider": "example-provider",
+    "model": "example-model",
+    "reasoningEffort": "",
+    "tools": [
+      "read",
+      "glob",
+      "grep"
+    ]
+  },
+  {
+    "id": "writer",
+    "name": "writer",
+    "displayName": "Writer",
+    "description": "Draft text from supplied materials.",
+    "prompt": "Write the requested text using the supplied materials. Return the finished text.",
+    "enabled": false,
+    "provider": "example-provider",
+    "model": "example-model",
+    "reasoningEffort": "",
+    "tools": []
+  }
+]

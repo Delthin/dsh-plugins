@@ -1,0 +1,13 @@
+node_modules/
+*.tgz
+coverage/
+.DS_Store
+.env
+.env.*
+.npmrc
+*.log
+# Local-only historical role content. Never commit or publish.
+seed-roles.json
+roles.json
+runs.json
+!fixtures/roles.json

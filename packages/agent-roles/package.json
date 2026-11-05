@@ -1,0 +1,92 @@
+{
+  "name": "dsh-agent-roles",
+  "version": "0.4.0",
+  "description": "Role management, per-role models and skills for native DeepSeek Harness Agent Teams.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.5",
+    "@deepseek-ai/dsh-agent": ">=0.2.1-rc.5",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.5",
+    "@deepseek-ai/dsh-skill": ">=0.2.1-rc.5",
+    "@deepseek-ai/schemastery": ">=3.18.0",
+    "@deepseek-ai/dsh-home-paths": ">=0.2.1-rc.5",
+    "@deepseek-ai/dsh-tool-executor-native": ">=0.2.2-rc.1"
+  },
+  "license": "MIT",
+  "author": "Delthin",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Delthin/dsh-agent-roles.git"
+  },
+  "homepage": "https://github.com/Delthin/dsh-agent-roles#readme",
+  "bugs": {
+    "url": "https://github.com/Delthin/dsh-agent-roles/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "agent-team",
+    "multi-agent",
+    "roles",
+    "skills"
+  ],
+  "engines": {
+    "node": ">=22.18.0",
+    "dsh": ">=0.2.1-rc.5"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "store.js",
+    "skills.js",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "docs/RELEASING.md",
+    "runtime.js"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check client.js && node --check store.js && node --check skills.js && node --check runtime.js",
+    "test": "node --test *.test.mjs",
+    "prepack": "npm run check && npm test",
+    "release:check": "npm run check && npm test && node scripts/check-package.mjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-experimental-agent-team": ">=0.2.1-rc.5",
+    "@deepseek-ai/dsh-experimental-tool-agent-team": ">=0.2.1-rc.5",
+    "@deepseek-ai/dsh-experimental-client-ui-agent-team": ">=0.2.1-rc.5"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tool-executor-native": {
+      "optional": true
+    }
+  }
+}
