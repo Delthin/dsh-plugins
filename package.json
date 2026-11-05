@@ -1,0 +1,27 @@
+{
+  "name": "delthin-dsh-plugins-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Independent DSH plugins maintained in one workspace",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.19.0",
+    "npm": ">=11.5.1"
+  },
+  "scripts": {
+    "check": "node scripts/check-workspaces.mjs",
+    "changeset": "changeset",
+    "version:packages": "changeset version"
+  },
+  "devDependencies": {
+    "@changesets/cli": "2.29.7"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Delthin/dsh-plugins.git"
+  }
+}
