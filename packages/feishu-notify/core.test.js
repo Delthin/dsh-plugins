@@ -28,6 +28,19 @@ test('network failures retry exactly three times after the initial attempt', asy
   assert.equal(calls, 4);
 });
 
+test('every Feishu request disables redirects so credentials stay on the configured origin', async () => {
+  const seen = [];
+  const client = new FeishuClient({ fetch: async (url, init) => { seen.push({ url, init }); throw new TypeError('unexpected redirect'); } });
+  await assert.rejects(client.getToken(config()), { code: 'NETWORK' });
+  assert.equal(seen.length, 4);
+  for (const { url, init } of seen) {
+    assert.equal(init.redirect, 'error');
+    assert.equal(url, 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal');
+  }
+  await assert.rejects(client.send(config(), 'hello', 'uuid-1'), { code: 'NETWORK' });
+  assert.ok(seen.slice(4).every(({ init }) => init.redirect === 'error'));
+});
+
 test('5xx without a business failure retries four attempts; business failures do not retry', async () => {
   let calls = 0;
   const client = new FeishuClient({ fetch: async () => { calls++; return response({ code: 0 }, 503); } });

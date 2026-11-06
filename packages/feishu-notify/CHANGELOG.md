@@ -4,7 +4,12 @@
 
 说明文档 / Documentation: [简体中文 README](./README.md) | [English README](./README.en.md)
 
-## [Unreleased]
+## [1.1.1]
+
+### Security / 安全
+
+- **禁止 HTTP 重定向 / Redirects Disabled**：飞书请求显式设置 `redirect: 'error'`，携带 `app_secret`（获取 `tenant_access_token`）与 `Bearer` 令牌（发送消息）的请求不会跟随 3xx 跳转到其他源地址；新增单元测试固定该选项与请求域名。
+  Every Feishu request now sets `redirect: 'error'`, so requests carrying `app_secret` (token acquisition) or a `Bearer` token (message delivery) never follow a 3xx redirect to another origin; a unit test pins the option and the request origin.
 
 ### Changed / 变更
 
@@ -12,8 +17,8 @@
   Migrated package name to `@delthin/dsh-feishu-notify` under `packages/feishu-notify` in `Delthin/dsh-plugins` with public package metadata (`publishConfig.access: "public"`), while preserving internal service IDs, settings page IDs, and the `feishu-notify.json` profile configuration filename.
 - **许可证声明 / License Declaration**：统一采用 `Apache-2.0` 开源许可证（参见 [`LICENSE`](../../LICENSE)，允许商业使用、修改与分发，需保留版权与许可声明并标明修改，专利与完整条款以许可证原文为准）。
   Licensed under the `Apache-2.0` open-source license (see [`LICENSE`](../../LICENSE); permits commercial use, modification, and distribution subject to retaining copyright/license notices, stating file modifications, and the patent terms in the license).
-- **运行基线声明 / Runtime Baseline Declaration**：明确运行要求为 Node.js `>= 22` 与 DSH `>= 0.2.1-rc.5`（当前验证基准 `0.2.2-rc.1`），并通过 `core.test.js` 与 `summary.test.js` 共 38 项单元测试。
-  Declared runtime requirements as Node.js `>= 22` and DSH `>= 0.2.1-rc.5` (verified on `0.2.2-rc.1`), validated by 38 unit tests across `core.test.js` and `summary.test.js`.
+- **运行基线声明 / Runtime Baseline Declaration**：明确运行要求为 Node.js `>= 22` 与 DSH `>= 0.2.1-rc.5`（当前验证基准 `0.2.2-rc.1`），并通过 `core.test.js` 与 `summary.test.js` 共 35 项单元测试。
+  Declared runtime requirements as Node.js `>= 22` and DSH `>= 0.2.1-rc.5` (verified on `0.2.2-rc.1`), validated by 35 unit tests across `core.test.js` and `summary.test.js`.
 
 ## [1.1.0]
 

@@ -12,7 +12,7 @@ This document covers version management, manual npm publishing, and marketplace 
 
 仓库使用 `Changesets` 管理版本（`fixed: []`、`linked: []`），四个子包版本彼此独立，根包保持 `"private": true` 不发布：
 
-- `@delthin/dsh-feishu-notify`（当前 `1.1.0`）
+- `@delthin/dsh-feishu-notify`（当前 `1.1.1`）
 - `@delthin/dsh-agent-roles`（当前 `0.4.1`）
 - `@delthin/dsh-fast`（当前 `0.1.3`；npm 注册表已存在历史版本 `0.1.2`，新发布版本必须高于注册表现有版本）
 - `@delthin/dsh-tool-wrap`（当前 `1.2.0`）
@@ -39,7 +39,7 @@ This document covers version management, manual npm publishing, and marketplace 
 
 The monorepo uses `Changesets` (`fixed: []`, `linked: []`) so all four packages version independently while the root package remains `"private": true`:
 
-- `@delthin/dsh-feishu-notify` (`1.1.0`)
+- `@delthin/dsh-feishu-notify` (`1.1.1`)
 - `@delthin/dsh-agent-roles` (`0.4.1`)
 - `@delthin/dsh-fast` (`0.1.3`; version `0.1.2` already exists on the npm registry, and any new publish must use a version strictly higher than existing registry versions)
 - `@delthin/dsh-tool-wrap` (`1.2.0`)

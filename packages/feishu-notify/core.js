@@ -104,7 +104,7 @@ export class FeishuClient {
       });
       try {
         const result = await Promise.race([(async () => {
-          const response = await this.fetch(BASE + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify(body), signal: controller.signal });
+          const response = await this.fetch(BASE + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify(body), signal: controller.signal, redirect: 'error' });
           let data;
           try { data = await response.json(); }
           catch { if (response.status >= 500) throw new NotifyError('飞书服务暂时不可用', 'HTTP_5XX', 502); throw new NotifyError('飞书返回了无效 JSON', 'INVALID_RESPONSE', 502); }
