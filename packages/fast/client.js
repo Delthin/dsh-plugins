@@ -73,7 +73,10 @@ window.__ModuleLoader__.load({ id: '@delthin/dsh-fast', factory: require => {
         event.currentTarget.releasePointerCapture(event.pointerId);void commit(next);
       },
       onPointerCancel:cancel,onLostPointerCapture:()=>{if(drag.current) cancel();},
-      onBlur:()=>{if(drag.current) cancel();},
+      // A host feature or skin can move focus back to the composer while the pointer
+      // is still down (claude-style's composer restyle does this on pointerdown).
+      // Pointer capture keeps the stream alive, so only cancel once capture is gone.
+      onBlur:event=>{const state=drag.current;if(state&&!event.currentTarget.hasPointerCapture(state.id)) cancel();},
       onKeyDown:event=>{
         if(event.key==='Escape'&&drag.current){event.preventDefault();event.stopPropagation();cancel();return;}
         if(disabled||pending.current||drag.current) return;

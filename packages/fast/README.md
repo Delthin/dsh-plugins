@@ -2,7 +2,7 @@
 
 [English](<./README.en.md>) | [变更日志](<./CHANGELOG.md>)
 
-`@delthin/dsh-fast` 是 DeepSeek Harness (DSH) 的会话服务档位切换与请求转发插件（当前版本 `0.1.3`，许可 `Apache-2.0`）。它为当前会话提供 `Standard` 与 `Fast` 档位切换能力，并在配置完整时将指定供应商的 Responses 请求附加 `service_tier: "priority"` 后转发至管理员配置的目标地址。
+`@delthin/dsh-fast` 是 DeepSeek Harness (DSH) 的会话服务档位切换与请求转发插件（当前版本 `0.1.4`，许可 `Apache-2.0`）。它为当前会话提供 `Standard` 与 `Fast` 档位切换能力，并在配置完整时将指定供应商的 Responses 请求附加 `service_tier: "priority"` 后转发至管理员配置的目标地址。
 
 > **重要声明**：`Fast` 档位仅负责注入 `service_tier: "priority"` 参数并将匹配请求转发至目标端点，**不构成模型生成速度或响应性能的承诺**。上游服务是否支持该参数、是否实际加速以及如何计费，均由管理员配置的上游供应商决定，需由管理员自行核实，本插件不保证加速效果或更低费用。
 
@@ -17,7 +17,7 @@
 
 ## 安装说明
 
-源码位于单仓子目录 `packages/fast`，配置 `publishConfig.access: "public"` 支持 npm 公共仓库发布。可通过 `npm i @delthin/dsh-fast`（或指定 `@delthin/dsh-fast@0.1.3`）安装，并在 DSH 宿主配置（如 `cordis.patch.yml`）中导入启用 `@delthin/dsh-fast`。插件市场收录独立于 npm 发布。
+源码位于单仓子目录 `packages/fast`，配置 `publishConfig.access: "public"` 支持 npm 公共仓库发布。可通过 `npm i @delthin/dsh-fast`（或指定 `@delthin/dsh-fast@0.1.4`）安装，并在 DSH 宿主配置（如 `cordis.patch.yml`）中导入启用 `@delthin/dsh-fast`。插件市场收录独立于 npm 发布。
 
 ### 从源码仓库打包验证
 

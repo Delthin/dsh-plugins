@@ -2,6 +2,15 @@
 
 See also: [中文说明](<./README.md>) | [English README](<./README.en.md>)
 
+## [0.1.4] - 2026-11-06
+
+### Bug Fixes / 缺陷修复
+
+- **中文**：
+  - 修复推理等级滑块在宿主或皮肤于 `pointerdown` 阶段把焦点移回输入框时无法拖动的问题。拖动期间滑块仍持有 pointer capture，此时失焦不再取消拖动；只有捕获确实丢失（元素被移除或指针被取消）才回退，避免其他插件抢焦点打断鼠标拖动，例如 claude-style 的「重绘对话框」。键盘操作路径不变。
+- **English**:
+  - Fixed the reasoning-effort slider becoming undraggable when the host or a skin moves focus back to the input box during `pointerdown`. While the drag is active and the slider still holds pointer capture, losing focus no longer cancels it; the drag is only cancelled once capture is actually lost (element removed or pointer cancelled), so plugins that take focus on `pointerdown` — such as the claude-style composer redraw — no longer break mouse dragging. Keyboard operation is unchanged.
+
 ## [0.1.3] - 2026-11-05
 
 ### Migration & Packaging / 包名迁移与配置调整

@@ -2,7 +2,7 @@
 
 [中文说明](<./README.md>) | [Changelog](<./CHANGELOG.md>)
 
-`@delthin/dsh-fast` is a session service-tier toggle and request forwarding plugin for DeepSeek Harness (DSH) (current version `0.1.3`, license `Apache-2.0`). It enables switching between `Standard` and `Fast` tiers within the current session and, when fully configured, attaches `service_tier: "priority"` to targeted Responses requests and forwards them to an administrator-configured target endpoint.
+`@delthin/dsh-fast` is a session service-tier toggle and request forwarding plugin for DeepSeek Harness (DSH) (current version `0.1.4`, license `Apache-2.0`). It enables switching between `Standard` and `Fast` tiers within the current session and, when fully configured, attaches `service_tier: "priority"` to targeted Responses requests and forwards them to an administrator-configured target endpoint.
 
 > **Important Notice**: The `Fast` tier only sets `service_tier: "priority"` and forwards matching requests to the configured target endpoint. **It is not a promise of model performance or generation speed.** Whether the upstream provider supports this parameter, delivers faster responses, or applies different billing depends entirely on the upstream service and must be verified by the administrator. This plugin does not guarantee acceleration or lower costs.
 
@@ -17,7 +17,7 @@
 
 ## Installation
 
-Its source lives in the `packages/fast` workspace directory and is configured with `publishConfig.access: "public"` for npm distribution. Install it with `npm i @delthin/dsh-fast` (or `@delthin/dsh-fast@0.1.3`) and import `@delthin/dsh-fast` in your DSH host configuration (such as `cordis.patch.yml`). Marketplace listing is independent of npm publication.
+Its source lives in the `packages/fast` workspace directory and is configured with `publishConfig.access: "public"` for npm distribution. Install it with `npm i @delthin/dsh-fast` (or `@delthin/dsh-fast@0.1.4`) and import `@delthin/dsh-fast` in your DSH host configuration (such as `cordis.patch.yml`). Marketplace listing is independent of npm publication.
 
 ### Build and Pack from Source
 

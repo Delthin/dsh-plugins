@@ -14,7 +14,7 @@ This document covers version management, manual npm publishing, and marketplace 
 
 - `@delthin/dsh-feishu-notify`（当前 `1.1.1`）
 - `@delthin/dsh-agent-roles`（当前 `0.4.1`）
-- `@delthin/dsh-fast`（当前 `0.1.3`；npm 注册表已存在历史版本 `0.1.2`，新发布版本必须高于注册表现有版本）
+- `@delthin/dsh-fast`（当前 `0.1.4`；npm 注册表已存在历史版本 `0.1.2`，新发布版本必须高于注册表现有版本）
 - `@delthin/dsh-tool-wrap`（当前 `1.2.0`）
 
 日常开发与版本更新步骤：
@@ -41,7 +41,7 @@ The monorepo uses `Changesets` (`fixed: []`, `linked: []`) so all four packages 
 
 - `@delthin/dsh-feishu-notify` (`1.1.1`)
 - `@delthin/dsh-agent-roles` (`0.4.1`)
-- `@delthin/dsh-fast` (`0.1.3`; version `0.1.2` already exists on the npm registry, and any new publish must use a version strictly higher than existing registry versions)
+- `@delthin/dsh-fast` (`0.1.4`; version `0.1.2` already exists on the npm registry, and any new publish must use a version strictly higher than existing registry versions)
 - `@delthin/dsh-tool-wrap` (`1.2.0`)
 
 Standard versioning and verification steps:
