@@ -1,4 +1,4 @@
 {
-  "meta.title": "Tool discovery",
-  "meta.description": "Load complete plugin tool definitions on demand. Edit or generate description drafts, then save to apply."
+  "meta.title": "Tools and prompts",
+  "meta.description": "Manage tool selection, plugin descriptions, and prompt source roles, loading and order in one place."
 }

@@ -40,6 +40,7 @@ class HostBindingRuntime extends PtcRuntime {
 import { ConfigStore } from '../core.js';
 import * as discoveryPlugin from '../index.js';
 import { installOrigins } from '../origins.js';
+import { installPromptOrigins } from '../prompt-origins.js';
 
 export const pluginIds = { browser: 'dsh-ego-browser', image: 'dsh-image-gen', schedule: '@deepseek-ai/dsh-tool-schedule' };
 export const enabledConfig = (overrides = {}) => ({ version: 3, enabled: true, groups: Object.values(pluginIds).sort(), tools: [], exclude: [], descriptions: {}, ...overrides });
@@ -94,7 +95,8 @@ export async function hostFixture(t, { mode = 'ptc', config = enabledConfig(), n
   const dir = await temporaryDirectory(t);
   const ctx = new Context();
   const cleanupOrigins = installOrigins();
-  t.after(async () => { try { await ctx.fiber.dispose(); } finally { cleanupOrigins(); } });
+  const cleanupPrompts = installPromptOrigins();
+  t.after(async () => { try { await ctx.fiber.dispose(); } finally { cleanupOrigins(); cleanupPrompts(); } });
   const routes = new Map();
   const events = [];
   ctx.provide('profileContext', { dir });

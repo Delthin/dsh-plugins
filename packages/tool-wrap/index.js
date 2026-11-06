@@ -3,6 +3,10 @@ import { registeredPlugins, toolOrigin } from './origins.js';
 import { generationStatus, generateDescription } from './summaries.js';
 import { ConfigStore, DiscoveryError, DISCOVER, LEGACY_DISCOVER, isDiscoveryTool, sdkSchemas, renderSdk, project, catalog, discover, digest } from './core.js';
 
+import { CompositionStore, validateComposition, validateCapabilities } from './prompt-composition.js';
+import { CompositionRuntime } from './composition-runtime.js';
+import { DIRECTORY_NAME } from './prompt-origins.js';
+
 export const name = 'tool-discovery';
 export const inject = ['profileContext', 'tools', 'systemPrompt'];
 const API = '/api/tool-discovery';
@@ -10,7 +14,13 @@ const API = '/api/tool-discovery';
 export async function apply(ctx) {
   const store = new ConfigStore(ctx.get('profileContext').dir);
   await store.load();
+  const compositionStore = new CompositionStore(ctx.get('profileContext').dir);
+  await compositionStore.load();
   const tools = ctx.get('tools');
+  const composition = new CompositionRuntime(ctx, compositionStore, store, () => ctx.get('ptcRuntime'));
+  ctx.provide('toolWrapPromptComposition', composition);
+  ctx.on('session/event', (_session, event) => { if (event.type === 'user/message') composition.observeInstructions(event.data); });
+  ctx.systemPrompt.section({ name: DIRECTORY_NAME, order: ctx.systemPrompt.getSectionOrder('TOOLS_SDK') + 1, text: '', interpolate: false });
   let lastAssembly = null;
   let discoveryCalls = 0;
   const runtime = () => ctx.get('ptcRuntime');
@@ -30,7 +40,7 @@ export async function apply(ctx) {
     const grouped = new Set(groups.flatMap(group => group.tools.map(tool => tool.name)));
     const unknown = schemas.filter(tool => !isDiscoveryTool(tool.name) && !tool.plugin).length;
     return {
-      config: structuredClone(store.config), groups,
+      config: structuredClone(store.config), groups, promptComposition: composition.status(),
       otherTools: schemas.filter(tool => !isDiscoveryTool(tool.name) && !grouped.has(tool.name)).map(tool => ({ name: tool.name, description: tool.description.slice(0, 150) })),
       estimate: project(schemas, store.config, runtime() ?? { language: 'typescript', programFormat: 'function-body' }).estimate,
       lastAssembly, discoveryCalls, generation: generationStatus(ctx),
@@ -41,15 +51,21 @@ export async function apply(ctx) {
   // Keep the old binding callable for existing sessions, never advertise it in projected SDKs.
   for (const toolName of [DISCOVER, LEGACY_DISCOVER]) tools.register(defineTool({
     name: toolName,
-    description: 'Load an on-demand plugin tool pack by its exact plugin id. Returns all deferred tools in that plugin visible to the caller, with original full parameters, return types and usage instructions. No arguments lists plugin briefs, deferred tool names and counts. Use proactively when a task needs a listed tool; the user need not request unpacking. Return only one complete pack per run_code (prefer return await tools.unwrap({plugin: ...})); if printing, serialize the whole pack as JSON instead of console.log(object), which can truncate SDK strings. Then call the original tools in a later run_code. Does not execute tools, grant permissions, or change system prompts.',
+    description: 'Load an on-demand plugin tool pack by its exact plugin id. Returns all deferred tools in that plugin visible to the caller, with original full parameters, return types and usage instructions. No arguments lists plugin briefs, deferred tool names and counts. Use proactively when a task needs a listed tool; the user need not request unpacking. Return only one complete pack per run_code (prefer return await tools.unwrap({plugin: ...})); if printing, serialize the whole pack as JSON instead of console.log(object), which can truncate SDK strings. Then call the original tools in a later run_code. Does not execute business tools or grant permissions. With prompt composition enabled, successfully loaded pack guidance is admitted to subsequent requests in this session using configured message roles; other sessions are unchanged.',
     parameters: {
       plugin: { type: 'string', description: 'Exact plugin id from the on-demand overview. Load the whole caller-visible deferred tool pack in one call; no keyword search.' },
       tool: { type: 'string', description: 'Exact name of a deferred standalone tool without an identified plugin, as listed in the overview.' },
     },
     output: { schema: { type: 'object', additionalProperties: true }, render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
-    execute(args, execution) {
-      // Never consult global schemas for a caller. Restriction and scoped shadowing must survive discovery.
-      const result = discover(sdkSchemas(tools, execution.agent, execution.toolSet), store.config, runtime(), args);
+    async execute(args, execution) {
+      // Restriction, scoped shadowing and the resolved admission snapshot survive discovery.
+      const accepted = composition.accepted(execution);
+      const result = discover(sdkSchemas(tools, execution.agent, execution.toolSet), accepted?.toolsConfig ?? store.config, runtime(), args);
+      if (result.tools) {
+        result.guidance = await composition.guidance(execution, result.plugin, result.tools);
+        if (result.tools.length) composition.recordPack(execution, result.plugin);
+        result.guidanceStatus = composition.capabilities().admission && execution.toolSet && composition.stepAssemblies.get(execution.toolSet)?.agent === execution.agent ? 'admitted-step' : 'host-admission-unavailable';
+      }
       discoveryCalls++;
       return result;
     },
@@ -68,7 +84,7 @@ export async function apply(ctx) {
     if (!store.config.enabled || mode !== 'ptc') {
       // Native and disabled admission is handled by register({ when }) above.
       // Unresolved inspection may still include discovery in the PTC SDK.
-      let sections = assembly.sections;
+      let sections = assembly.sections.filter(section => section.name !== DIRECTORY_NAME);
       if (mode === 'ptc') {
         const schemas = sdkSchemas(tools, context.scope, context.toolSet);
         sections = sections.map(section => section.name === 'tools:sdk' && section.text === renderSdk(schemas, runtime())
@@ -86,16 +102,18 @@ export async function apply(ctx) {
       lastAssembly = { mode, status: 'incompatible-sdk', beforeChars: 0, afterChars: 0, savedChars: 0, hash: '', hiddenCount: 0 };
       // Still hide the compatibility binding when the primary transport is restricted.
       // Never rewrite another plugin's SDK or defer tools without a callable unwrap.
-      return exactSdk ? { ...assembly, sections: assembly.sections.map(item => item === section
-        ? { ...section, text: renderSdk(schemas.filter(tool => tool.name !== LEGACY_DISCOVER), runtime()), interpolate: false } : item) } : assembly;
+      const sections = assembly.sections.filter(item => item.name !== DIRECTORY_NAME);
+      return { ...assembly, sections: exactSdk ? sections.map(item => item === section
+        ? { ...section, text: renderSdk(schemas.filter(tool => tool.name !== LEGACY_DISCOVER), runtime()), interpolate: false } : item) : sections };
     }
     const projected = project(schemas, store.config, runtime());
     const replacement = { ...section, text: projected.text, interpolate: false };
     lastAssembly = { mode, status: 'projected', ...projected.estimate, hash: digest(projected.text) };
-    return { ...assembly, sections: assembly.sections.map(item => item === section ? replacement : item) };
+    return { ...assembly, toolDiscoveryProjection: { config: structuredClone(store.config) }, sections: assembly.sections.map(item => item === section ? replacement : item.name === DIRECTORY_NAME ? { ...item, text: projected.directory, interpolate: false } : item) };
   }, { prepend: true });
 
-  // No raw prompts, tool arguments, session identifiers, or discovery state are retained.
+  // Settings/catalogs retain no prompt bodies or session IDs. Accepted prompt bodies
+  // live only under the same step's caller-bound toolSet weak key.
   // The route is Host-local and uses the same authenticated, same-origin gate as existing settings.
   ctx.inject(['webServer', 'connection'], routeCtx => {
     const respond = (res, code, value) => {
@@ -128,6 +146,32 @@ export async function apply(ctx) {
         return respond(res, 200, status());
       } catch (error) {
         const safe = error instanceof DiscoveryError ? error : new DiscoveryError('工具发现操作失败，请重试', 500);
+        if (!res.destroyed) respond(res, safe.status, { error: { message: safe.message } });
+      }
+    }
+    async function compositionHandler(req, res) {
+      const rejection = routeCtx.connection.requestRejection(req);
+      if (rejection !== undefined) return respond(res, rejection, { error: { message: '请通过已登录的 DSH 同源页面访问' } });
+      if (!['GET', 'PUT'].includes(req.method)) return respond(res, 405, { error: { message: '仅支持 GET 和 PUT' } });
+      try {
+        if (req.method === 'PUT') {
+          if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers['content-type'] ?? ''))) throw new DiscoveryError('请求必须使用 application/json', 415);
+          const chunks = []; let bytes = 0;
+          for await (const chunk of req) {
+            bytes += Buffer.byteLength(chunk);
+            if (bytes > 65536) throw new DiscoveryError('请求最多 64 KiB', 413);
+            chunks.push(Buffer.from(chunk));
+          }
+          let value;
+          try { value = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new DiscoveryError('无效 JSON'); }
+          const config = validateComposition(value);
+          validateCapabilities(config, composition.sources(), composition.capabilities(), compositionStore.config);
+          await compositionStore.save(config);
+          ctx.emit('system-prompt/change');
+        }
+        return respond(res, 200, composition.status());
+      } catch (error) {
+        const safe = error instanceof DiscoveryError ? error : new DiscoveryError('提示词排序操作失败，请重试', 500);
         if (!res.destroyed) respond(res, safe.status, { error: { message: safe.message } });
       }
     }
@@ -175,6 +219,7 @@ export async function apply(ctx) {
         if (controller) generating = false;
       }
     }
+    routeCtx.effect(() => routeCtx.webServer.register({ kind: 'exact', path: API + '/prompt-composition', handler: compositionHandler }), 'tool-discovery:prompt-composition-api');
     routeCtx.effect(() => routeCtx.webServer.register({ kind: 'exact', path: API, handler }), 'tool-discovery:api');
     routeCtx.effect(() => routeCtx.webServer.register({ kind: 'exact', path: API + '/generate', handler: generationHandler }), 'tool-discovery:generate-api');
   });

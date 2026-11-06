@@ -31,6 +31,11 @@
     "core.js",
     "summaries.js",
     "origins.js",
+    "prompt-origins.js",
+    "prompt-order.js",
+    "prompt-composition.js",
+    "composition-runtime.js",
+    "host-support",
     "origin-bootstrap.js",
     "client.js",
     "locale",
@@ -43,13 +48,15 @@
     "NOTICE"
   ],
   "scripts": {
-    "check": "node --check index.js && node --check core.js && node --check summaries.js && node --check origins.js && node --check origin-bootstrap.js && node --check client.js && node --check test/fixture.js",
+    "check": "node --check index.js && node --check core.js && node --check summaries.js && node --check origins.js && node --check prompt-origins.js && node --check prompt-order.js && node --check prompt-composition.js && node --check composition-runtime.js && node --check host-support/admission.js && node --check host-support/patches.js && node --check host-support/adapter.mjs && node --check origin-bootstrap.js && node --check client.js && node --check test/fixture.js",
     "test": "node --test test/*.test.js",
     "prepack": "npm run check && npm test"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/cordis-plugin-loader": "1.1.0",
+    "@deepseek-ai/dsh-agent-instructions": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-agent-loop": "0.2.2-rc.1",
     "@deepseek-ai/dsh-fs-local": "0.2.2-rc.1",
     "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
     "@deepseek-ai/dsh-ptc-runtime": "0.2.2-rc.1",
@@ -69,6 +76,7 @@
     "@deepseek-ai/cordis": ">=4.0.5",
     "@deepseek-ai/dsh-scope": ">=0.2.1-rc.5 || >=0.2.2-rc.1",
     "@deepseek-ai/dsh-tools": ">=0.2.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-tool-executor-ptc": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-llm": ">=0.2.1-rc.5 || >=0.2.2-rc.1"
   },

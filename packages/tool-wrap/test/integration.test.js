@@ -19,7 +19,8 @@ test('real SystemPrompt projection preserves registry and wire transport; discov
   const aBefore = await assemble(ctx, a);
   const bBefore = await assemble(ctx, b);
   assert.deepEqual(aBefore.tools.map(tool => tool.name), ['run_code']);
-  assert.match(sdkSection(aBefore), /# On-demand tools/);
+  assert.match(aBefore.sections.find(section => section.name === 'tool-discovery:directory').text, /# On-demand tools/);
+  assert.doesNotMatch(sdkSection(aBefore), /# On-demand tools/);
   assert.doesNotMatch(sdkSection(aBefore).split('\n\n# On-demand tools')[0], /ego_visit:|virtual_echo:/);
   assert.match(sdkSection(aBefore), /ego_capture:/);
   assert.match(renderPrompt(aBefore), /Original login and safety instructions stay present/);
@@ -95,7 +96,7 @@ test('real scoped restrictions prevent discovery leaks; shadow input/output defi
   assert.match(bPrivate.sdk, /scopedBMarker: string/);
   assert.doesNotMatch(bPrivate.sdk, /SCOPED_A_BROWSER|scopedAMarker/);
   const aAssembly = await assemble(ctx, a);
-  const aCatalog = sdkSection(aAssembly).split('\n\n# On-demand tools')[1];
+  const aCatalog = aAssembly.sections.find(section => section.name === 'tool-discovery:directory').text;
   assert.doesNotMatch(aCatalog, /ego_secret|scope_only|ego_secret:|scope_only:/);
   const browserRow = aCatalog.split('\n').filter(line => line.startsWith('- {')).map(line => JSON.parse(line.slice(2))).find(row => row.plugin === 'dsh-ego-browser');
   assert.deepEqual(browserRow.tools, ['ego_capture', 'ego_visit']);

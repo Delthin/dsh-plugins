@@ -8,7 +8,7 @@ The plugin is disabled by default. Native tool-calling mode, disabled state, and
 
 ## Key Features
 
-- **Condensed PTC SDK Rendering**: When enabled, selected plugins appear in the system prompt's `tools:sdk` section with only their plugin ID, summary description, and tool names—omitting full parameter and return-type definitions from the standing prompt.
+- **Condensed PTC SDK Rendering**: Selected full definitions are deferred from `tools:sdk`; an independent unwrap directory retains plugin IDs, summaries and all deferred tool names.
 - **Whole-Plugin Discovery by Exact ID**: Inside `run_code`, the model calls `unwrap` with an exact plugin ID (or an exact tool name for unattributed tools) to inspect full definitions visible to the current caller. Discovery does not perform keyword search, does not execute target tools, and does not expand caller permissions.
 - **Granular Scope Controls**: Configure on-demand folding by whole plugin (`groups`), explicit tool names (`tools`), and high-priority exclusions (`exclude`). Selecting a plugin automatically covers tools added by that plugin in future updates, while excluded tools always retain their full SDK definitions.
 - **Plugin Description Management**: Uses developer-provided package descriptions by default, allows custom overrides per plugin (1–2,000 characters after trimming), and supports drafting descriptions via the deployment's default LLM using only global tool names and descriptions.
@@ -29,7 +29,7 @@ The plugin is disabled by default. Native tool-calling mode, disabled state, and
 ### Verification Baseline & Open Version Ranges
 
 - **Host Contract Dependencies**: Starting in DSH `0.2.2-rc.1`, `renderToolsSdk` and `renderToolsSdkPy` moved to `@deepseek-ai/dsh-tool-executor-ptc`, `tools.modeFor` was removed, and step-resolved conditional toolsets were introduced. This plugin relies on these contracts and does not support earlier DSH versions.
-- **Targeted Test Baseline**: Verified against `cordis 4.1.0` + `DSH 0.2.2-rc.1` with 114 targeted tests (114 passed, 0 skipped, exit code 0, including real Node PTC checks; browser E2E automation was not run, and see the repository handoff acceptance record for validation details).
+- **Adapter Baseline**: The explicit host asset targets audited `cordis 4.1.0` + `DSH 0.2.2-rc.1` file shapes. Host activation and live-service acceptance belong to the maintainer's authorized maintenance window.
 - **Open Upper Bounds**: Peer and host version ranges use open upper bounds (`>=`) to permit installation on subsequent releases, but do not guarantee compatibility ahead of time against future breaking host API changes.
 
 ## Installation & Migration from Legacy Package
@@ -67,16 +67,16 @@ When upgrading, follow these precautions:
 The package exports two distinct runtime entrypoints:
 
 1. **`@delthin/dsh-tool-wrap/origin-bootstrap` (Origin Gate Adapter)**
-   - Must be loaded **before** the host `tools` service registers tool plugins.
-   - Records the loader plugin identity for each registered tool and provides the internal readiness service `toolDiscoveryOriginsReady`.
+   - Must load **before** `tools` and `system-prompt` admit dependent plugin registrations.
+   - Observes real Loader identities for tools and prompt sections, providing `toolDiscoveryOriginsReady` and `toolDiscoveryPromptOriginsReady` respectively, preserving original return values, exceptions and lifecycle.
 2. **`@delthin/dsh-tool-wrap` (Main Plugin)**
    - Registers `unwrap`, hooks the `tools:sdk` prompt waterfall, serves settings APIs, and registers client UI assets.
    - Waits on `toolDiscoveryOriginsReady` for deterministic startup ordering.
 
 ### Custom Composition and Startup Patches
 
-- Standard startup patching targets the default `tools` entry. If your host uses a custom composition with an existing `inject` map, merge the existing dependencies and preserve `toolDiscoveryOriginsReady`—post-loaded overlays must not overwrite this gate either (host patches replace `inject` as a whole rather than deep-merging).
-- Origin tracking cannot retroactively inspect tools registered before the gate was active. After installing, upgrading, or adjusting `origin-bootstrap` wiring, **you must restart the DSH service**; refreshing the browser alone will not populate registration origins.
+- The standard patch targets default `tools` and `system-prompt` entries, adding `toolDiscoveryOriginsReady` and `toolDiscoveryPromptOriginsReady` respectively. Custom compositions must merge existing `inject` dependencies with the corresponding gate; later overlays must preserve them (host patches replace `inject` as a whole, not a deep merge).
+- Observation cannot recover tools or sections registered before installation. Initial installation, upgrading this prompt-source gate or changing bootstrap wiring requires a restart and re-registration in an authorized maintenance window to capture complete sources; refreshing the browser cannot backfill them. Saving settings applies to subsequent requests without a restart.
 
 ## Usage
 
@@ -88,7 +88,35 @@ Once enabled, open **Tool On-Demand Discovery** from the left sidebar (or under 
 2. Check whole plugins to fold them on demand, or expand a plugin row to include or exclude individual tools.
 3. Click **Save Settings** at the bottom. Changes apply to subsequent prompt assemblies across sessions in the active profile; in-flight requests are not modified retroactively.
 
-The UI lists only plugins that currently expose concrete tools in the global catalog, hiding empty entries and session-only identities. Tools without recorded registration origins appear under **Unidentified Origin** and can be selected individually by tool name.
+The unified list includes all known prompt sources, including sources without global tools. Tools without recorded origins remain individually selectable under **Unidentified Origin**; unattributed prompt contributions are displayed separately without guessing a plugin from their names.
+
+### Unified Tools and Prompt Composition
+
+The same list groups tool definitions and prompt contributions by actual plugin registration identity. It also lists DSH identity/persona, global and project AGENTS, prompt-only plugins and the independent unwrap directory. Configure group and within-group order, `inherit/system/user` roles, and `inherit/always/pack` delivery. Source rules override group defaults field by field; `inherit` continues inheriting that field. Developer-role projection is not exposed by this adapter.
+
+With composition enabled, dedicated sections and contexts for a folded plugin follow its pack by default; `always` keeps them resident. Native transport, unavailable unwrap, complete personas without the directory and plugins without caller-visible deferred tools retain resident guidance. The directory cannot defer itself. Unattributed dynamic assembly contributions remain individually orderable and role-configurable, but cannot be assigned a guessed plugin or automatically follow its pack.
+
+Full composition requires explicit host support after complete-persona enforcement and final runtime-context refresh, before session admission. Ordinary user conversation messages never become configurable instruction sources. Composed system/user messages and surface replacements remain in the ordinary replayable session log. AGENTS exposes per-file boundaries after budget truncation instead of rereading files or guessing text boundaries. The global catalog retains identities only, not prompt bodies or session IDs; dynamic sources appear after actual admission.
+
+Independent profile configuration is `prompt-composition.json`:
+
+```json
+{ "version": 1, "enabled": false, "order": [], "rules": {} }
+```
+
+`order` accepts group/source IDs; `rules[id]` is `{role:"inherit",delivery:"inherit"}`. Legacy `prompt-order.json` v1 priorities migrate while preserving the original file; the broader composition policy starts disabled pending confirmation. Existing settings for uninstalled sources are retained. `GET/PUT /api/tool-discovery/prompt-composition` returns configuration, flat source metadata and real host capabilities, rejecting unsupported role/delivery choices. Persistence is separate from tool settings, authenticated and same-origin, capped at 64 KiB, atomic with 0600 permissions, and never invokes a model.
+
+#### Explicit Host Adaptation
+
+Review [host-support](<host-support/README.md>) before applying. The local adapter accepts only audited `0.2.2-rc.1` hashes and file shapes; the package's open minimum-version ranges remain unchanged. This is not an existing public host API and never runs through npm lifecycle hooks, plugin loading or synchronization.
+
+```bash
+node host-support/adapter.mjs --check --root <installation-root>
+node host-support/adapter.mjs --apply --root <installation-root> --backup <backup-directory>
+node host-support/adapter.mjs --restore --root <installation-root> --backup <backup-directory>
+```
+
+Application requires review and authorization. Restoration only touches files still matching original or adapted hashes. The script never restarts services or modifies live profiles. Without the complete adapter, known sources and limitation reasons remain visible, but unified composition cannot be enabled.
 
 ### Model Discovery Workflow
 
@@ -145,9 +173,9 @@ Settings are stored in `tool-discovery.json` inside the active host profile dire
 ## Security, Permissions & Isolation
 
 - **Settings API Protection**: Configuration and description-generation endpoints enforce host authentication, same-origin checks, and a `64 KiB` request body limit.
-- **Zero Permission Escalation**: The plugin only records registration origins and rewrites `tools:sdk` prompt text; it does not wrap tool execution or call `tools.restrict`. `unwrap` resolves definitions strictly from the intersection of the caller's `scope` and the host's step-resolved `toolSet`, preserving conditional admission, scoped shadows, parameter validation, approvals, guards, cancellation, and sandboxing.
-- **Session Isolation**: Discovery output is returned solely as a tool result in the calling conversation. There is no shared cross-session "unlocked tool pool" and no mutation of standing system prompts. Released or foreign session snapshots cannot be used to inspect or invoke tools.
-- **Dynamic Context Preservation**: Dynamic prompt context injected by other plugins (such as default image providers or canvas state) remains intact; only the `tools:sdk` definition block is condensed.
+- **Tool Permissions Stay Unchanged**: Tool discovery and prompt composition neither wrap execution nor call `tools.restrict`. Instruction-role changes require explicit authenticated configuration and the host admission adapter; ordinary user messages are never promoted. `unwrap` resolves definitions strictly from the intersection of the caller's `scope` and the host's step-resolved `toolSet`, preserving conditional admission, scoped shadows, parameter validation, approvals, guards, cancellation, and sandboxing.
+- **Session Isolation**: Discovery output is returned solely as a tool result in the calling conversation. When composition is enabled, visible successful unpack results activate guidance in the calling session’s configured real message roles. There is no shared cross-session "unlocked tool pool" or write-back to global prompt definitions. Released or foreign session snapshots cannot be used to inspect or invoke tools.
+- **Dynamic Context Preservation**: Without composition, other plugins’ dynamic context keeps its original path. With composition, the accepted step’s refreshed context follows configured delivery; unwrap does not re-evaluate dynamic providers.
 
 ## Performance Metrics & Fallback Behavior
 
@@ -156,7 +184,7 @@ Settings are stored in `tool-discovery.json` inside the active host profile dire
 The settings page displays **Global Estimate** and **Last Assembly** metrics (recording projected SDK character counts and a truncated SHA-256 digest, without storing prompts, parameters, or session IDs):
 
 - Reported savings reflect **projected PTC SDK characters** only (factoring in the overhead of `unwrap` and the plugin overview catalog; folding only one or two tiny tools may result in net-positive character overhead).
-- **Important**: Projected SDK character counts and digest stability do not equal provider-billed token counts or guaranteed prompt-cache hits. While deterministic rendering preserves system prompt prefixes when configuration and visible toolsets remain unchanged, actual cache hit rates and token savings must be evaluated using provider usage/cache telemetry.
+- **Important**: Projected SDK character counts and digest stability do not equal provider-billed token counts or guaranteed prompt-cache hits. SDK rendering is deterministic, but configured role/order changes and pack-guidance activation can change system text and its cache prefix; actual cache hit rates and token savings must be evaluated using provider usage/cache telemetry.
 
 ### Automatic Fallbacks
 

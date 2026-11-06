@@ -5,10 +5,18 @@ All notable verified changes to `@delthin/dsh-tool-wrap` are documented in this 
 
 ## [1.2.0]
 
+### Unified Prompt Composition / 统一提示词编排
+- **CN**: 统一列出宿主基础/persona、全局与项目逐文件 AGENTS、插件 section/context、可信 ContextFormed pre-step 注入及 unwrap 目录；真实注册来源不按名称猜测。支持整组/逐源排序、字段级继承、system/user 角色与常驻/随工具包加载。默认关闭，普通用户对话与 relay/notice/recall 不参与角色提升。
+- **EN**: Unified host/persona, per-file AGENTS, registered sections/contexts, trusted ContextFormed pre-step injections and unwrap directory sources. Added group/source order, field-level inheritance, system/user roles and resident/pack delivery without guessing plugin ownership or promoting ordinary conversation data.
+- **Persistence / 持久化**: Independent `prompt-composition.json` and authenticated composition APIs migrate legacy v1 order without deleting it. Unknown existing settings survive plugin removal. Atomic 0600 writes and capability checks reject unsupported choices; developer roles remain unavailable.
+- **Host support / 宿主支持**: Explicit, hash/version/shape-checked local adaptation runs after persona enforcement and final context refresh, before message persistence. Original producer messages remain auditable; logged surface replacements preserve replay and role demotion clears historical system copies. Apply/restore assets never execute through npm lifecycle hooks or restart services.
+- **Packs / 工具包**: Unwrap returns full caller-visible schemas and same-step, same-scope plugin guidance. The directory is an independent always-resident contribution; native transport, guards, approvals and tool admission remain unchanged. Global source catalogs retain metadata only.
+- **Startup / 启动**: `system-prompt` waits on `toolDiscoveryPromptOriginsReady`; custom inject overlays must retain existing dependencies. Initial origin capture and host-adapter activation require an authorized restart. No live deployment is performed by the assets themselves.
+
 ### Model Tool Rename / 模型工具更名
 - **CN**: 正式模型入口改为 `unwrap`；新普通 PTC SDK、常驻概览及示例不展示旧名，registry 保留 `discover_tools` 供旧会话兼容调用。原始 SDK 仍逐字精确匹配后才投影；关闭与原生模式不准入两种名称。配置禁止在 `tools` / `exclude` 选择 `run_code`、`unwrap`、`discover_tools`。
 - **EN**: Renamed the official model tool to `unwrap`, keeping `discover_tools` callable only for legacy sessions and hiding it from projected SDKs. Raw SDK exact-match guards, conditional admission, caller scope/toolSet and original execution permissions remain unchanged. Examples return a complete pack or print its full JSON serialization rather than a raw inspected object.
-- **Validation / 验证**: `npm test` (macOS): 114 tests, 110 passed, 0 failed, 4 skipped (`sandbox_apply: Operation not permitted`); exit code 0.
+- **Validation / 验证**: `npm test` (macOS): 97 tests, 93 passed, 0 failed, 4 skipped (`sandbox_apply: Operation not permitted`); exit code 0.
 
 ### Package & Repository Migration / 包名与仓库迁移
 - **CN**: 由原本地包 `dsh-tool-discovery` 迁移至 `Delthin/dsh-plugins` 工作区包 `@delthin/dsh-tool-wrap`（`1.2.0`，配置 `publishConfig.access: "public"`），许可证统一为 `Apache-2.0` 开源许可证（参见 [`LICENSE`](../../LICENSE)，允许商业使用、修改与分发，需保留版权与许可声明并标明修改，专利与完整条款以许可证原文为准）。

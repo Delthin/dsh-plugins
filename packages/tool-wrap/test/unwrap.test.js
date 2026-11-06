@@ -19,7 +19,8 @@ test('only unwrap is advertised in ordinary PTC prompts, with complete JSON outp
   for (const name of names) assert.ok(tools.get(name, a));
   const schemas = sdkSchemas(tools, a);
   for (const language of ['typescript', 'python']) {
-    const text = project(schemas, enabledConfig(), { language, programFormat: 'repl' }).text;
+    const projected = project(schemas, enabledConfig(), { language, programFormat: 'repl' });
+    const text = projected.text + '\n\n' + projected.directory;
     assert.doesNotMatch(text, /discover_tools/);
     assert.match(text, language === 'python' ? /json\.dumps\(await tools\.unwrap/ : /JSON\.stringify\(await tools\.unwrap/);
   }

@@ -190,7 +190,7 @@ test('developer package descriptions feed catalog, custom overrides and removal 
   assert.equal(catalog(schemas, overridden, { [id]: 'Explicit developer map' }).find(group => group.id === id).description, custom);
   const a = agent('metadata-presentation');
   let assembly = await assemble(ctx, a);
-  const sdkText = assembly.sections.find(section => section.name === 'tools:sdk').text;
+  const sdkText = assembly.sections.find(section => section.name === 'tool-discovery:directory').text;
   assert.match(sdkText, /CUSTOM_PACKAGE_OVERVIEW/);
   assert.doesNotMatch(sdkText, /AUTHOR_PACKAGE_OVERVIEW/);
   const loaded = discover(schemas, overridden, tsRuntime, { plugin: id });
@@ -202,7 +202,7 @@ test('developer package descriptions feed catalog, custom overrides and removal 
   assert.equal(status.groups.find(group => group.id === id).description, author);
   assert.equal(status.groups.find(group => group.id === id).descriptionSource, 'developer');
   assembly = await assemble(ctx, a);
-  assert.match(assembly.sections.find(section => section.name === 'tools:sdk').text, /AUTHOR_PACKAGE_OVERVIEW/);
+  assert.match(assembly.sections.find(section => section.name === 'tool-discovery:directory').text, /AUTHOR_PACKAGE_OVERVIEW/);
   for (const language of ['typescript', 'python']) {
     const rendered = renderSdk([described], { language, programFormat: 'function-body' });
     assert.doesNotMatch(rendered, /AUTHOR_PACKAGE_OVERVIEW|CUSTOM_PACKAGE_OVERVIEW|English metadata/);
