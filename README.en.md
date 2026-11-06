@@ -1,6 +1,6 @@
 # Delthin DSH Plugins Monorepo
 
-`Delthin/dsh-plugins` is the public monorepo maintaining four DeepSeek Harness (DSH) plugins. All four workspace packages live under `packages/` and are maintained and published independently. The root `package.json` remains `"private": true` to prevent accidental publishing of a root meta-package; users install only the specific plugin packages they need.
+`Delthin/dsh-plugins` is the public monorepo maintaining five DeepSeek Harness (DSH) plugins. The workspace packages live under `packages/` and are maintained independently. Four packages are published independently; global-pins is an unpublished private development package. The root `package.json` remains `"private": true` to prevent accidental publishing of a root meta-package; users install only the specific plugin packages they need.
 
 Links: [中文说明](./README.md) | [Releasing & Marketplace Guide](./docs/releasing.md) | [Maintenance Handoff](./docs/package-handoff.md) | [License](./LICENSE)
 
@@ -14,12 +14,13 @@ Each package provides its own entry exports, client bundle, icon, locale resourc
 | [`packages/agent-roles`](./packages/agent-roles/README.en.md) | `@delthin/dsh-agent-roles` | `0.4.1` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Role management and delegation built on native DSH Agent Team. Starts with an empty role list by default, preserves roles and run records in the runtime data directory, and keeps runtime data out of git. |
 | [`packages/fast`](./packages/fast/README.en.md) | `@delthin/dsh-fast` | `0.1.4` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Fast priority routing and `service_tier: "priority"` forwarding. `provider`, `sourceURL`, and `targetURL` must all be explicitly configured to enable Fast; otherwise Standard mode works normally and Fast requests fail explicitly. `roleRunsPath` is optional and read-only. |
 | [`packages/tool-wrap`](./packages/tool-wrap/README.en.md) | `@delthin/dsh-tool-wrap` | `1.2.0` | `Apache-2.0` | `>=0.2.2-rc.1` | On-demand tool definition discovery and PTC bridge. Uses `unwrap` as the official tool (`discover_tools` remains a legacy alias), keeping service names, settings ID, and config filename `tool-discovery.json` stable. The plugin itself is disabled by default; `origin-bootstrap` registers before `tools`. Only initial install or upgrades touching `toolDiscoveryOriginsReady` origin gating require a host restart; settings toggles and config saves apply immediately to subsequent prompts. |
+| [`packages/global-pins`](./packages/global-pins/README.en.md) | `@delthin/dsh-global-pins` | `0.1.0` (private development, unpublished) | `Apache-2.0` | `>=0.2.2-rc.1` | Native pinned conversations above all workspaces; preserves the browser using a version-dependent sidebar DOM adapter. |
 
-Chinese package docs: [`packages/feishu-notify/README.md`](./packages/feishu-notify/README.md), [`packages/agent-roles/README.md`](./packages/agent-roles/README.md), [`packages/fast/README.md`](./packages/fast/README.md), [`packages/tool-wrap/README.md`](./packages/tool-wrap/README.md).
+Chinese package docs: [`packages/feishu-notify/README.md`](./packages/feishu-notify/README.md), [`packages/agent-roles/README.md`](./packages/agent-roles/README.md), [`packages/fast/README.md`](./packages/fast/README.md), [`packages/tool-wrap/README.md`](./packages/tool-wrap/README.md), [`packages/global-pins/README.md`](./packages/global-pins/README.md).
 
 ## License
 
-This repository and new releases of all four packages are licensed under the `Apache-2.0` open-source license ([LICENSE](./LICENSE)). Commercial use, modification, and distribution are permitted subject to the license conditions, including retaining the license, copyright, and related notices, stating changes made to modified files, and following the patent terms in [LICENSE](./LICENSE).
+This repository and new releases of all five packages are licensed under the `Apache-2.0` open-source license ([LICENSE](./LICENSE)). Commercial use, modification, and distribution are permitted subject to the license conditions, including retaining the license, copyright, and related notices, stating changes made to modified files, and following the patent terms in [LICENSE](./LICENSE).
 
 No separate paid commercial license is required, and derivative works as a whole are not required to be open-sourced. Prior versions previously released under the `MIT` license (including historical releases of `@delthin/dsh-agent-roles` `<= 0.4.0` and published versions of `@delthin/dsh-fast` `<= 0.1.2`) retain their existing MIT grants for those specific versions.
 
@@ -50,7 +51,7 @@ Load the resulting `.tgz` archive or workspace package into your target DSH prof
 - **Root Development Tooling**: `Node.js >= 22.19.0`, `npm >= 11.5.1`.
 - **GitHub Actions CI Matrix**: `Node.js 22` / `24`, `npm 11.12.1`.
 - **Source Format**: Plain JavaScript source code; no compile or build step is required.
-- **DSH Host Range Notes**: Because standard npm semver rules exclude prereleases on different version tuples from `>=` ranges, packages requiring `0.2.1-rc.5` declare `>=0.2.1-rc.5 || >=0.2.2-rc.1`, while `tool-wrap` declares `>=0.2.2-rc.1`. Open upper bounds express only the minimum contract baseline and do not guarantee unconditional compatibility with future unreleased DSH API changes.
+- **DSH Host Range Notes**: Because standard npm semver rules exclude prereleases on different version tuples from `>=` ranges, packages requiring `0.2.1-rc.5` declare `>=0.2.1-rc.5 || >=0.2.2-rc.1`, while `tool-wrap` and `global-pins` declare `>=0.2.2-rc.1`. Open upper bounds express only the minimum contract baseline and do not guarantee unconditional compatibility with future unreleased DSH API changes.
 
 ## Local Development & Verification Workflow
 
@@ -74,7 +75,7 @@ There is no aggregate `npm test` script at the repository root. Use the followin
    ```bash
    npm run check:pack
    ```
-   Runs `npm pack` for each of the four packages, installs each tarball in an isolated temporary directory with an empty `DSH_HOME` / temporary profile and cleared `NODE_PATH`, verifies root, `client`, and `bootstrap` imports, and executes the test suite against the packed artifacts.
+   Runs `npm pack` for each of the five packages, installs each tarball in an isolated temporary directory with an empty `DSH_HOME` / temporary profile and cleared `NODE_PATH`, verifies root, `client`, and `bootstrap` imports, and executes the test suite against the packed artifacts.
 
 ## Security, Privacy & Repository Boundaries
 

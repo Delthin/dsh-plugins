@@ -1,0 +1,4 @@
+- insert:
+    - id: global-pins
+      name: '@delthin/dsh-global-pins'
+      config: {}

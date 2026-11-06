@@ -20,6 +20,7 @@
 | [packages/agent-roles](<packages/agent-roles/>) | `@delthin/dsh-agent-roles` |
 | [packages/fast](<packages/fast/>) | `@delthin/dsh-fast` |
 | [packages/tool-wrap](<packages/tool-wrap/>) | `@delthin/dsh-tool-wrap` |
+| [packages/global-pins](<packages/global-pins/>) | `@delthin/dsh-global-pins` |
 
 - 工具包装插件对外使用 `tool-wrap` 名称；内部已有设置 ID、服务 ID、存储名和兼容入口按迁移要求保留，不能跟随 npm 包名机械替换。其他插件同理。
 - 包清单、`repository.directory`、bundle patch 中的模块名、`exports`、客户端模块注册 ID 和资源引用必须与实际包标识一致；已有内部业务 ID 不属于必须改名的模块标识。
@@ -29,7 +30,7 @@
 1. 在仓库根工作区创建 `packages/<slug>`，补齐包清单、入口、bundle patch、`exports`、`files`、必要资源和测试；创建对应目录的子工作区，后续单包开发转到该工作区。
 2. 提供中文 README、英文 README、变更记录、许可和通知；中英文说明相互链接，涵盖功能、安装、配置、安全、兼容版本和必要 FAQ。
 3. 更新[根中文说明](<README.md>)、[根英文说明](<README.en.md>)、根锁文件和相关打包检查。
-4. 同时更新[工作区检查脚本](<scripts/check-workspaces.mjs>)的预期包清单。虽然 npm workspaces 使用 `packages/*`，当前检查脚本显式枚举四包，不能只增加目录。
+4. 同时更新[工作区检查脚本](<scripts/check-workspaces.mjs>)的预期包清单。虽然 npm workspaces 使用 `packages/*`，检查脚本显式维护预期包清单，不能只增加目录。
 5. 新包尚未准备好发布时可以保留 `private: true`；正式发布前核对元数据、打包内容和授权。
 
 ## 版本、兼容与许可

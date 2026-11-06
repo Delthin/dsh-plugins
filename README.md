@@ -1,6 +1,6 @@
 # Delthin DSH Plugins Monorepo
 
-`Delthin/dsh-plugins` 是维护四个 DeepSeek Harness (DSH) 插件的公开 monorepo。四个工作区包在 `packages/` 下按各自目录独立维护与发布；根仓库 `package.json` 保持 `"private": true` 以防止误发布根聚合包，用户按需单独安装所需子包。
+`Delthin/dsh-plugins` 是维护五个 DeepSeek Harness (DSH) 插件的公开 monorepo。工作区包在 `packages/` 下独立维护；四包已独立发布，global-pins 是尚未发布的私有开发包；根仓库 `package.json` 保持 `"private": true` 以防止误发布根聚合包，用户按需单独安装所需子包。
 
 语言与文档：[English](./README.en.md) | [发布与市场维护指南](./docs/releasing.md) | [日常维护说明](./docs/package-handoff.md) | [许可证](./LICENSE)
 
@@ -14,12 +14,13 @@
 | [`packages/agent-roles`](./packages/agent-roles/README.md) | `@delthin/dsh-agent-roles` | `0.4.1` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 基于 DSH 原生 Agent Team 的角色管理与委派。首次启动默认为空角色列表，保留数据目录中的角色与运行记录，运行数据不入库。 |
 | [`packages/fast`](./packages/fast/README.md) | `@delthin/dsh-fast` | `0.1.4` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Fast 优先路由与 `service_tier: "priority"` 转发。`provider`、`sourceURL`、`targetURL` 必须显式完整填写后才启用 Fast，否则 Standard 模式正常工作、Fast 请求直接报错；`roleRunsPath` 为可选只读配置，不存在时普通会话照常运行。 |
 | [`packages/tool-wrap`](./packages/tool-wrap/README.md) | `@delthin/dsh-tool-wrap` | `1.2.0` | `Apache-2.0` | `>=0.2.2-rc.1` | 按需工具定义发现与 PTC 桥接。正式工具名 `unwrap`（`discover_tools` 为旧会话兼容别名）、服务名、设置 ID 及配置文件名 `tool-discovery.json` 保持稳定；插件默认关闭（非宿主 PTC 模式关闭），`origin-bootstrap` 先于 `tools` 注册；仅首次安装或升级涉及 `toolDiscoveryOriginsReady` 来源门控时需重启生效，设置页启用开关与配置保存对后续 prompt 立即生效。 |
+| [`packages/global-pins`](./packages/global-pins/README.md) | `@delthin/dsh-global-pins` | `0.1.0`（私有开发版，未发布） | `Apache-2.0` | `>=0.2.2-rc.1` | 将原生置顶对话集中显示在所有工作区上方；保留原生列表，使用版本相关的侧栏 DOM 适配。 |
 
-各包英文文档：[`packages/feishu-notify/README.en.md`](./packages/feishu-notify/README.en.md)、[`packages/agent-roles/README.en.md`](./packages/agent-roles/README.en.md)、[`packages/fast/README.en.md`](./packages/fast/README.en.md)、[`packages/tool-wrap/README.en.md`](./packages/tool-wrap/README.en.md)。
+各包英文文档：[`packages/feishu-notify/README.en.md`](./packages/feishu-notify/README.en.md)、[`packages/agent-roles/README.en.md`](./packages/agent-roles/README.en.md)、[`packages/fast/README.en.md`](./packages/fast/README.en.md)、[`packages/tool-wrap/README.en.md`](./packages/tool-wrap/README.en.md)、[`packages/global-pins/README.en.md`](./packages/global-pins/README.en.md)。
 
 ## 许可证与授权边界
 
-本仓库及四个子包的新版本统一采用 `Apache-2.0` 开源许可证（[LICENSE](./LICENSE)）。在遵守许可证条款的前提下，允许个人与商业用途的使用、修改与分发；重新分发源码或衍生作品时需保留许可证、版权及相关声明，并对修改过的文件作出说明，专利授权与终止条款等均以 [LICENSE](./LICENSE) 原文为准。
+本仓库及五个子包的新版本统一采用 `Apache-2.0` 开源许可证（[LICENSE](./LICENSE)）。在遵守许可证条款的前提下，允许个人与商业用途的使用、修改与分发；重新分发源码或衍生作品时需保留许可证、版权及相关声明，并对修改过的文件作出说明，专利授权与终止条款等均以 [LICENSE](./LICENSE) 原文为准。
 
 商业使用无需另行付费获取授权，衍生作品整体亦不强制开源。历史已按 `MIT` 许可证发布的旧版本（含 `@delthin/dsh-agent-roles` `<= 0.4.0` 历史版本及 `@delthin/dsh-fast` `<= 0.1.2` 已发布版本），其对应版本的既有 MIT 授权不撤回。
 
@@ -50,7 +51,7 @@ npm pack --workspace @delthin/dsh-tool-wrap
 - **根工程开发要求**：`Node.js >= 22.19.0`，`npm >= 11.5.1`。
 - **GitHub Actions CI 矩阵**：`Node.js 22` / `24`，`npm 11.12.1`。
 - **源码形态**：纯 JavaScript 源码，无编译构建（build）步骤。
-- **DSH 宿主范围说明**：由于 npm 默认 semver 规则会将不同版本元组（tuple）的预发布版本排除在常规 `>=` 范围之外，最低要求为 `0.2.1-rc.5` 的包显式声明为 `>=0.2.1-rc.5 || >=0.2.2-rc.1`，`tool-wrap` 声明为 `>=0.2.2-rc.1`。开放上限仅声明最低契约起点，不代表对未来尚未发布的 DSH API 变更作无条件兼容保证。
+- **DSH 宿主范围说明**：由于 npm 默认 semver 规则会将不同版本元组（tuple）的预发布版本排除在常规 `>=` 范围之外，最低要求为 `0.2.1-rc.5` 的包显式声明为 `>=0.2.1-rc.5 || >=0.2.2-rc.1`，`tool-wrap` 和 `global-pins` 声明为 `>=0.2.2-rc.1`。开放上限仅声明最低契约起点，不代表对未来尚未发布的 DSH API 变更作无条件兼容保证。
 
 ## 本地开发与校验工作流
 
@@ -74,7 +75,7 @@ npm pack --workspace @delthin/dsh-tool-wrap
    ```bash
    npm run check:pack
    ```
-   对四个子包分别执行 `npm pack`，在临时隔离目录中独立安装 tarball，使用空 `DSH_HOME` / 临时 profile 并清空 `NODE_PATH`，验证根导出、`client` 与 `bootstrap` 入口可正常导入，并基于打包产物运行现有测试套件。
+   对五个子包分别执行 `npm pack`，在临时隔离目录中独立安装 tarball，使用空 `DSH_HOME` / 临时 profile 并清空 `NODE_PATH`，验证根导出、`client` 与 `bootstrap` 入口可正常导入，并基于打包产物运行现有测试套件。
 
 ## 安全、隐私与仓库边界
 

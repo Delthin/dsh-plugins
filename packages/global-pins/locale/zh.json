@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "title": "全局置顶",
+    "description": "在所有工作区上方集中显示 DSH 已置顶的对话。"
+  },
+  "title": "置顶对话",
+  "untitled": "未命名对话",
+  "ungrouped": "未分组",
+  "unpin": "取消置顶",
+  "unpinError": "取消置顶失败，请重试。",
+  "openError": "打开对话失败，请重试。",
+  "dismiss": "关闭提示",
+  "regionLabel": "置顶对话"
+}

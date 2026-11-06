@@ -11,7 +11,9 @@ const output = path.join(root, '.cache/packs');
 await mkdir(output, {recursive:true});
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const baseEnv = {...process.env, npm_config_cache:cache};
-const slugs = ['feishu-notify', 'agent-roles', 'fast', 'tool-wrap'];
+const slugs = ['feishu-notify', 'agent-roles', 'fast', 'tool-wrap', 'global-pins'];
+const selected = process.argv.find(arg => arg.startsWith('--package='))?.slice('--package='.length);
+assert(!selected || slugs.includes(selected), 'Unknown workspace selection');
 const results = [];
 function run(command, args, cwd, env = baseEnv, json = false) {
   const result = spawnSync(command, args, {cwd, env, encoding:'utf8', maxBuffer:32 * 1024 * 1024, shell:process.platform === 'win32'});
@@ -22,6 +24,7 @@ function run(command, args, cwd, env = baseEnv, json = false) {
   return json ? JSON.parse(result.stdout) : result.stdout;
 }
 for (const slug of slugs) {
+  if (selected && slug !== selected) continue;
   const source = path.join(root, 'packages', slug);
   const pkg = JSON.parse(await readFile(path.join(source, 'package.json'), 'utf8'));
   const packed = run(npm, ['pack', '--json', '--ignore-scripts', '--pack-destination', output], source, baseEnv, true)[0];
@@ -92,4 +95,4 @@ for (const slug of slugs) {
   results.push({name:pkg.name,version:pkg.version,tarball:packed.filename,files:files.size,integrity:packed.integrity,fixture});
 }
 await writeFile(path.join(output, 'validation.json'), JSON.stringify({node:process.version,host:'0.2.2-rc.1',packages:results}, null, 2) + '\n');
-console.log('\nAll four tarballs installed independently and passed runtime imports plus copied tests.');
+console.log(selected ? `\n${selected} tarball passed isolated imports and copied tests.` : '\nAll tarballs installed independently and passed runtime imports plus copied tests.');

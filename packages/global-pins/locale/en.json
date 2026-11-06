@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "title": "Global pins",
+    "description": "Show native pinned conversations above all DSH workspaces."
+  },
+  "title": "Pinned conversations",
+  "untitled": "Untitled conversation",
+  "ungrouped": "Ungrouped",
+  "unpin": "Unpin",
+  "unpinError": "Could not unpin. Please try again.",
+  "openError": "Could not open this conversation. Please try again.",
+  "dismiss": "Dismiss message",
+  "regionLabel": "Pinned conversations"
+}

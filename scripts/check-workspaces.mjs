@@ -21,16 +21,21 @@ const expected = new Map([
   ['agent-roles', '@delthin/dsh-agent-roles'],
   ['fast', '@delthin/dsh-fast'],
   ['tool-wrap', '@delthin/dsh-tool-wrap'],
+  ['global-pins', '@delthin/dsh-global-pins'],
 ]);
+const selected = process.argv.find(arg => arg.startsWith('--package='))?.slice('--package='.length);
+assert(!selected || expected.has(selected), 'Unknown workspace selection');
 const directories = (await readdir(path.join(rootDir, 'packages'), {withFileTypes:true})).filter(e => e.isDirectory()).map(e => e.name).sort();
 assert.deepEqual(directories, [...expected.keys()].sort());
 const leaves = (value, prefix = '') => Object.entries(value).flatMap(([key, child]) => child && typeof child === 'object' && !Array.isArray(child) ? leaves(child, prefix + key + '.') : [prefix + key]).sort();
 
 for (const [slug, name] of expected) {
+  if (selected && slug !== selected) continue;
   const directory = path.join(rootDir, 'packages', slug);
   const pkg = await readJson('packages/' + slug + '/package.json');
   assert.equal(pkg.name, name);
-  assert.notEqual(pkg.private, true, name + ' must be publishable');
+  if (slug === 'global-pins') assert.equal(pkg.private, true, name + ' must remain private during development');
+  else assert.notEqual(pkg.private, true, name + ' must be publishable');
   assert.equal(pkg.license, 'Apache-2.0');
   assert.equal(pkg.publishConfig?.access, 'public');
   assert.equal(pkg.publishConfig?.registry, 'https://registry.npmjs.org');
@@ -81,4 +86,4 @@ for (const [slug, name] of expected) {
     assert.equal(result.status, 0, name + ': package contract check failed');
   }
 }
-console.log('All four independent workspace manifests, patches, locales and tests passed.');
+console.log(selected ? `Workspace ${selected} passed manifest, patch and test checks.` : 'All independent workspace manifests, patches, locales and tests passed.');
