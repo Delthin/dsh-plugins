@@ -1,131 +1,244 @@
 window.__ModuleLoader__.load({ id: '@delthin/dsh-global-pins', factory: (require) => {
   const React = require('react');
-  const { createPortal } = require('react-dom');
-  const { createElement: h, useEffect, useRef, useState } = React;
+  const { Button } = require('@deepseek-ai/dsh-client-ui-primitives');
+  const { createElement: h, useEffect, useRef, useState, useSyncExternalStore } = React;
   const namespace = 'delthin.globalPins';
   const dictionaries = {
-    zh: { title: '置顶对话', untitled: '未命名对话', ungrouped: '未分组', unpin: '取消置顶', unpinError: '取消置顶失败，请重试。', openError: '打开对话失败，请重试。', dismiss: '关闭提示', regionLabel: '置顶对话' },
-    en: { title: 'Pinned conversations', untitled: 'Untitled conversation', ungrouped: 'Ungrouped', unpin: 'Unpin', unpinError: 'Could not unpin. Please try again.', openError: 'Could not open this conversation. Please try again.', dismiss: 'Dismiss message', regionLabel: 'Pinned conversations' },
+    zh: { title: '置顶对话', regionLabel: '置顶对话', placement: '显示位置', placementHint: '始终集中显示一组置顶对话；选择随工作区列表滚动，或独立固定在列表上方。', placementAbove: '工作区列表上方', placementInside: '工作区列表内（一起滚动）', loading: '正在读取设置…', unavailable: '设置暂不可用，请稍后重试。', readOnly: '当前设置为只读。', save: '保存', saving: '保存中…', saved: '已保存', saveError: '设置保存失败，请重试。' },
+    en: { title: 'Pinned conversations', regionLabel: 'Pinned conversations', placement: 'Placement', placementHint: 'Keep one group of pinned conversations, either scrolling with the workspace list or fixed above it.', placementAbove: 'Above the workspace list', placementInside: 'Inside the workspace list (scrolls together)', loading: 'Loading settings…', unavailable: 'Settings are unavailable. Please try again later.', readOnly: 'These settings are read-only.', save: 'Save', saving: 'Saving…', saved: 'Saved', saveError: 'Could not save settings. Please try again.' },
   };
-  const css = `
-.dgp-region{display:flex;flex-direction:column;min-height:0;max-height:inherit;padding:4px 0 8px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:1.4;box-sizing:border-box;pointer-events:auto}
-.dgp-region *{box-sizing:border-box}.dgp-header{display:flex;align-items:center;gap:6px;flex:none;min-height:28px;padding:2px var(--dsh-sidebar-row-padding,12px);color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500}.dgp-header h2{margin:0;font:inherit}.dgp-count{margin-left:auto;font-size:11px;font-variant-numeric:tabular-nums}.dgp-icon{width:14px;height:14px;flex:none}
-.dgp-list{list-style:none;margin:0;padding:0;min-height:0;overflow-y:auto;overscroll-behavior:contain}.dgp-row{position:relative;display:flex;align-items:center;min-height:46px;border-radius:var(--dsw-radius-md,8px);margin:1px var(--dsh-sidebar-paint-inset,3px)}.dgp-row:hover,.dgp-row:focus-within{background:var(--dsw-alias-interactive-bg-hover,var(--dsw-alias-bg-layer-2))}.dgp-row[data-active=true]{background:var(--dsw-alias-interactive-bg-hover,var(--dsw-alias-bg-layer-2));color:var(--dsw-alias-label-primary)}
-.dgp-region button{font:inherit;color:inherit;border:0;background:transparent;cursor:pointer}.dgp-region button:disabled{cursor:default;opacity:.55}.dgp-open{min-width:0;flex:1;text-align:left;padding:6px 36px 6px calc(var(--dsh-sidebar-row-padding,12px) - var(--dsh-sidebar-paint-inset,3px));border-radius:var(--dsw-radius-md,8px);line-height:1.4!important}.dgp-title,.dgp-workspace{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dgp-title{font-size:13px}.dgp-workspace{margin-top:2px;font-size:11px;color:var(--dsw-alias-label-secondary)}
-.dgp-unpin{position:absolute;right:5px;top:9px;display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:6px;border-radius:var(--dsw-radius-md,6px);opacity:0;pointer-events:none}.dgp-row:hover .dgp-unpin,.dgp-row:focus-within .dgp-unpin{opacity:1;pointer-events:auto}.dgp-unpin:hover{background:var(--dsw-alias-interactive-bg-hover,var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-base)))}.dgp-region button:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-2px}.dgp-error{flex:none;display:flex;align-items:start;gap:4px;padding:4px 10px;font-size:12px;color:var(--dsw-alias-state-error-primary)}.dgp-error button{flex:none;min-width:24px;min-height:24px;font-size:16px}.dgp-error span{flex:1}
-@media(hover:none),(pointer:coarse){.dgp-unpin{opacity:1;pointer-events:auto}}
+  const placementOf = snapshot => snapshot.value?.placement === 'inside' ? 'inside' : 'above';
+  const flag = 'data-dgp-native-pin';
+  const variables = ['--dgp-x', '--dgp-y', '--dgp-width', '--dgp-clip'];
+  const nativeCss = `
+.dgp-mount{display:flex;flex-direction:column;flex:0 0 auto;min-height:0;overflow:hidden;pointer-events:auto;color:var(--dsw-alias-label-primary)}.dgp-mount[hidden]{display:none!important}.dgp-header{display:flex;align-items:center;gap:6px;flex:none;min-height:28px;padding:2px var(--dsh-sidebar-row-padding,12px);color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500}.dgp-header h2{margin:0;font:inherit}.dgp-count{margin-left:auto;font-size:11px;font-variant-numeric:tabular-nums}.dgp-native-viewport{min-height:0;flex:0 1 auto;overflow-y:auto;overscroll-behavior:contain}.dgp-mount[data-placement=inside]{overflow:visible}.dgp-mount[data-placement=inside] .dgp-native-viewport{flex:none;overflow:visible;overscroll-behavior:auto}
+html body [data-dgp-native-pin][data-row-key]{position:fixed!important;left:var(--dgp-x)!important;top:var(--dgp-y)!important;width:var(--dgp-width)!important;max-width:none!important;clip-path:var(--dgp-clip)!important;z-index:10!important}
 `;
-  const Pin = () => h('svg', { className: 'dgp-icon', viewBox: '0 0 20 20', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }, h('path', { d: 'm7 3 7 0-1 5 3 3H4l3-3V3Zm3 8v6' }));
+  const settingsCss = `
+.dgp-settings{display:grid;gap:16px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:1.5}.dgp-settings fieldset{display:grid;gap:16px;min-width:0;margin:0;padding:0;border:0}.dgp-setting{display:grid;gap:6px}.dgp-setting label{font-weight:500}.dgp-setting p,.dgp-settings-notice{margin:0;color:var(--dsw-alias-label-secondary);font-size:12px}.dgp-setting select{width:100%;max-width:360px;min-height:32px;padding:5px 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md,8px);background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base));color:inherit;font:inherit}.dgp-setting select:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}.dgp-settings-actions{display:flex;align-items:center;gap:10px}.dgp-settings-error{margin:0;color:var(--dsw-alias-state-error-primary);font-size:12px}
+`;
 
-  // An additive portal is necessary until the host exposes an insertion seat.
-  // Only the plugin-owned sibling is changed; the native browser stays mounted.
-  function attachHost(doc, environment, publish) {
-    const host = doc.createElement('div');
-    host.className = 'dgp-mount';
-    Object.assign(host.style, { flex: '0 0 auto', minHeight: '0', overflow: 'hidden' });
-    let anchor = null, parent = null, published = null, live = true;
-    const expose = value => { if (published !== value) { published = value; publish(value); } };
+  // Only plugin-owned spacers are inserted. React keeps every native row, wrapper,
+  // handler and status projection in its original parent throughout promotion.
+  function elevateNativeRows(doc, environment, { pinned, archived, placement, title, regionLabel }) {
+    const inside = placement === 'inside';
+    const wanted = new Set(pinned.filter(id => !archived.includes(id)));
+    const host = doc.createElement('section'), header = doc.createElement('header'), heading = doc.createElement('h2');
+    const count = doc.createElement('span'), viewport = doc.createElement('div'), spacer = doc.createElement('div');
+    host.className = 'dgp-mount'; host.hidden = true; host.setAttribute('data-placement', placement); host.setAttribute('aria-label', regionLabel);
+    header.className = 'dgp-header'; heading.textContent = title; count.className = 'dgp-count';
+    viewport.className = 'dgp-native-viewport'; spacer.setAttribute('aria-hidden', 'true');
+    header.append(heading, count); viewport.append(spacer); host.append(header, viewport);
+    let anchor = null, root = null, scroller = null, parent = null, rows = [], frame = null, scanNeeded = false, live = true;
+    const number = value => Number.parseFloat(value) || 0;
+    const write = (style, key, value) => { if (style.getPropertyValue(key) !== value) style.setProperty(key, value); };
+    const zoomOf = node => {
+      const current = Number(node.currentCSSZoom);
+      if (Number.isFinite(current) && current > 0) return current;
+      let zoom = 1;
+      for (let current = node; current; current = current.parentElement) {
+        const value = environment.getComputedStyle(current).zoom;
+        if (value && value !== 'normal') zoom *= value.endsWith('%') ? number(value) / 100 : number(value) || 1;
+      }
+      return zoom;
+    };
+    const safeForFixed = row => {
+      for (let current = row.parentElement; current; current = current.parentElement) {
+        const style = environment.getComputedStyle(current);
+        if (['transform', 'perspective', 'filter', 'backdropFilter'].some(key => style[key] && style[key] !== 'none') ||
+          /(?:paint|layout|strict|content)/.test(style.contain || '') || /(?:transform|perspective|filter)/.test(style.willChange || '') ||
+          style.contentVisibility === 'auto' || style.containerType && style.containerType !== 'normal') return false;
+      }
+      return true;
+    };
+    const restore = entry => {
+      if (entry.attribute === null) entry.row.removeAttribute(flag); else entry.row.setAttribute(flag, entry.attribute);
+      for (const [key, value, priority] of entry.original) {
+        if (value) entry.row.style.setProperty(key, value, priority); else entry.row.style.removeProperty(key);
+      }
+    };
+    const positioned = () => parent && host.parentNode === parent && (inside ? parent.firstChild === host : host.nextSibling === anchor);
+    const box = element => {
+      const rect = element.getBoundingClientRect(), zoom = zoomOf(element);
+      const left = rect.left + element.clientLeft * zoom, top = rect.top + element.clientTop * zoom;
+      return { left, top, right: left + element.clientWidth * zoom, bottom: top + element.clientHeight * zoom };
+    };
+    const intersection = (...rects) => ({ left: Math.max(...rects.map(rect => rect.left)), top: Math.max(...rects.map(rect => rect.top)), right: Math.min(...rects.map(rect => rect.right)), bottom: Math.min(...rects.map(rect => rect.bottom)) });
+    const observed = new Set();
+    const resize = environment.ResizeObserver ? new environment.ResizeObserver(() => schedule(true)) : null;
+    const scan = () => {
+      anchor = doc.querySelector('[data-slot="sidebar.workspaces"]');
+      root = anchor?.parentElement ?? null;
+      const tree = anchor?.querySelector('[role="tree"]');
+      scroller = tree && /^(auto|scroll)$/.test(environment.getComputedStyle(tree).overflowY) ? tree : null;
+      parent = inside ? scroller : root;
+      const previous = new Map(rows.map(entry => [entry.row, entry]));
+      const available = new Map();
+      if (parent) for (const row of anchor.querySelectorAll('[data-row-key^="session:"]')) {
+        const id = row.getAttribute('data-row-key').slice(8);
+        if (!wanted.has(id) || available.has(id) || !safeForFixed(row)) continue;
+        const rect = row.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) available.set(id, row);
+      }
+      rows = [...wanted].flatMap(id => {
+        const row = available.get(id);
+        if (!row) return [];
+        const entry = previous.get(row) ?? { row, attribute: row.getAttribute(flag), original: variables.map(key => [key, row.style.getPropertyValue(key), row.style.getPropertyPriority(key)]) };
+        previous.delete(row);
+        return [entry];
+      });
+      previous.forEach(restore);
+      if (!parent) host.remove();
+      else if (!positioned()) parent.insertBefore(host, inside ? parent.firstChild : anchor);
+      if (count.textContent !== String(rows.length)) count.textContent = String(rows.length);
+      const targets = new Set(root ? [root, ...(parent ? [viewport, ...rows.map(entry => entry.row)] : [])] : []);
+      if (resize) {
+        for (const node of observed) if (!targets.has(node)) { resize.unobserve(node); observed.delete(node); }
+        for (const node of targets) if (!observed.has(node)) { resize.observe(node); observed.add(node); }
+      }
+    };
     const measure = () => {
-      if (!parent) return;
-      const bounds = parent.getBoundingClientRect();
-      const display = bounds.width >= 160 ? '' : 'none';
-      const maxHeight = `${Math.min(240, Math.max(0, Math.floor(bounds.height * 0.4)))}px`;
-      if (host.style.display !== display) host.style.display = display;
+      if (!parent || !root?.isConnected) return;
+      const rootRect = root.getBoundingClientRect(), hostZoom = zoomOf(host);
+      const visible = rows.length > 0 && rootRect.width / hostZoom >= 160;
+      if (host.hidden !== !visible) host.hidden = !visible;
+      if (!visible) { rows.forEach(entry => write(entry.row.style, '--dgp-clip', 'inset(100% 0 0 0)')); return; }
+      const maxHeight = inside ? 'none' : `${Math.min(240, rootRect.height / hostZoom * 0.4)}px`;
       if (host.style.maxHeight !== maxHeight) host.style.maxHeight = maxHeight;
+      let total = 0;
+      const metrics = rows.map(entry => {
+        const style = environment.getComputedStyle(entry.row), zoom = zoomOf(entry.row), rect = entry.row.getBoundingClientRect();
+        const margin = ['marginTop', 'marginRight', 'marginBottom', 'marginLeft'].map(key => number(style[key]) * zoom);
+        const result = { entry, zoom, height: rect.height, margin, offset: total };
+        total += margin[0] + rect.height + margin[2];
+        return result;
+      });
+      const height = `${total / hostZoom}px`;
+      if (spacer.style.height !== height) spacer.style.height = height;
+      const view = box(viewport);
+      const clip = intersection(inside ? box(scroller) : view, rootRect, { left: 0, top: 0, right: environment.innerWidth, bottom: environment.innerHeight });
+      for (const { entry, zoom, height: rowHeight, margin, offset } of metrics) {
+        const left = view.left + margin[3], top = view.top + offset + margin[0] - (inside ? 0 : viewport.scrollTop * hostZoom);
+        const width = Math.max(0, view.right - view.left - margin[1] - margin[3]);
+        const insets = [Math.max(0, clip.top - top), Math.max(0, left + width - clip.right), Math.max(0, top + rowHeight - clip.bottom), Math.max(0, clip.left - left)].map(value => `${value / zoom}px`).join(' ');
+        write(entry.row.style, '--dgp-x', `${(left - margin[3]) / zoom}px`);
+        write(entry.row.style, '--dgp-y', `${(top - margin[0]) / zoom}px`);
+        write(entry.row.style, '--dgp-width', `${width / zoom}px`);
+        write(entry.row.style, '--dgp-clip', `inset(${insets})`);
+        if (!entry.row.hasAttribute(flag)) entry.row.setAttribute(flag, '');
+      }
     };
-    const resize = environment.ResizeObserver ? new environment.ResizeObserver(measure) : null;
-    const reconcile = () => {
+    function schedule(rescan = false) {
       if (!live) return;
-      const next = doc.querySelector('[data-slot="sidebar.workspaces"]');
-      const nextParent = next?.parentElement ?? null;
-      if (nextParent !== parent) {
-        resize?.disconnect();
-        parent = nextParent;
-        if (parent) resize?.observe(parent);
-      }
-      anchor = next;
-      if (!parent) {
-        if (host.parentNode) host.remove();
-        expose(null);
-        return;
-      }
-      // Check first: unconditional insertBefore would trigger our own observer forever.
-      if (host.parentNode !== parent || host.nextSibling !== anchor) parent.insertBefore(host, anchor);
-      measure();
-      expose(host);
-    };
-    const mutations = new environment.MutationObserver(() => {
-      // Streaming content elsewhere must not trigger a document query or sync layout.
-      // Geometry changes are handled independently by ResizeObserver/window resize.
-      if (anchor?.isConnected && anchor.parentElement === parent && host.parentNode === parent && host.nextSibling === anchor) return;
-      reconcile();
+      scanNeeded ||= rescan;
+      if (frame !== null) return;
+      frame = environment.requestAnimationFrame(() => {
+        frame = null;
+        if (!live) return;
+        if (scanNeeded) { scanNeeded = false; scan(); }
+        measure();
+      });
+    }
+    const hasRow = node => node.nodeType === 1 && (node.matches('[data-row-key^="session:"]') || node.querySelector('[data-row-key^="session:"]'));
+    const mutations = new environment.MutationObserver(records => {
+      if (!anchor?.isConnected || anchor.parentElement !== root || parent && !positioned()) { schedule(true); return; }
+      if (records.some(record => {
+        if (!anchor.contains(record.target) || host.contains(record.target)) return false;
+        if (record.type === 'attributes') return true;
+        if (record.target.closest?.('[data-row-key^="session:"]')) return false;
+        return [...record.addedNodes, ...record.removedNodes].some(hasRow);
+      })) schedule(true);
     });
-    mutations.observe(doc.body, { childList: true, subtree: true });
-    environment.addEventListener('resize', measure);
-    reconcile();
+    mutations.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-row-key'] });
+    const scroll = event => { if (event.target === doc || event.target === viewport || event.target === scroller || event.target?.contains?.(host)) schedule(); };
+    const resized = () => schedule(true);
+    const wheel = event => {
+      if (inside || event.ctrlKey || !rows.some(entry => entry.row === event.target.closest?.(`[${flag}]`))) return;
+      const previous = viewport.scrollTop;
+      const step = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1 / zoomOf(viewport);
+      viewport.scrollTop += event.deltaY * step;
+      if (viewport.scrollTop !== previous) { event.preventDefault(); schedule(); }
+    };
+    doc.addEventListener('scroll', scroll, true);
+    doc.addEventListener('wheel', wheel, { capture: true, passive: false });
+    environment.addEventListener('resize', resized);
+    schedule(true);
     return () => {
       live = false;
-      mutations.disconnect();
-      resize?.disconnect();
-      environment.removeEventListener('resize', measure);
+      if (frame !== null) environment.cancelAnimationFrame(frame);
+      mutations.disconnect(); resize?.disconnect(); rows.forEach(restore);
+      doc.removeEventListener('scroll', scroll, true);
+      doc.removeEventListener('wheel', wheel, true);
+      environment.removeEventListener('resize', resized);
       host.remove();
     };
   }
 
-  function PinRow({ session, workspace, active, useSessionAccess, uiWorkspace, onError, t }) {
-    const allowed = useSessionAccess(session.id, 'workspace/unpinSession');
-    const [pending, setPending] = useState(false);
+  function Preferences({ form, t }) {
+    const snapshot = useSyncExternalStore(form.subscribe, form.getSnapshot);
+    const accepted = { placement: placementOf(snapshot) };
+    const [draft, setDraft] = useState({}), [saving, setSaving] = useState(false), [result, setResult] = useState('');
     const busy = useRef(false), alive = useRef(false);
     useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-    const act = async kind => {
-      if (busy.current) return;
-      busy.current = true;
-      setPending(true);
+    const writable = snapshot.status === 'ready' && snapshot.writable;
+    const dirty = Object.entries(draft).some(([field, value]) => value !== accepted[field]);
+    const save = async event => {
+      event.preventDefault();
+      const latest = form.getSnapshot();
+      if (busy.current || latest.status !== 'ready' || !latest.writable) return;
+      const changes = Object.entries(draft).filter(([field, value]) => value !== placementOf(latest));
+      if (!changes.length) return;
+      busy.current = true; setSaving(true); setResult('');
       try {
-        await uiWorkspace[kind === 'unpin' ? 'unpinSession' : 'openSession'](session.id);
+        for (const [field, value] of changes) {
+          const current = form.getSnapshot();
+          if (current.status !== 'ready' || !current.writable || !await form.set(field, value)) throw new Error('Settings write refused');
+          if (alive.current) setDraft({});
+        }
+        if (alive.current) setResult('saved');
       } catch {
-        if (alive.current) onError(kind === 'unpin' ? 'unpinError' : 'openError');
+        if (alive.current) setResult('saveError');
       } finally {
         busy.current = false;
-        if (alive.current) setPending(false);
+        if (alive.current) setSaving(false);
       }
     };
-    const title = session.displayTitle?.trim() || t('untitled');
-    return h('li', { className: 'dgp-row', 'data-active': active },
-      h('button', { type: 'button', className: 'dgp-open', disabled: pending, 'aria-current': active ? 'page' : undefined, title: `${title}\n${workspace}`, onClick: () => act('open') },
-        h('span', { className: 'dgp-title' }, title), h('span', { className: 'dgp-workspace' }, workspace)),
-      allowed && h('button', { type: 'button', className: 'dgp-unpin', disabled: pending, title: t('unpin'), 'aria-label': `${t('unpin')}: ${title}`, onClick: () => act('unpin') }, h(Pin)));
+    return h('form', { className: 'dgp-settings', onSubmit: save }, h('style', null, settingsCss),
+      snapshot.status !== 'ready' && h('p', { className: 'dgp-settings-notice', role: 'status' }, t(snapshot.status === 'loading' ? 'loading' : 'unavailable')),
+      snapshot.status === 'ready' && !snapshot.writable && h('p', { className: 'dgp-settings-notice', role: 'status' }, t('readOnly')),
+      h('fieldset', { disabled: !writable || saving }, h('div', { className: 'dgp-setting' },
+        h('label', { htmlFor: 'dgp-placement' }, t('placement')),
+        h('select', { id: 'dgp-placement', value: draft.placement ?? accepted.placement, 'aria-describedby': 'dgp-placement-hint', onChange: event => {
+          const value = event.target.value;
+          if (!writable || busy.current || !['above', 'inside'].includes(value)) return;
+          setDraft({ placement: value }); setResult('');
+        } }, ...['above', 'inside'].map(value => h('option', { key: value, value }, t(value === 'inside' ? 'placementInside' : 'placementAbove')))),
+        h('p', { id: 'dgp-placement-hint' }, t('placementHint')))),
+      h('div', { className: 'dgp-settings-actions' }, h(Button, { type: 'submit', size: 'sm', disabled: !writable || saving || !dirty }, t(saving ? 'saving' : 'save')),
+        result === 'saved' && h('span', { className: 'dgp-settings-notice', role: 'status' }, t('saved'))),
+      result === 'saveError' && h('p', { className: 'dgp-settings-error', role: 'alert' }, t('saveError')));
   }
 
-  function GlobalPins({ useWorkspaces, useSessions, usePanelInfo, useSessionAccess, t, uiWorkspace }) {
-    const pinned = useWorkspaces(state => state.pinnedSessionIds);
-    const archived = useWorkspaces(state => state.archivedSessionIds);
-    const workspaces = useWorkspaces(state => state.items);
-    const byId = useSessions(state => state.byId);
-    const panelActive = usePanelInfo(info => info.activePanelId !== null);
-    const [host, setHost] = useState(null), [error, setError] = useState('');
-    useEffect(() => attachHost(document, window, setHost), []);
-    const excluded = new Set(archived), seen = new Set();
-    const sessions = pinned.filter(id => {
-      if (seen.has(id) || excluded.has(id) || !byId[id]) return false;
-      seen.add(id);
-      return true;
-    }).map(id => byId[id]);
-    const current = panelActive ? undefined : Object.values(byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id;
-    if (!host || !sessions.length) return null;
-    return createPortal(h(React.Fragment, null, h('style', null, css),
-      h('section', { className: 'dgp-region', 'aria-label': t('regionLabel') },
-        h('header', { className: 'dgp-header' }, h(Pin), h('h2', null, t('title')), h('span', { className: 'dgp-count' }, sessions.length)),
-        error && h('div', { className: 'dgp-error', role: 'alert' }, h('span', null, t(error)), h('button', { type: 'button', 'aria-label': t('dismiss'), onClick: () => setError('') }, h('svg', { className: 'dgp-icon', viewBox: '0 0 20 20', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', 'aria-hidden': true }, h('path', { d: 'm5 5 10 10M15 5 5 15' })))),
-        h('ul', { className: 'dgp-list' }, ...sessions.map(session => {
-          const workspace = workspaces.find(item => item.sessionIds.includes(session.id));
-          const label = workspace?.title?.trim() || t('ungrouped');
-          return h(PinRow, { key: session.id, session, workspace: label, active: session.id === current, useSessionAccess, uiWorkspace, onError: setError, t });
-        })))), host);
+  function GlobalPins({ useWorkspaces, form, t }) {
+    const pinned = useWorkspaces(state => state.pinnedSessionIds), archived = useWorkspaces(state => state.archivedSessionIds);
+    const snapshot = useSyncExternalStore(form.subscribe, form.getSnapshot), placement = placementOf(snapshot);
+    const title = t('title'), regionLabel = t('regionLabel');
+    useEffect(() => {
+      if (!pinned.length) return;
+      return elevateNativeRows(document, window, { pinned, archived, placement, title, regionLabel });
+    }, [pinned, archived, placement, title, regionLabel]);
+    return h('style', null, nativeCss);
   }
 
-  return { inject: ['slots', 'locale', 'uiWorkspace'], apply(ctx) {
+  return { inject: ['slots', 'locale', 'configForms'], apply(ctx) {
     for (const [language, dictionary] of Object.entries(dictionaries)) ctx.effect(() => ctx.locale.register(namespace, language, dictionary));
-    ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'delthin.globalPins', locale: namespace }, props => h(GlobalPins, { ...props, uiWorkspace: ctx.uiWorkspace })));
+    const source = ctx.configForms.get('global-pins');
+    const form = {
+      subscribe: listener => source.subscribe(listener),
+      getSnapshot: () => source.getSnapshot(),
+      set: (field, value) => source.set(field, value),
+    };
+    ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'delthin.globalPins', locale: namespace }, props => h(GlobalPins, { ...props, form })));
+    ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({ name: 'plugins.bundle.config', key: '@delthin/dsh-global-pins', locale: namespace }, props => h(Preferences, { ...props, form })));
   } };
 } });

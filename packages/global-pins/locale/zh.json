@@ -1,14 +1,19 @@
 {
   "meta": {
     "title": "全局置顶",
-    "description": "在所有工作区上方集中显示 DSH 已置顶的对话。"
+    "description": "集中显示原生置顶行，字体、状态和操作跟随当前主题。"
   },
   "title": "置顶对话",
-  "untitled": "未命名对话",
-  "ungrouped": "未分组",
-  "unpin": "取消置顶",
-  "unpinError": "取消置顶失败，请重试。",
-  "openError": "打开对话失败，请重试。",
-  "dismiss": "关闭提示",
-  "regionLabel": "置顶对话"
+  "regionLabel": "置顶对话",
+  "placement": "显示位置",
+  "placementHint": "集中显示原生置顶行，跟随工作区列表滚动或固定在上方。",
+  "placementAbove": "工作区列表上方",
+  "placementInside": "工作区列表内（一起滚动）",
+  "loading": "正在读取设置…",
+  "unavailable": "设置暂不可用，请稍后重试。",
+  "readOnly": "当前设置为只读。",
+  "save": "保存",
+  "saving": "保存中…",
+  "saved": "已保存",
+  "saveError": "设置保存失败，请重试。"
 }

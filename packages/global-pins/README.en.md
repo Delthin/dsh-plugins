@@ -2,41 +2,43 @@
 
 [中文说明](<README.md>)
 
-Show DSH’s existing pinned conversations above all workspaces in the left sidebar. Keep using the native Pin and Unpin actions; no separate favorites list is needed.
+Lift DSH’s rendered pinned-conversation rows above the workspace list. These are the same native nodes, retaining the active theme—including Claude Style—along with native typography, spacing, status, hover behavior and menus. No separate conversation-row design is introduced.
 
 ## Usage
 
-- Titles and workspace names follow the host’s pinned-ID list, independently of manual or recently-updated ordering inside workspace views. Conversations remain accessible when workspace groups are collapsed.
-- Click a title to open the conversation, or use the trailing Unpin button.
-- The native workspace browser stays intact, including the original conversation rows.
-- An empty list and a collapsed sidebar take no space. Long pin lists scroll separately. Archived, deleted and unavailable summaries are omitted.
+- Keep using DSH’s native Pin and Unpin actions; no separate favorites list is needed.
+- Opening, selection, title reveal, hover cards, status dots and quick actions remain native. The plugin adds no extra row tooltip.
+- Each native row appears once, rather than being duplicated at its original location.
+- When the native view rebuilds, the adapter binds its replacement nodes. Disabling the plugin restores row placement and preserves pin state.
+- Only pinned rows rendered by the current native view can be lifted. Rows hidden by collapsed groups or search follow that view’s visibility; the plugin does not expand groups or change view settings.
+
+## Settings
+
+Open **Plugins → Global pins**, choose **Placement**, and save:
+
+- **Above the workspace list**: an independent pins section with its own scrolling for long lists.
+- **Inside the workspace list**: one aggregated group that scrolls with the native list.
+
+The default is Above workspaces. DSH persists accepted changes, applies them immediately and synchronizes other connected pages. Row density belongs to DSH and the active theme. Legacy density values remain accepted but no longer override native styling.
 
 ## Installation
 
-Version `0.1.0` is a private development package, not published on npm or the marketplace. From the repository root:
+Version `0.1.0` is a private development package. From the repository root:
 
 ```bash
 npm run check -- --package=global-pins
 npm run check:pack -- --package=global-pins
 ```
 
-The archive is written to `.cache/packs/`. Install the generated `.tgz` in the target DSH environment and load its [cordis.patch.yml](<cordis.patch.yml>) through the host’s plugin integration workflow. If initial loading requires a service restart, confirm the active tasks and maintenance window first.
-
-No additional settings are needed. Disabling the plugin removes its sidebar section and preserves the host’s pins.
+The archive is written to `.cache/packs/`. Install the generated `.tgz` in the target DSH environment and load its [cordis.patch.yml](<cordis.patch.yml>) through the host’s plugin integration workflow. Service restarts require a separately agreed maintenance window.
 
 ## Compatibility and privacy
 
-The declared minimum is `DSH >=0.2.2-rc.1`, with `Node.js >=22.19.0`. The current adapter targets the DSH Web `0.2.2-rc.1` sidebar.
+The declared minimum is `DSH >=0.2.2-rc.1`, with `Node.js >=22.19.0`. The current adapter targets DSH Web `0.2.2-rc.1` and is checked against Claude Style’s date view.
 
-That version has no dedicated workspace-header extension slot. This plugin registers through `shell.overlay` and inserts its own container before `[data-slot="sidebar.workspaces"]`, leaving the browser untouched. The DOM anchor is a version-dependent integration point and must be checked after host upgrades or sidebar replacements. Without the anchor, the plugin inserts nothing and leaves the native list intact.
+That version has no public native-row rendering API. Through `shell.overlay`, this plugin places its section before `[data-slot="sidebar.workspaces"]` or inside the native scroll area. CSS layout lifts existing `[data-row-key="session:…"]` rows while preserving their React-owned parents: conversation nodes are neither reparented nor cloned. Recheck these DOM integration points after host upgrades or sidebar replacements.
 
-Only session summaries, workspace membership and native pin state are read. Open and Unpin use host operations and their permission checks. No conversation bodies, additional server-side storage or duplicate pin database are used.
-
-## FAQ
-
-**Why does a pinned conversation still appear inside its workspace?** Global pins are shortcuts. Native groups are preserved so search, ordering and archiving keep their existing behavior.
-
-**Why is the section missing?** Expand the sidebar and confirm that at least one pinned, unarchived conversation has a loaded summary. After a host upgrade or sidebar replacement, check the adapter anchor.
+The plugin reads native pin IDs and the layout of displayed rows, not conversation bodies. It does not duplicate status or maintain another pin store. Open, Unpin and other row actions retain their native handlers and host permission checks. Placement persists through DSH configuration.
 
 ## License
 

@@ -1,14 +1,19 @@
 {
   "meta": {
     "title": "Global pins",
-    "description": "Show native pinned conversations above all DSH workspaces."
+    "description": "Lift native pinned rows while preserving their theme, status and interactions."
   },
   "title": "Pinned conversations",
-  "untitled": "Untitled conversation",
-  "ungrouped": "Ungrouped",
-  "unpin": "Unpin",
-  "unpinError": "Could not unpin. Please try again.",
-  "openError": "Could not open this conversation. Please try again.",
-  "dismiss": "Dismiss message",
-  "regionLabel": "Pinned conversations"
+  "regionLabel": "Pinned conversations",
+  "placement": "Placement",
+  "placementHint": "Keep native pinned rows together, scrolling with the workspace list or fixed above it.",
+  "placementAbove": "Above the workspace list",
+  "placementInside": "Inside the workspace list (scrolls together)",
+  "loading": "Loading settings…",
+  "unavailable": "Settings are unavailable. Please try again later.",
+  "readOnly": "These settings are read-only.",
+  "save": "Save",
+  "saving": "Saving…",
+  "saved": "Saved",
+  "saveError": "Could not save settings. Please try again."
 }
