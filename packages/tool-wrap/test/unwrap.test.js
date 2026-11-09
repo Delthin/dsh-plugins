@@ -54,6 +54,18 @@ test('real run_code binding invokes unwrap and legacy alias with the same scoped
     else primary = pack;
     const rendered = tools.get(name, a).output.render({ plugin: 'dsh-ego-browser' }, pack);
     assert.deepEqual(JSON.parse(rendered[0].text), pack);
+    const { sdk: duplicate, ...expected } = pack;
+    assert.ok(duplicate.length);
+    for (const format of ['schema', 'full']) {
+      ctx.ptcRuntime.programs.set(`${name}-${format}`, bindings => bindings[name]({ plugin: 'dsh-ego-browser', format }));
+      const formatted = success(await host.execute('run_code', { code: `${name}-${format}`, description: 'Load complete fixture pack in selected format' }, { agent: a })).result;
+      assert.deepEqual({ ...formatted, usage: pack.usage }, format === 'schema' ? expected : pack);
+      if (format === 'schema') assert.match(formatted.usage, /return constraints and annotations are in schemas/);
+      const rendered = tools.get(name, a).output.render({ plugin: 'dsh-ego-browser', format }, formatted);
+      assert.deepEqual(JSON.parse(rendered[0].text), formatted);
+    }
+    const invalid = await host.execute(name, { plugin: 'dsh-ego-browser', format: 'json' }, { agent: a, nested: true });
+    assert.equal(invalid.isError, true);
     assert.deepEqual(calls, []);
   }
   const removeEntryGuard = tools.guard(exec => names.includes(exec.name) ? 'original discovery entry guard' : undefined);

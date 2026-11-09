@@ -10,6 +10,18 @@ Stable contribution IDs are `section:<encoded owner>:<encoded registration name>
 
 The unwrap directory is a separate `tool-discovery:directory` section owned by `@delthin/dsh-tool-wrap`, always available when deferred packs exist. It cannot defer itself.
 
+### Safe registration previews
+
+Global registered section/context sources include `source.preview`:
+
+- `{kind:'static',text:string}` contains the complete, unchanged registration literal, including empty strings and unresolved `{{variable}}` references. It is not the final rendered session prompt.
+- `{kind:'dynamic',reason:'session-context-required',message:string}` means the registered `text` is a provider requiring session context. The message explains why no body is available; `text` is omitted.
+- `{kind:'unavailable',reason:'static-text-unavailable',message:string}` means no safe own data-property string/provider was found (for example, an accessor or unsupported definition). `text` is omitted.
+
+The audited SystemPrompt contract uses `text: string | ((context: AssembleContext) => string)` for both sections and contexts; contexts have no separate `render` field. Preview generation reads only global registration data properties. It never assembles a prompt, invokes providers/accessors/variables, interpolates text or serializes function source. The existing authenticated GET/status response passes these previews through independently of host-adapter availability. Clients can show `preview.text` for static sources and `preview.message` for dynamic/unavailable sources.
+
+Scoped registrations and observed assembly/message/AGENTS bodies are excluded. Observed sources retain identity metadata only and do not acquire previews from session content; groups and unavailable stored IDs also have no registration preview. A scoped shadow or the most recent session cannot replace a global registration preview. Dynamic/session-only content would require a separately authorized caller-scoped preview API; it must not be cached into global status.
+
 ## Admission boundary
 
 The host hook executes after complete-persona enforcement, runtime-context refresh and pre-step hooks, but before any contributed message is admitted to the session surface. It is not a request/stream rewrite. Ordinary conversation messages are never supplied as configurable instruction contributions. The unmodified path remains byte/order/role compatible when composition is disabled.

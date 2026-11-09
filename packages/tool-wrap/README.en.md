@@ -82,21 +82,27 @@ The package exports two distinct runtime entrypoints:
 
 ### Web UI Configuration
 
-Once enabled, open **Tool On-Demand Discovery** from the left sidebar (or under **More**, or via **Settings → Tool On-Demand Discovery**):
+Once enabled, open **Tools and prompts** from the left sidebar (or under **More**, or via **Settings → Tools and prompts**):
 
-1. Turn on the master toggle.
-2. Check whole plugins to fold them on demand, or expand a plugin row to include or exclude individual tools.
-3. Click **Save Settings** at the bottom. Changes apply to subsequent prompt assemblies across sessions in the active profile; in-flight requests are not modified retroactively.
+1. Enable the required top-level toggles. Prompt roles, ordering and exclusion require **Prompt composition**.
+2. **Injected** automatically places each prompt in the upper **System prompts** or lower **User context** section. Drag or press `Alt + ↑ / ↓` to reorder within a section. Cross-section dragging changes that prompt’s role; **More** in the detail pane also provides move and reset-default-role actions. Holding a drag at a section or detail edge scrolls continuously.
+3. In **Tools**, click **Move in** to place an entire plugin inside **On-demand packs**; **Move out** restores ordinary tool exposure. Click a name to select individual tools. Pack ordering and outer tool-source ordering are independent; identified tools-only plugins are also orderable.
+4. In **Injected**, click a prompt’s trash button to move it to **Excluded**. **Restore** returns to **Injected**, selects that individual prompt and places it by its effective role.
+5. Click **Save Settings** at the bottom. Tool selection, ordering and exclusions remain cancellable drafts until saved. Changes apply to subsequent prompt assemblies across sessions in the active profile; in-flight requests are not modified retroactively.
 
 The unified list includes all known prompt sources, including sources without global tools. Tools without recorded origins remain individually selectable under **Unidentified Origin**; unattributed prompt contributions are displayed separately without guessing a plugin from their names.
 
 ### Unified Tools and Prompt Composition
 
-The same list groups tool definitions and prompt contributions by actual plugin registration identity. It also lists DSH identity/persona, global and project AGENTS, prompt-only plugins and the independent unwrap directory. Configure group and within-group order, `inherit/system/user` roles, and `inherit/always/pack` delivery. Source rules override group defaults field by field; `inherit` continues inheriting that field. Developer-role projection is not exposed by this adapter.
+The left pane has **Injected / Excluded / Tools** tabs. Individual prompts appear in upper System prompts and lower User context sections, so a plugin’s sections can occupy different roles without expanding a plugin or repeatedly choosing role buttons. Each row retains its registered source identity. Tools independently manages the collapsible on-demand pack group; moving a prompt never changes tool selection or plugin ownership.
+
+Role placement follows a section’s explicit role, parent field settings and registered default. Moving between sections overrides only that prompt’s role, retaining delivery and injection state. The detail pane shows one prompt body, with move, reset-default-role and delivery actions under **More**. Reset reclassifies it using inheritance. Unsupported stored roles appear in **Role needs recovery**, not falsely in System or User. Delivery remains `inherit/always/pack`; automatic delivery depends on the caller’s tool packs and host capabilities. Developer-role projection is not exposed. Legacy `order` and group rules remain compatible; the first individual reordering adds optional `sourceOrder` so interleaved cross-plugin ordering applies to actual prompt assembly. Both detail panes and role sections scroll independently.
+
+The detail pane shows one selected prompt or tool source. Counts use compact labels such as **Tools 2/2**. **Excluded** is a recoverable prompt-exclusion area. Removing a section changes only its `enabled` field, retaining its role, loading policy and tool selection without deleting its registered text. Restore clears the local exclusion when inheritance enables it, or explicitly enables the section when its parent remains disabled. An excluded prompt leaves its role section; tool entries and selection remain unchanged. Host-fixed contributions show a lock. Exclusion rules take effect only with prompt composition enabled, and all changes still require saving.
 
 With composition enabled, dedicated sections and contexts for a folded plugin follow its pack by default; `always` keeps them resident. Native transport, unavailable unwrap, complete personas without the directory and plugins without caller-visible deferred tools retain resident guidance. The directory cannot defer itself. Unattributed dynamic assembly contributions remain individually orderable and role-configurable, but cannot be assigned a guessed plugin or automatically follow its pack.
 
-Full composition requires explicit host support after complete-persona enforcement and final runtime-context refresh, before session admission. Ordinary user conversation messages never become configurable instruction sources. Composed system/user messages and surface replacements remain in the ordinary replayable session log. AGENTS exposes per-file boundaries after budget truncation instead of rereading files or guessing text boundaries. The global catalog retains identities only, not prompt bodies or session IDs; dynamic sources appear after actual admission.
+Full composition requires explicit host support after complete-persona enforcement and final runtime-context refresh, before session admission. Ordinary user conversation messages never become configurable instruction sources. Composed system/user messages and surface replacements remain in the ordinary replayable session log. AGENTS exposes per-file boundaries after budget truncation instead of rereading files or guessing text boundaries. Observed dynamic sources retain identities only, not session bodies or IDs, and appear after actual admission. Body previews read only global registration literals or templates, leaving variables unresolved. Settings never execute dynamic providers: these are labelled **Generated per conversation**. Metadata-only sources show **No body preview**. Both labels describe preview availability; actual loading follows the caller’s context and composition settings. **Source not currently found** identifies a saved source absent from current registrations or observations, whose settings remain preserved. These previews are not the final context sent by a particular request.
 
 Independent profile configuration is `prompt-composition.json`:
 
@@ -123,19 +129,21 @@ Application requires review and authorization. Restoration only touches files st
 In a compatible PTC session, the prompt instructs the model to unpack needed plugins proactively via `unwrap` without waiting for the user to ask:
 
 1. **Inspect Available On-Demand Plugins** (optional): Run `return await tools.unwrap({});` inside `run_code` to list caller-visible on-demand plugins.
-2. **Load Full Definitions by Plugin ID**: Run `return await tools.unwrap({ plugin: "exact-plugin-id" });` to retrieve full descriptions, parameter schemas, and return types for all caller-visible on-demand tools in that plugin. Load one plugin per `run_code` call to avoid output truncation.
-3. **Load an Unattributed Tool**: Run `return await tools.unwrap({ tool: "exact_tool_name" });` for standalone tools without a recorded plugin origin.
+2. **Load Full Definitions by Plugin ID**: Run `return await tools.unwrap({ plugin: "exact-plugin-id", format: "schema" });` to retrieve full descriptions, parameter schemas, and return types for all caller-visible on-demand tools in that plugin. Load one plugin per `run_code` call to avoid output truncation.
+3. **Load an Unattributed Tool**: Run `return await tools.unwrap({ tool: "exact_tool_name", format: "schema" });` for standalone tools without a recorded plugin origin.
 4. **Invoke Tools Normally**: Call `tools.<name>(...)` in subsequent `run_code` steps.
 
-The host serializes returned packs as complete JSON. If printing, use `console.log(JSON.stringify(await tools.unwrap({plugin: "exact-plugin-id"})))`, never `console.log(object)`, which can truncate long SDK strings through Node inspection. Python should use `json.dumps`. Both bindings retain the same conditional admission, scope, `toolSet`, and permission checks.
+`format: "schema"` keeps the complete original parameter and return schemas while omitting the duplicate SDK type text. Omit `format` or use `"full"` for the backward-compatible result containing both `schemas` and `sdk`. Type projections are not equivalent to original schemas: exclusive `oneOf` branches, integers and special property names may not be fully represented.
+
+The host serializes returned packs as complete JSON. If printing, use `console.log(JSON.stringify(await tools.unwrap({plugin: "exact-plugin-id", format: "schema"})))`, never `console.log(object)`, which can truncate long SDK strings through Node inspection. Python should use `json.dumps`. Both bindings retain the same conditional admission, scope, `toolSet`, and permission checks.
 
 ## Plugin Descriptions & Default Model Drafting
 
-Expand any plugin row in the settings page to view or customize its summary description:
+Select a plugin and expand its description under the **Tools** tab to view or customize it. Prompt-only plugins provide the same entry in their prompt view:
 
 - **Precedence**: Saved custom descriptions take priority over package-provided developer descriptions. Clearing the field or clicking **Restore Developer Description** and saving removes the custom override.
 - **Limits**: Up to 512 plugin description overrides can be stored; each description must be `1–2000` characters after trimming whitespace.
-- **Drafting with Default Model**: Clicking **Generate Description** invokes the deployment's default LLM using only the selected plugin's global tool names and descriptions (**never** parameter schemas, return schemas, or conversation messages). Requests time out after 120 seconds and may incur model usage charges. Generated text populates the editor as an unsaved draft until you click **Save Settings**; errors are sanitized and never overwrite saved configuration.
+- **Drafting with Default Model**: For plugins without a developer description, clicking **Generate Description** invokes the deployment's default LLM using only the selected plugin's global tool names and descriptions (**never** parameter schemas, return schemas, or conversation messages). Requests time out after 120 seconds and may incur model usage charges. Generated text populates the editor as an unsaved draft until you click **Save Settings**; errors are sanitized and never overwrite saved configuration.
 
 ## Configuration Schema & Migration
 
@@ -185,6 +193,19 @@ The settings page displays **Global Estimate** and **Last Assembly** metrics (re
 
 - Reported savings reflect **projected PTC SDK characters** only (factoring in the overhead of `unwrap` and the plugin overview catalog; folding only one or two tiny tools may result in net-positive character overhead).
 - **Important**: Projected SDK character counts and digest stability do not equal provider-billed token counts or guaranteed prompt-cache hits. SDK rendering is deterministic, but configured role/order changes and pack-guidance activation can change system text and its cache prefix; actual cache hit rates and token savings must be evaluated using provider usage/cache telemetry.
+
+Metrics reflect saved tool settings; an unsaved draft displays a stale-estimate notice. Overhead is shown as a positive **Net increase**, not negative savings. Prompt composition and unwrap responses are outside these metrics. If host capabilities invalidate a saved option, choose a supported value or restore inheritance for that field without resetting unrelated rules or ordering.
+
+### Design References
+
+Official sources checked on 2026-11-07:
+
+- [Anthropic: Context engineering](https://www.anthropic.com/research/effective-context-engineering-for-ai-agents): retain a lightweight index and load high-signal context just in time. This plugin pairs an exact-plugin directory with complete on-demand definitions.
+- [Anthropic: Writing tools for agents](https://www.anthropic.com/research/writing-tools-for-agents): focus tool responses on relevant information and offer concise/detailed formats. Here, compact output removes duplication rather than parameter or return constraints.
+- [MCP: Tools specification](https://modelcontextprotocol.io/specification/2026-07-28/server/tools): return a deterministic order for unchanged tool sets. The directory sorts plugins and tool names rather than relying on registration order.
+- [OpenAI: Prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching): reuse depends on matching rendered prefixes. Smaller text and stable ordering alone do not prove cache hits; evaluate provider usage.
+
+These are design principles, not an implementation of provider-native tool search or cache-breakpoint APIs. Exact-ID discovery and DSH execution permissions remain unchanged.
 
 ### Automatic Fallbacks
 

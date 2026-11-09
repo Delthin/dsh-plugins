@@ -3,6 +3,23 @@
 All notable verified changes to `@delthin/dsh-tool-wrap` are documented in this file.
 本文件记录 `@delthin/dsh-tool-wrap` 已核实的主要变更。
 
+## Unreleased / 未发布
+
+- **CN**: 新增兼容的 `unwrap({ format: "schema" })` 精简结果，保留完整原始 Schema 并省略重复 SDK；独立工具目录按名称稳定排序。
+- **EN**: Add opt-in schema-only unwrap results without losing original constraints; retain the legacy full result by default and sort standalone directory entries deterministically.
+- **CN**: 失效的提示词设置可逐字段恢复；占用统计区分草稿与已保存设置，并明确显示净增加及粗估边界。补充权威实践来源。
+- **EN**: Recover unsupported prompt settings per field; distinguish saved estimates from drafts, show net increases explicitly, and document primary-source design references.
+
+- **CN**: 「注入」自动按实际角色上下分为系统提示词与用户上下文；逐段展示，跨区拖动改变角色，同区支持拖动和键盘排序。右侧正文优先，「更多」收纳移动、恢复默认及加载策略，保留独立滚动和草稿操作。
+- **EN**: Automatically split Injected into upper System prompts and lower User context. Show individual prompts, change roles by cross-section dragging, reorder within sections by drag or keyboard, and place move/reset/delivery actions under More. Preserve independent scrolling and drafts.
+- **CN**: 工具移至独立「工具」页签，已选插件归入可折叠「按需工具包」二级列表；保留外层与包间排序、明确移入/移出及单项选择，提示词角色变化不影响工具选择。
+- **EN**: Manage tools in a separate Tools tab with nested on-demand packs, independent outer/pack ordering, explicit move-in/out and individual selection. Prompt role changes do not affect tools.
+- **CN**: 「不注入」保留可恢复的逐段排除，恢复后选中该段并按角色归类。可选 `sourceOrder` 支持跨插件实际注入顺序，旧 `order`、组规则及缺失来源设置保持兼容，未知新增来源仍校验拒绝。
+- **EN**: Preserve recoverable per-prompt exclusions and restore the selected prompt to its effective role. Optional sourceOrder supports real cross-plugin injection order while retaining legacy order, group rules and absent sources, with unknown new IDs still rejected.
+- **CN**: 修复已识别纯工具插件无法排序；拖动靠近列表或详情边缘时持续滚动，离开、放下和卸载时停止。区分动态正文、暂无预览与来源未找到。
+- **EN**: Make trusted tools-only plugins orderable, continuously scroll at list/detail drag edges with lifecycle cleanup, and distinguish dynamic bodies, missing previews and absent sources.
+- **Preview safety / 预览边界**: Only global registration literals are exposed; variables remain unresolved and dynamic providers are never evaluated. Scoped and observed conversation bodies stay isolated.
+
 ## [1.2.0]
 
 ### Unified Prompt Composition / 统一提示词编排

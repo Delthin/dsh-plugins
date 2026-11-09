@@ -7,11 +7,12 @@ import { spawnSync } from 'node:child_process';
 import { Readable } from 'node:stream';
 import { SystemPrompt, renderPrompt } from '@deepseek-ai/dsh-system-prompt';
 import { createUserMessage, createSystemMessage, createToolResultMessage } from '@deepseek-ai/dsh-llm';
-import { CompositionStore, ownerId, instructionId, sourceId, effectiveRule, validateCapabilities } from '../prompt-composition.js';
+import { CompositionStore, ownerId, instructionId, sourceId, effectiveRule, validateComposition, validateCapabilities } from '../prompt-composition.js';
 import { PromptOrderStore } from '../prompt-order.js';
+import * as discoveryPlugin from '../index.js';
 import { promptMessageDescriptor, commitPromptComposition, restorePromptComposition, hasPromptComposition } from '../host-support/admission.js';
 import { PATCHES, patchSource } from '../host-support/patches.js';
-import { hostFixture, fixturePlugin, temporaryDirectory, success, pluginIds } from './fixture.js';
+import { hostFixture, fixturePlugin, temporaryDirectory, success, pluginIds, enabledConfig } from './fixture.js';
 
 const config = overrides => ({ version: 1, enabled: false, order: [], rules: {}, ...overrides });
 async function request(host, method = 'GET', value, headers = {}) {
@@ -48,7 +49,31 @@ test('composition migration, atomic failure recovery and capability validation p
   assert.equal(JSON.parse(await readFile(legacy.path, 'utf8')).enabled, true);
   const saved = config({ rules: { [ownerId('@fixture/removed')]: { role: 'system', delivery: 'always' } }, order: migrated.order });
   await store.save(saved);
+  assert.deepEqual(validateComposition(saved), saved, 'old v1 rules must not acquire extra fields');
+  assert.deepEqual(await new CompositionStore(dir).load(), saved, 'legacy v1 read/write must not add sourceOrder');
+  for (const sourceOrder of [undefined, ['same', 'same'], [' invalid'], ['bad\u0000id'], Array.from({ length: 1025 }, (_, index) => String(index))]) {
+    assert.throws(() => validateComposition(config({ sourceOrder })), /逐项顺序/);
+  }
+  const flatSaved = { ...saved, sourceOrder: ['fixture:removed-source'] };
+  await store.save(flatSaved);
+  assert.deepEqual(await new CompositionStore(dir).load(), flatSaved);
+  const missingSources = [{ id: flatSaved.sourceOrder[0], kind: 'unavailable' }];
+  for (const sources of [[], missingSources]) {
+    validateCapabilities(flatSaved, sources, { admission: false }, flatSaved);
+    assert.throws(() => validateCapabilities(flatSaved, sources, { admission: false }, saved), /未知提示词来源/);
+  }
+  await store.save(saved);
+  assert.throws(() => validateComposition(config({ rules: { missing: { role: 'inherit', delivery: 'inherit', enabled: undefined } } })), /规则无效/);
   validateCapabilities(saved, [], { admission: false }, saved);
+  const missingId = ownerId('@fixture/removed');
+  const disabled = config({ ...saved, rules: { [missingId]: { ...saved.rules[missingId], enabled: false } } });
+  await store.save(disabled);
+  assert.deepEqual(await new CompositionStore(dir).load(), disabled);
+  const unavailable = [{ id: missingId, kind: 'unavailable', roles: ['inherit'], deliveryModes: ['inherit'] }];
+  validateCapabilities(disabled, unavailable, { admission: true }, disabled);
+  for (const sources of [[], unavailable]) assert.throws(() => validateCapabilities(disabled, sources, { admission: true }, saved), /来源已变化/);
+  assert.throws(() => validateCapabilities(saved, unavailable, { admission: true }, disabled), /来源已变化/);
+  await store.save(saved);
   const path = store.path;
   store.path = join(dir, 'absent', 'prompt-composition.json');
   await assert.rejects(store.save(config()), /原配置保留/);
@@ -57,7 +82,8 @@ test('composition migration, atomic failure recovery and capability validation p
   store.path = path;
   await Promise.all([store.save(config({ order: ['a'] })), store.save(saved)]);
   assert.deepEqual(await new CompositionStore(dir).load(), saved);
-  assert.deepEqual(effectiveRule(config({ rules: { group: { role: 'system', delivery: 'pack' }, child: { role: 'inherit', delivery: 'always' } } }), { id: 'child', groupId: 'group', owner: null }), { role: 'system', delivery: 'always' });
+  assert.deepEqual(effectiveRule(config({ rules: { group: { role: 'system', delivery: 'pack', enabled: false }, child: { role: 'inherit', delivery: 'always', enabled: true } } }), { id: 'child', groupId: 'group', owner: null }), { role: 'system', delivery: 'always', enabled: true });
+  assert.deepEqual(effectiveRule(saved, { id: 'child', owner: null }), { role: 'inherit', delivery: 'inherit', enabled: true });
   const host = await hostFixture(t);
   const status = (await request(host)).body;
   assert.equal(status.capabilities.available, false);
@@ -68,6 +94,41 @@ test('composition migration, atomic failure recovery and capability validation p
   assert.equal((await request(host, 'PUT', config({ rules: { [source.id]: { role: 'developer', delivery: 'inherit' } } }))).statusCode, 409);
   assert.equal((await request(host, 'GET', undefined, { 'x-fixture-reject': '1' })).statusCode, 403);
   assert.deepEqual((await request(host)).body.config, config());
+  const toolOnlyGroups = Object.values(pluginIds).map(id => status.sources.find(source => source.id === ownerId(id)));
+  for (const group of toolOnlyGroups) {
+    assert.ok(group, 'trusted tools-only plugins must have an orderable source');
+    assert.equal(group.kind, 'group');
+    assert.equal(group.groupId, ownerId(group.owner));
+    assert.deepEqual(group.children, []);
+    assert.deepEqual(group.roles, ['inherit']);
+    assert.deepEqual(group.deliveryModes, ['inherit']);
+    assert.equal(group.canToggleInjection, false);
+    assert.equal(Object.hasOwn(group, 'text'), false);
+    assert.equal(Object.hasOwn(group, 'preview'), false);
+  }
+  const ordered = config({ order: toolOnlyGroups.map(group => group.id).reverse() });
+  assert.equal((await request(host, 'PUT', ordered)).statusCode, 200);
+  assert.deepEqual((await request(host)).body.config, ordered);
+  for (const unknown of ['tools:' + pluginIds.browser, ownerId('@fixture/not-registered')]) {
+    assert.equal((await request(host, 'PUT', config({ order: [...ordered.order, unknown] }))).statusCode, 409);
+  }
+  assert.deepEqual((await request(host)).body.config, ordered, 'unknown IDs must not overwrite the saved order');
+  const composition = host.ctx.get('toolWrapPromptComposition');
+  composition.observe({ id: 'fixture:custom-source', owner: pluginIds.browser, kind: 'message', groupId: 'fixture:custom-group', groupLabel: 'Custom browser group' });
+  const browserGroups = (await request(host)).body.sources.filter(source => source.kind === 'group' && source.owner === pluginIds.browser);
+  assert.deepEqual(browserGroups.map(group => group.id), ['fixture:custom-group'], 'an existing custom owner group must not acquire an empty duplicate');
+  const legacyDraft = { ...ordered, order: [...ordered.order, ...flatSaved.sourceOrder] };
+  await composition.store.save(legacyDraft);
+  assert.equal((await request(host)).body.sources.find(source => source.id === flatSaved.sourceOrder[0]).kind, 'unavailable');
+  const flatDraft = { ...legacyDraft, sourceOrder: flatSaved.sourceOrder };
+  assert.equal((await request(host, 'PUT', flatDraft)).statusCode, 200, 'first flat save preserves absent IDs already saved in legacy order');
+  assert.deepEqual(await new CompositionStore(host.dir).load(), flatDraft);
+  assert.equal((await request(host, 'PUT', flatDraft)).statusCode, 200);
+  assert.equal((await request(host, 'PUT', { ...flatDraft, sourceOrder: [...flatDraft.sourceOrder, 'fixture:unknown'] })).statusCode, 409);
+  assert.deepEqual((await request(host)).body.config, flatDraft);
+  const extended = { ...flatDraft, sourceOrder: [...flatDraft.sourceOrder, 'fixture:custom-source'] };
+  assert.equal((await request(host, 'PUT', extended)).statusCode, 200);
+  assert.deepEqual((await request(host)).body.config, extended);
 });
 
 // Real risks: role promotion/demotion, caller isolation and required-context refresh.
@@ -90,6 +151,17 @@ test('final admission composes all trusted sources, keeps caller packs isolated 
   const plugin = await fixturePlugin(a.ctx, pluginIds.browser);
   plugin.systemPrompt.section({ name: 'pack:guide', order: 200, text: context => 'GUIDE_A_' + context.marker, interpolate: false });
   plugin.systemPrompt.context({ name: 'pack:required', order: 20, required: true, text: context => { contextCalls++; return 'REQUIRED_A_' + context.marker; } });
+  const image = await fixturePlugin(a.ctx, pluginIds.image);
+  const orderedSources = [
+    [plugin, pluginIds.browser, 'A1'], [plugin, pluginIds.browser, 'A2'],
+    [image, pluginIds.image, 'B1'], [image, pluginIds.image, 'TAIL1'], [image, pluginIds.image, 'TAIL2'],
+  ].map(([owner, id, name], index) => {
+    owner.systemPrompt.section({ name: 'sort:' + name, order: 300 + index, text: 'SORT_' + name });
+    return sourceId('section', id, 'sort:' + name);
+  });
+  const [a1, a2, b1] = orderedSources;
+  const guideId = sourceId('section', pluginIds.browser, 'pack:guide');
+  const requiredId = sourceId('context', pluginIds.browser, 'pack:required');
   const other = await fixturePlugin(b.ctx, pluginIds.browser);
   other.systemPrompt.context({ name: 'pack:required', order: 20, required: true, text: 'PRIVATE_B_ONLY' });
   a.ctx.tools.restrict({ deny: ['ego_secret'] });
@@ -113,7 +185,8 @@ test('final admission composes all trusted sources, keeps caller packs isolated 
   assert.equal(promptMessageDescriptor(mnemon).form, 'snapshot');
   assert.equal(promptMessageDescriptor(recalledData), undefined);
   const catalogId = promptMessageDescriptor(catalog).id;
-  await composition.store.save(config({ enabled: true, rules: {
+  await composition.store.save(config({ enabled: true, order: [ownerId(pluginIds.image), ownerId(pluginIds.browser)], rules: {
+    ...Object.fromEntries(orderedSources.map(id => [id, { role: 'inherit', delivery: 'always' }])),
     'instructions:global': { role: 'system', delivery: 'always' },
     [catalogId]: { role: 'system', delivery: 'always' },
     [ownerId('dsh-mnemon')]: { role: 'system', delivery: 'always' },
@@ -125,7 +198,13 @@ test('final admission composes all trusted sources, keeps caller packs isolated 
   const assembly = await ctx.systemPrompt.assemble({ scope: a, toolSet, marker: 'EXACT_STEP' });
   const refreshed = ctx.systemPrompt.refreshContext(assembly, { scope: a, marker: 'EXACT_STEP', signal });
   const messages = [plain, instruction, catalog, snapshot, mnemon, recalledData, relay];
+  const legacyPlan = await ctx.systemPrompt.admitContributions({ agent: a, assembly: refreshed, messages, toolSet, signal });
+  const sortNames = text => text.match(/SORT_(?:A1|A2|B1|TAIL1|TAIL2)/g) ?? [];
+  assert.deepEqual(sortNames(legacyPlan.systemText), ['SORT_B1', 'SORT_TAIL1', 'SORT_TAIL2', 'SORT_A1', 'SORT_A2']);
+  const flatConfig = { ...composition.store.config, sourceOrder: [a1, b1, a2, requiredId, guideId, 'fixture:removed-source'] };
+  await composition.store.save(flatConfig);
   const plan = await ctx.systemPrompt.admitContributions({ agent: a, assembly: refreshed, messages, toolSet, signal });
+  assert.deepEqual(sortNames(plan.systemText), ['SORT_A1', 'SORT_B1', 'SORT_A2', 'SORT_TAIL1', 'SORT_TAIL2']);
   assert.match(plan.systemText, /GLOBAL_FILE_BODY/);
   assert.match(plan.systemText, /SKILL_CATALOG_BODY/);
   assert.match(plan.systemText, /REAL_MNEMON_RECALL_ENVELOPE/);
@@ -139,6 +218,7 @@ test('final admission composes all trusted sources, keeps caller packs isolated 
   assert.ok(!pack.tools.includes('ego_secret'));
   assert.match(JSON.stringify(pack.guidance), /GUIDE_A_EXACT_STEP/);
   assert.match(JSON.stringify(pack.guidance), /REQUIRED_A_EXACT_STEP/);
+  assert.deepEqual(pack.guidance.map(source => source.id), [requiredId, guideId], 'on-demand guidance uses the same flat source ranks');
   assert.doesNotMatch(JSON.stringify(pack), /PRIVATE_B_ONLY/);
   assert.equal(contextCalls, beforeUnwrap, 'unwrap must not reevaluate dynamic context providers');
   assert.deepEqual(await composition.guidance({ agent: b, toolSet, signal }, pluginIds.browser, ['ego_visit']), []);
@@ -197,9 +277,95 @@ test('final admission composes all trusted sources, keeps caller packs isolated 
   assert.deepEqual(files.map(file => file.id), [instructionId('/fixture/project-b/AGENTS.md')]);
   assert.notEqual(files[0].id, instructionId('/fixture/project-a/AGENTS.md'));
   assert.doesNotMatch(JSON.stringify(composition.status()), /GUIDE_A_|REQUIRED_A_|PROJECT_A_FILE_BODY|MEMORY_SNAPSHOT_BODY/);
+  await composition.store.save({ ...flatConfig, rules: { ...flatConfig.rules, ...Object.fromEntries(orderedSources.map(id => [id, { role: 'user', delivery: 'always' }])) } });
+  const userPlan = await ctx.systemPrompt.admitContributions({ agent: a, assembly: refreshed, messages, toolSet, signal });
+  assert.deepEqual(userPlan.contributions.filter(source => orderedSources.includes(source.id)).map(source => source.id), [a1, b1, a2, ...orderedSources.slice(3)]);
+  assert.deepEqual(sortNames(userPlan.systemText), [], 'flat order also applies after individual sources move to the user role');
   await composition.store.save(config());
   assert.equal(await ctx.systemPrompt.admitContributions({ agent: a, assembly: refreshed, messages: [], toolSet, signal }), undefined);
   assert.ok(patchedInstructions.renderAgentInstructions);
+});
+
+// Off must win over always delivery, deferred packs and later configuration changes.
+test('per-source injection controls filter native, unwrapped and packed admission without leaking unwrap guidance', async t => {
+  const [patchedPrompt] = await Promise.all([adaptedModule('@deepseek-ai/dsh-system-prompt'), adaptedModule('@deepseek-ai/dsh-agent-instructions'), adaptedModule('@deepseek-ai/dsh-session'), adaptedModule('@deepseek-ai/dsh-agent-loop')]);
+  const originals = new Map();
+  for (const name of ['assemble', 'refreshContext', 'admitContributions', 'promptCompositionVersion']) {
+    originals.set(name, Object.getOwnPropertyDescriptor(SystemPrompt.prototype, name));
+    Object.defineProperty(SystemPrompt.prototype, name, Object.getOwnPropertyDescriptor(patchedPrompt.SystemPrompt.prototype, name));
+  }
+  t.after(() => { for (const [name, descriptor] of originals) { if (descriptor) Object.defineProperty(SystemPrompt.prototype, name, descriptor); else delete SystemPrompt.prototype[name]; } });
+  for (const mode of ['native', 'unwrapped', 'packed']) {
+    const host = await hostFixture(t, { mode: mode === 'native' ? 'native' : 'ptc', config: enabledConfig({ enabled: mode !== 'unwrapped' }), installPlugin: false });
+    const { ctx, tools } = host, agent = host.agent('injection-' + mode);
+    const wrapperOwner = await fixturePlugin(ctx, '@delthin/dsh-tool-wrap');
+    await wrapperOwner.plugin(discoveryPlugin);
+    const owner = await fixturePlugin(agent.ctx, pluginIds.browser);
+    owner.systemPrompt.section({ name: 'off:always', order: 100, text: 'OFF_ALWAYS_BODY' });
+    owner.systemPrompt.section({ name: 'off:required', order: 101, required: true, text: 'OFF_REQUIRED_BODY' });
+    owner.systemPrompt.context({ name: 'off:context', order: 100, required: true, text: 'OFF_CONTEXT_BODY' });
+    owner.systemPrompt.section({ name: 'on:child', order: 103, text: 'CHILD_OVERRIDE_BODY' });
+    const composition = ctx.get('toolWrapPromptComposition'), signal = new AbortController().signal;
+    const rules = {
+      [ownerId(pluginIds.browser)]: { role: 'inherit', delivery: 'inherit', enabled: false },
+      [sourceId('section', pluginIds.browser, 'off:always')]: { role: 'inherit', delivery: 'always' },
+      [sourceId('section', pluginIds.browser, 'on:child')]: { role: 'user', delivery: 'always', enabled: true },
+      'instructions:project': { role: 'system', delivery: 'always', enabled: false },
+    };
+    const toolSet = await tools.resolve({ agent, modelSelection: { provider: 'fixture', model: 'fixture' }, signal });
+    t.after(() => toolSet.dispose());
+    const assembly = await ctx.systemPrompt.assemble({ scope: agent, toolSet });
+    const refreshed = ctx.systemPrompt.refreshContext(assembly, { scope: agent, signal });
+    const instruction = createUserMessage({ content: [{ type: 'text', text: 'OFF_INSTRUCTION_FRAME' }], source: { kind: 'agent-instructions', baseline: true, compositionSections: [{ key: '/fixture/project/AGENTS.md', path: 'AGENTS.md', scope: 'project', text: 'OFF_INSTRUCTION_BODY' }] } });
+    const snapshot = createUserMessage({ content: [{ type: 'text', text: 'OFF_SNAPSHOT_BODY' }], source: { kind: 'fixture-state', form: 'snapshot', sections: [{ name: 'state', text: 'OFF_SNAPSHOT_BODY' }] } });
+    const opaque = createUserMessage({ content: [{ type: 'text', text: 'OPAQUE_RESIDENT_BODY' }, { type: 'image', url: 'https://example.invalid/fixture.png' }], source: { kind: 'fixture-opaque', form: 'catalog' } });
+    rules[promptMessageDescriptor(snapshot).id] = { role: 'system', delivery: 'always', enabled: false };
+    await composition.store.save(config({ enabled: true, rules }));
+    const messages = [instruction, snapshot, opaque];
+    const plan = await ctx.systemPrompt.admitContributions({ agent, assembly: refreshed, messages, toolSet, signal });
+    assert.equal(composition.accepted({ agent, toolSet }).canDefer, mode === 'packed');
+    assert.doesNotMatch(JSON.stringify(plan), /OFF_/);
+    assert.ok(plan.contributions.some(item => item.text === 'CHILD_OVERRIDE_BODY' && item.role === 'user'));
+    if (mode === 'packed') assert.match(plan.systemText, /unwrap/);
+    const status = composition.status();
+    assert.equal((await request(host, 'PUT', config({ enabled: true, rules }))).statusCode, 200);
+    assert.equal(status.capabilities.injection, true);
+    assert.equal(status.sources.find(source => source.name === 'off:required').canToggleInjection, true);
+    for (const locked of status.sources.filter(source => source.opaque || source.name === 'tool-discovery:directory' || source.id === ownerId('@delthin/dsh-tool-wrap'))) {
+      assert.equal(locked.canToggleInjection, false);
+      assert.equal((await request(host, 'PUT', config({ enabled: true, rules: { ...rules, [locked.id]: { role: 'inherit', delivery: 'inherit', enabled: false } } }))).statusCode, 409);
+    }
+    // A configuration save after request admission cannot alter that request's unwrap snapshot.
+    await composition.store.save(config({ enabled: true }));
+    const execution = { agent, toolSet, signal };
+    assert.doesNotMatch(JSON.stringify(await composition.guidance(execution, pluginIds.browser, ['ego_visit'])), /OFF_/);
+    if (mode === 'packed') {
+      const pack = success(await host.execute('unwrap', { plugin: pluginIds.browser }, { agent, nested: true, toolSet }));
+      assert.doesNotMatch(JSON.stringify(pack.guidance), /OFF_/);
+      assert.ok(pack.schemas.some(schema => schema.name === 'ego_visit'), 'prompt injection does not change tool permission');
+      const marker = agent.session.snapshotEvents().findLast(event => event.type === 'tool-wrap/pack-admitted');
+      agent.session.append('tool/result', { turn: 1, step: 1, message: createToolResultMessage({ callId: marker.data.rootCallId, content: [{ type: 'text', text: 'pack loaded' }], isError: false }) }, { surfaceOp: 'append' });
+      assert.equal(composition.loadedPlugins(agent).has(pluginIds.browser), true);
+      await composition.store.save(config({ enabled: true, rules }));
+      const loadedPlan = await ctx.systemPrompt.admitContributions({ agent, assembly: refreshed, messages, toolSet, signal });
+      assert.doesNotMatch(JSON.stringify(loadedPlan), /OFF_/);
+    }
+    commitPromptComposition(agent.session, plan, messages, true);
+    assert.doesNotMatch(body(modelMessages(agent.session)), /OFF_/);
+    assert.match(body(modelMessages(agent.session)), /OPAQUE_RESIDENT_BODY/);
+    // Disabled composition persists the same draft while leaving original host admission alone.
+    assert.equal((await request(host, 'PUT', config({ rules }))).statusCode, 200);
+    assert.equal(await ctx.systemPrompt.admitContributions({ agent, assembly: refreshed, messages, toolSet, signal }), undefined);
+    assert.match(JSON.stringify(await composition.guidance(execution, pluginIds.browser, ['ego_visit'])), /OFF_ALWAYS_BODY/);
+    // Complete personas replace all other host sections; exercise their explicit off separately.
+    owner.systemPrompt.section({ name: 'off:persona', order: 102, complete: true, text: 'OFF_PERSONA_BODY' });
+    await composition.store.save(config({ enabled: true, rules }));
+    const personaAssembly = await ctx.systemPrompt.assemble({ scope: agent, toolSet });
+    const personaPlan = await ctx.systemPrompt.admitContributions({ agent, assembly: personaAssembly, messages: [], toolSet, signal });
+    assert.doesNotMatch(JSON.stringify(personaPlan), /OFF_PERSONA_BODY/);
+    assert.equal(composition.sources().find(source => source.name === 'off:persona').canToggleInjection, true);
+    assert.equal((await request(host, 'PUT', config({ enabled: true, rules: { ...rules, [sourceId('section', pluginIds.browser, 'off:persona')]: { role: 'inherit', delivery: 'inherit', enabled: false } } }))).statusCode, 200);
+  }
 });
 
 // Real risks: host file corruption/partial restore and losing budgeted AGENTS boundaries.

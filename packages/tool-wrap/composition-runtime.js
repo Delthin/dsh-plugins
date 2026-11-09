@@ -17,7 +17,7 @@ export class CompositionRuntime {
   capabilities() {
     const admission = this.ctx.systemPrompt.promptCompositionVersion === 1;
     return { available: admission, admission, version: admission ? 1 : 0, roles: admission ? ['inherit', 'system', 'user'] : ['inherit'], developer: false,
-      delivery: admission, structuredInstructions: admission, reason: admission ? null : 'host-adapter-required' };
+      injection: admission, delivery: admission, structuredInstructions: admission, reason: admission ? null : 'host-adapter-required' };
   }
   observe(source) {
     if (!source?.id) return;
@@ -30,7 +30,8 @@ export class CompositionRuntime {
   }
   sources() {
     const caps = this.capabilities();
-    const knownPlugins = new Set(registeredPlugins(this.ctx.tools).map(plugin => plugin.id));
+    const plugins = registeredPlugins(this.ctx.tools);
+    const knownPlugins = new Set(plugins.map(plugin => plugin.id));
     const records = new Map([...this.observed.values(), ...registeredPromptSources(this.ctx.systemPrompt)].map(source => [source.id, source]));
     const sources = [...records.values()].map(source => {
       const directory = source.owner === UNWRAP_OWNER && source.name === DIRECTORY_NAME;
@@ -39,21 +40,34 @@ export class CompositionRuntime {
       const pack = caps.admission && attributed && knownPlugins.has(source.owner) && !directory && !source.complete && source.kind !== 'instructions' && !source.opaque;
       return { ...source, groupId, groupLabel: source.groupLabel ?? source.owner ?? 'Unattributed host contributions',
         defaultRole: source.kind === 'section' ? 'system' : 'user',
+        canToggleInjection: caps.admission && !source.opaque && !directory,
         roles: source.opaque ? ['inherit'] : caps.roles,
         deliveryModes: caps.admission && !source.opaque ? ['inherit', 'always', ...(pack ? ['pack'] : [])] : ['inherit'],
         reason: !caps.admission ? 'host-adapter-required' : !attributed ? 'owner-unattributed-pack-unavailable' : directory ? 'entrypoint-always' : source.complete ? 'complete-persona-always' : null };
     });
-    for (const group of [{ id: 'instructions:global', label: 'Global AGENTS' }, { id: 'instructions:project', label: 'Project AGENTS' }]) sources.push({ ...group, owner: INSTRUCTIONS_OWNER, kind: 'group', groupId: group.id, groupLabel: group.label, defaultRole: 'user', roles: caps.roles, deliveryModes: caps.admission ? ['inherit', 'always'] : ['inherit'], reason: caps.reason });
+    for (const group of [{ id: 'instructions:global', label: 'Global AGENTS' }, { id: 'instructions:project', label: 'Project AGENTS' }]) sources.push({ ...group, owner: INSTRUCTIONS_OWNER, kind: 'group', groupId: group.id, groupLabel: group.label, defaultRole: 'user', canToggleInjection: caps.admission, roles: caps.roles, deliveryModes: caps.admission ? ['inherit', 'always'] : ['inherit'], reason: caps.reason });
     for (const groupId of new Set(sources.filter(source => source.kind !== 'group').map(source => source.groupId))) {
       if (sources.some(source => source.id === groupId)) continue;
       const children = sources.filter(source => source.groupId === groupId && source.kind !== 'group');
       const { owner, groupLabel } = children[0];
       const pack = children.every(source => source.deliveryModes.includes('pack'));
       sources.push({ id: groupId, label: groupLabel, owner, kind: 'group', groupId, groupLabel, defaultRole: 'inherit', roles: caps.roles,
+        canToggleInjection: caps.admission && children.every(source => source.canToggleInjection),
         deliveryModes: caps.admission ? ['inherit', 'always', ...(pack ? ['pack'] : [])] : ['inherit'], reason: caps.reason ?? (!owner ? 'owner-unattributed-pack-unavailable' : null), children: children.map(source => source.id) });
     }
     const present = new Set(sources.map(source => source.id));
-    for (const id of new Set([...this.store.config.order, ...Object.keys(this.store.config.rules)])) if (!present.has(id)) sources.push({ id, label: id, owner: null, kind: 'unavailable', groupId: id, groupLabel: id, defaultRole: 'inherit', roles: ['inherit'], deliveryModes: ['inherit'], reason: 'source-unavailable' });
+    // A trusted tools-only plugin still needs a durable ordering identity. Existing
+    // custom prompt groups already represent their owner and must not be duplicated.
+    const groupedOwners = new Set(sources.filter(source => source.kind === 'group').map(source => source.owner));
+    for (const plugin of plugins) {
+      const id = ownerId(plugin.id);
+      if (groupedOwners.has(plugin.id) || present.has(id)) continue;
+      const label = plugin.label ?? plugin.id;
+      sources.push({ id, label, owner: plugin.id, kind: 'group', groupId: id, groupLabel: label, defaultRole: 'inherit',
+        canToggleInjection: false, roles: ['inherit'], deliveryModes: ['inherit'], reason: caps.reason, children: [] });
+      present.add(id);
+    }
+    for (const id of new Set([...this.store.config.order, ...(this.store.config.sourceOrder ?? []), ...Object.keys(this.store.config.rules)])) if (!present.has(id)) sources.push({ id, label: id, owner: null, kind: 'unavailable', groupId: id, groupLabel: id, defaultRole: 'inherit', canToggleInjection: false, roles: ['inherit'], deliveryModes: ['inherit'], reason: 'source-unavailable' });
     return sources;
   }
   status() { return { config: structuredClone(this.store.config), sources: this.sources(), capabilities: this.capabilities() }; }
@@ -153,8 +167,10 @@ export class CompositionRuntime {
     const ordered = orderContributions(contributions, config);
     const system = [], projected = [];
     for (const source of ordered) {
-      if (!source.text || this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack' && !loaded.has(source.owner)) continue;
       const rule = effectiveRule(config, source);
+      // The unwrap directory remains resident even if a stored parent draft predates it.
+      const entrypoint = source.owner === UNWRAP_OWNER && source.name === DIRECTORY_NAME;
+      if (!source.text || !rule.enabled && !entrypoint || this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack' && !loaded.has(source.owner)) continue;
       const role = rule.role === 'inherit' ? source.defaultRole : rule.role;
       if (!['system', 'user'].includes(role)) throw new Error('Unsupported trusted prompt-composition role');
       if (role === 'system') system.push(source.text);
@@ -173,7 +189,7 @@ export class CompositionRuntime {
     execution.signal.throwIfAborted();
     const schemas = sdkSchemas(this.ctx.tools, execution.agent, execution.toolSet);
     const { config, toolsConfig, canDefer } = accepted;
-    return orderContributions(accepted.contributions, config).filter(source => source.owner === plugin && source.text && (!config.enabled || this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack')).map(source => {
+    return orderContributions(accepted.contributions, config).filter(source => source.owner === plugin && source.text && (!config.enabled || effectiveRule(config, source).enabled && this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack')).map(source => {
       const role = config.enabled ? effectiveRule(config, source).role : 'inherit';
       return { id: source.id, kind: source.kind, role: role === 'inherit' ? source.defaultRole : role, text: source.text };
     });

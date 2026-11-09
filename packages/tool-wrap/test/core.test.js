@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToolsSdk } from '@deepseek-ai/dsh-tool-executor-ptc';
-import { hiddenTools, discover, sdkSchemas, validateConfig, DiscoveryError } from '../core.js';
+import { defineTool } from '@deepseek-ai/dsh-tools';
+import { hiddenTools, discover, overview, sdkSchemas, validateConfig, DiscoveryError } from '../core.js';
 import { enabledConfig, fixturePlugin, fixtureTool, hostFixture, tsRuntime } from './fixture.js';
 
 const names = tools => tools.map(tool => tool.name).sort();
@@ -66,14 +67,71 @@ test('exact plugin returns its complete hidden SDK and original usage, without k
   assert.deepEqual(calls, []);
 });
 
-test('plugin packages are not truncated at former exact-name or search limits', async t => {
+test('large schema packs retain all parameter and return constraints and annotations without SDK text', async t => {
   const { ctx, tools } = await hostFixture(t);
   const id = '@fixture/large-plugin';
-  const definitions = Array.from({ length: 35 }, (_, index) => fixtureTool(`bulk_${String(index).padStart(2, '0')}`));
+  const description = 'Complete tool usage and approval instructions. '.repeat(100) + 'USAGE_TAIL';
+  const definitions = Array.from({ length: 35 }, (_, index) => fixtureTool(`bulk_${String(index).padStart(2, '0')}`, { description }));
+  definitions[0] = defineTool({
+    name: 'bulk_00', description,
+    parameters: {
+      input: { type: 'string', required: true, title: 'Input title', default: 'default input', examples: ['example input'] },
+      choice: { oneOf: [{ type: 'number' }, { type: 'integer' }], required: true },
+      'not-an-identifier': { type: 'integer', required: true, description: 'Exact JSON field name' },
+    },
+    output: {
+      schema: { type: 'object', additionalProperties: false, title: 'Output title', properties: {
+        nested: { type: 'array', required: true, items: { oneOf: [{ type: 'number' }, { type: 'integer' }] } },
+        'not-an-identifier': { type: 'integer', required: true, default: 3, examples: [7] },
+      } },
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+    },
+    execute: async () => ({ nested: [1.5], 'not-an-identifier': 3 }),
+  });
   await fixturePlugin(ctx, id, definitions);
-  const result = discover(sdkSchemas(tools), enabledConfig({ groups: [id] }), tsRuntime, { plugin: id });
-  assert.deepEqual([...result.tools].sort(), definitions.map(tool => tool.name));
-  for (const definition of definitions) assert.match(result.sdk, new RegExp(`${definition.name}:`));
+  const schemas = sdkSchemas(tools), config = enabledConfig({ groups: [id] });
+  const originals = schemas.filter(tool => tool.plugin?.id === id).map(({ plugin, ...tool }) => tool);
+  for (const runtime of [tsRuntime, { language: 'python', programFormat: 'repl' }]) {
+    const result = discover(schemas, config, runtime, { plugin: id });
+    assert.deepEqual(Object.keys(result), ['plugin', 'tools', 'schemas', 'sdk', 'usage', 'unavailable']);
+    assert.deepEqual(discover(schemas, config, runtime, { plugin: id, format: 'full' }), result);
+    assert.deepEqual(result.tools, definitions.map(tool => tool.name));
+    assert.deepEqual(result.schemas, originals);
+    const { sdk: duplicate, ...expected } = result;
+    assert.ok(duplicate.length);
+    const compact = discover(schemas, config, runtime, { plugin: id, format: 'schema' });
+    assert.deepEqual({ ...compact, usage: result.usage }, expected);
+    assert.deepEqual(compact.schemas, originals);
+    assert.match(compact.usage, /parameter definitions, return constraints and annotations are in schemas/);
+    assert.match(compact.usage, /one argument object \(a dict in Python\)/);
+    const constrained = compact.schemas[0];
+    assert.deepEqual(constrained.parameters.properties.choice.oneOf, [{ type: 'number' }, { type: 'integer' }]);
+    assert.deepEqual(constrained.parameters.required, ['input', 'choice', 'not-an-identifier']);
+    assert.equal(constrained.parameters.properties.input.default, 'default input');
+    assert.deepEqual(constrained.parameters.properties.input.examples, ['example input']);
+    assert.equal(constrained.output.additionalProperties, false);
+    assert.deepEqual(constrained.output.properties.nested.items.oneOf, [{ type: 'number' }, { type: 'integer' }]);
+    assert.equal(constrained.output.properties['not-an-identifier'].type, 'integer');
+    assert.equal(constrained.output.title, 'Output title');
+    for (const definition of compact.schemas) assert.match(definition.description, /USAGE_TAIL/);
+    const fullChars = JSON.stringify(result).length, schemaChars = JSON.stringify(compact).length;
+    assert.ok(schemaChars < fullChars);
+    t.diagnostic(`35-tool ${runtime.language} fixture JSON characters: full=${fullChars}, schema=${schemaChars}, saved=${fullChars - schemaChars} (${((fullChars - schemaChars) * 100 / fullChars).toFixed(1)}%)`);
+  }
+});
+
+test('catalog and directory bytes are independent of plugin and standalone registration order', async t => {
+  const { tools } = await hostFixture(t);
+  tools.register(fixtureTool('z_standalone'));
+  tools.register(fixtureTool('a_standalone'));
+  const schemas = sdkSchemas(tools), reversed = [...schemas].reverse();
+  const config = enabledConfig({ tools: ['virtual_echo', 'z_standalone', 'a_standalone'] });
+  const listing = discover(schemas, config, tsRuntime);
+  assert.deepEqual(listing.otherTools.map(tool => tool.name), ['a_standalone', 'virtual_echo', 'z_standalone']);
+  assert.equal(JSON.stringify(listing), JSON.stringify(discover(reversed, config, tsRuntime)));
+  for (const runtime of [tsRuntime, { ...tsRuntime, programFormat: 'repl' }, { language: 'python', programFormat: 'repl' }]) {
+    assert.equal(overview(hiddenTools(schemas, config), runtime, config), overview(hiddenTools(reversed, config), runtime, config));
+  }
 });
 
 test('unowned tools use exact single-tool packages and cannot select a plugin-owned tool', async t => {
@@ -100,6 +158,12 @@ test('pure core retains exact legacy names and module-id query aliases without k
   assert.deepEqual(exact.unavailable, ['always_visible', 'missing', 'run_code']);
   assert.equal(exact.sdk, renderToolsSdk(schemas.filter(tool => tool.name === 'ego_visit'), 'function-body'));
   assert.deepEqual(discover(schemas, config, tsRuntime, { query: 'dsh-ego-browser' }).tools.sort(), ['ego_capture', 'ego_secret', 'ego_visit']);
+  for (const args of [{ query: 'dsh-ego-browser' }, { names: ['ego_visit', 'missing'] }, { tool: 'virtual_echo' }, { plugin: 'missing' }]) {
+    const { sdk: duplicate, ...expected } = discover(schemas, config, tsRuntime, args);
+    assert.equal(typeof duplicate, 'string');
+    const compact = discover(schemas, config, tsRuntime, { ...args, format: 'schema' });
+    assert.deepEqual({ ...compact, usage: expected.usage }, expected);
+  }
   const keyword = discover(schemas, config, tsRuntime, { query: 'browser' });
   assert.deepEqual(keyword.tools, []);
   assert.equal(keyword.sdk, '');
@@ -111,6 +175,11 @@ test('discovery rejects malformed exact selectors rather than widening selection
   const schemas = sdkSchemas(tools);
   for (const args of [{ plugin: null }, { plugin: 1 }, { plugin: [] }, { plugin: '' }, { plugin: 'x'.repeat(513) }, { tool: null }, { tool: ['virtual_echo'] }, { tool: '' }, { tool: 'has space' }, { plugin: 'dsh-ego-browser', tool: 'virtual_echo' }, { names: 'ego_visit' }, { names: [null] }, { names: Array(13).fill('ego_visit') }]) {
     assert.throws(() => discover(schemas, enabledConfig(), tsRuntime, args), DiscoveryError, JSON.stringify(args));
+  }
+  for (const format of ['', 'sdk', 'SCHEMA', 'json', null, 1, {}, []]) {
+    for (const args of [{}, { plugin: 'dsh-ego-browser' }, { tool: 'virtual_echo' }, { query: 'dsh-ego-browser' }, { names: ['ego_visit'] }]) {
+      assert.throws(() => discover(schemas, enabledConfig(), tsRuntime, { ...args, format }), DiscoveryError);
+    }
   }
   assert.deepEqual(validateConfig(enabledConfig({ groups: ['dsh-image-gen', 'dsh-ego-browser', 'dsh-image-gen'], tools: ['z', 'a', 'z'] })), enabledConfig({ groups: ['dsh-ego-browser', 'dsh-image-gen'], tools: ['a', 'z'] }));
 });

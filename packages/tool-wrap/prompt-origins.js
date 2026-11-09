@@ -48,12 +48,26 @@ export function attributePromptContribution(ctx, contribution, kind = 'section')
   return contribution;
 }
 export function contributionMetadata(contribution) { return explicitOrigins.get(contribution) ?? contribution.compositionSource; }
+/** Read registration literals only; never evaluate providers, getters or interpolation variables. */
+function registrationPreview(definition) {
+  const descriptor = Object.getOwnPropertyDescriptor(definition, 'text');
+  if (descriptor && Object.hasOwn(descriptor, 'value')) {
+    if (typeof descriptor.value === 'string') return { kind: 'static', text: descriptor.value };
+    if (typeof descriptor.value === 'function') return {
+      kind: 'dynamic', reason: 'session-context-required',
+      message: '需会话上下文动态生成；全局预览不会执行 provider。',
+    };
+  }
+  return { kind: 'unavailable', reason: 'static-text-unavailable', message: '注册定义没有可安全读取的静态 text 字符串。' };
+}
+/** Global registration previews only, never scoped definitions or observed assembly bodies. */
 export function registeredPromptSources(registry) {
   try {
     const runtime = originalOf(registry);
     return ['section', 'context'].flatMap(kind => [...runtime.layers.global[kind + 's'].values()].map(definition => ({
       ...(registrationMetadata(definition, kind, undefined, registry) ?? { id: sourceId(kind, null, definition.name), owner: null, kind, label: definition.name, name: definition.name }),
       required: definition.required === true, complete: definition.complete === true,
+      preview: registrationPreview(definition),
     })));
   } catch { return []; }
 }
