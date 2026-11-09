@@ -1,6 +1,6 @@
 # Delthin DSH Plugins Monorepo
 
-`Delthin/dsh-plugins` is the public monorepo maintaining five DeepSeek Harness (DSH) plugins. The workspace packages live under `packages/` and are maintained independently. Four packages are published independently; global-pins is an unpublished private development package. The root `package.json` remains `"private": true` to prevent accidental publishing of a root meta-package; users install only the specific plugin packages they need.
+`Delthin/dsh-plugins` is the public monorepo maintaining five DeepSeek Harness (DSH) plugins. The workspace packages live under `packages/` and are maintained independently. All five packages are published independently. The root `package.json` remains `"private": true` to prevent accidental publishing of a root meta-package; users install only the specific plugin packages they need.
 
 Links: [中文说明](./README.md) | [Releasing & Marketplace Guide](./docs/releasing.md) | [Maintenance Handoff](./docs/package-handoff.md) | [License](./LICENSE)
 
@@ -14,7 +14,7 @@ Each package provides its own entry exports, client bundle, icon, locale resourc
 | [`packages/agent-roles`](./packages/agent-roles/README.en.md) | `@delthin/dsh-agent-roles` | `0.4.1` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Role management and delegation built on native DSH Agent Team. Starts with an empty role list by default, preserves roles and run records in the runtime data directory, and keeps runtime data out of git. |
 | [`packages/fast`](./packages/fast/README.en.md) | `@delthin/dsh-fast` | `0.1.4` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Fast priority routing and `service_tier: "priority"` forwarding. `provider`, `sourceURL`, and `targetURL` must all be explicitly configured to enable Fast; otherwise Standard mode works normally and Fast requests fail explicitly. `roleRunsPath` is optional and read-only. |
 | [`packages/tool-wrap`](./packages/tool-wrap/README.en.md) | `@delthin/dsh-tool-wrap` | `1.2.0` | `Apache-2.0` | `>=0.2.2-rc.1` | On-demand tool definition discovery and PTC bridge. Uses `unwrap` as the official tool (`discover_tools` remains a legacy alias), keeping service names, settings ID, and config filename `tool-discovery.json` stable. The plugin itself is disabled by default; `origin-bootstrap` registers before `tools`. Only initial install or upgrades touching `toolDiscoveryOriginsReady` origin gating require a host restart; settings toggles and config saves apply immediately to subsequent prompts. |
-| [`packages/global-pins`](./packages/global-pins/README.en.md) | `@delthin/dsh-global-pins` | `0.1.0` (private development, unpublished) | `Apache-2.0` | `>=0.2.2-rc.1` | Native pinned conversations above all workspaces; preserves the browser using a version-dependent sidebar DOM adapter. |
+| [`packages/global-pins`](./packages/global-pins/README.en.md) | `@delthin/dsh-global-pins` | `0.2.0` | `Apache-2.0` | `>=0.2.2-rc.1` | Native pinned rows inside or above the workspace list, inheriting the active theme, status and menus. |
 
 Chinese package docs: [`packages/feishu-notify/README.md`](./packages/feishu-notify/README.md), [`packages/agent-roles/README.md`](./packages/agent-roles/README.md), [`packages/fast/README.md`](./packages/fast/README.md), [`packages/tool-wrap/README.md`](./packages/tool-wrap/README.md), [`packages/global-pins/README.md`](./packages/global-pins/README.md).
 
@@ -26,13 +26,14 @@ No separate paid commercial license is required, and derivative works as a whole
 
 ## Installation & Loading
 
-All four workspace packages configure `publishConfig.access: "public"` and are published independently. Install only the specific packages you need into your DSH runtime environment or profile according to your host's plugin loading and import patch mechanism:
+All five workspace packages configure `publishConfig.access: "public"` and are published independently. Install only the specific packages you need into your DSH runtime environment or profile according to your host's plugin loading and import patch mechanism:
 
 ```bash
 npm install @delthin/dsh-feishu-notify
 npm install @delthin/dsh-agent-roles
 npm install @delthin/dsh-fast
 npm install @delthin/dsh-tool-wrap
+npm install @delthin/dsh-global-pins
 ```
 
 To build local tarballs from source for isolated profile testing after running root checks:
@@ -42,6 +43,7 @@ npm pack --workspace @delthin/dsh-feishu-notify
 npm pack --workspace @delthin/dsh-agent-roles
 npm pack --workspace @delthin/dsh-fast
 npm pack --workspace @delthin/dsh-tool-wrap
+npm pack --workspace @delthin/dsh-global-pins
 ```
 
 Load the resulting `.tgz` archive or workspace package into your target DSH profile via the host's local plugin integration workflow, then complete plugin configuration in the Web UI settings.

@@ -34,8 +34,7 @@ for (const [slug, name] of expected) {
   const directory = path.join(rootDir, 'packages', slug);
   const pkg = await readJson('packages/' + slug + '/package.json');
   assert.equal(pkg.name, name);
-  if (slug === 'global-pins') assert.equal(pkg.private, true, name + ' must remain private during development');
-  else assert.notEqual(pkg.private, true, name + ' must be publishable');
+  assert.notEqual(pkg.private, true, name + ' must be publishable');
   assert.equal(pkg.license, 'Apache-2.0');
   assert.equal(pkg.publishConfig?.access, 'public');
   assert.equal(pkg.publishConfig?.registry, 'https://registry.npmjs.org');

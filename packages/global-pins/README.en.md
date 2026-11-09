@@ -23,14 +23,20 @@ The default is Above workspaces. DSH persists accepted changes, applies them imm
 
 ## Installation
 
-Version `0.1.0` is a private development package. From the repository root:
+Install `@delthin/dsh-global-pins` in the DSH plugin manager, or run this in the target DSH environment:
+
+```bash
+npm install @delthin/dsh-global-pins
+```
+
+To build a local archive from the repository root:
 
 ```bash
 npm run check -- --package=global-pins
 npm run check:pack -- --package=global-pins
 ```
 
-The archive is written to `.cache/packs/`. Install the generated `.tgz` in the target DSH environment and load its [cordis.patch.yml](<cordis.patch.yml>) through the host’s plugin integration workflow. Service restarts require a separately agreed maintenance window.
+The archive is written to `.cache/packs/`. Install the generated `.tgz` in the target DSH environment and load its [cordis.patch.yml](<cordis.patch.yml>) through the host’s plugin integration workflow.
 
 ## Compatibility and privacy
 

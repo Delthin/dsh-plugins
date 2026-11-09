@@ -1,6 +1,6 @@
 # Delthin DSH Plugins Monorepo
 
-`Delthin/dsh-plugins` 是维护五个 DeepSeek Harness (DSH) 插件的公开 monorepo。工作区包在 `packages/` 下独立维护；四包已独立发布，global-pins 是尚未发布的私有开发包；根仓库 `package.json` 保持 `"private": true` 以防止误发布根聚合包，用户按需单独安装所需子包。
+`Delthin/dsh-plugins` 是维护五个 DeepSeek Harness (DSH) 插件的公开 monorepo。工作区包在 `packages/` 下独立维护；五包独立发布；根仓库 `package.json` 保持 `"private": true` 以防止误发布根聚合包，用户按需单独安装所需子包。
 
 语言与文档：[English](./README.en.md) | [发布与市场维护指南](./docs/releasing.md) | [日常维护说明](./docs/package-handoff.md) | [许可证](./LICENSE)
 
@@ -14,7 +14,7 @@
 | [`packages/agent-roles`](./packages/agent-roles/README.md) | `@delthin/dsh-agent-roles` | `0.4.1` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | 基于 DSH 原生 Agent Team 的角色管理与委派。首次启动默认为空角色列表，保留数据目录中的角色与运行记录，运行数据不入库。 |
 | [`packages/fast`](./packages/fast/README.md) | `@delthin/dsh-fast` | `0.1.4` | `Apache-2.0` | `>=0.2.1-rc.5 \|\| >=0.2.2-rc.1` | Fast 优先路由与 `service_tier: "priority"` 转发。`provider`、`sourceURL`、`targetURL` 必须显式完整填写后才启用 Fast，否则 Standard 模式正常工作、Fast 请求直接报错；`roleRunsPath` 为可选只读配置，不存在时普通会话照常运行。 |
 | [`packages/tool-wrap`](./packages/tool-wrap/README.md) | `@delthin/dsh-tool-wrap` | `1.2.0` | `Apache-2.0` | `>=0.2.2-rc.1` | 按需工具定义发现与 PTC 桥接。正式工具名 `unwrap`（`discover_tools` 为旧会话兼容别名）、服务名、设置 ID 及配置文件名 `tool-discovery.json` 保持稳定；插件默认关闭（非宿主 PTC 模式关闭），`origin-bootstrap` 先于 `tools` 注册；仅首次安装或升级涉及 `toolDiscoveryOriginsReady` 来源门控时需重启生效，设置页启用开关与配置保存对后续 prompt 立即生效。 |
-| [`packages/global-pins`](./packages/global-pins/README.md) | `@delthin/dsh-global-pins` | `0.1.0`（私有开发版，未发布） | `Apache-2.0` | `>=0.2.2-rc.1` | 将原生置顶对话集中显示在所有工作区上方；保留原生列表，使用版本相关的侧栏 DOM 适配。 |
+| [`packages/global-pins`](./packages/global-pins/README.md) | `@delthin/dsh-global-pins` | `0.2.0` | `Apache-2.0` | `>=0.2.2-rc.1` | 以原生会话行集中展示置顶对话，支持工作区内／上方两种位置，继承当前主题、状态和菜单。 |
 
 各包英文文档：[`packages/feishu-notify/README.en.md`](./packages/feishu-notify/README.en.md)、[`packages/agent-roles/README.en.md`](./packages/agent-roles/README.en.md)、[`packages/fast/README.en.md`](./packages/fast/README.en.md)、[`packages/tool-wrap/README.en.md`](./packages/tool-wrap/README.en.md)、[`packages/global-pins/README.en.md`](./packages/global-pins/README.en.md)。
 
@@ -26,13 +26,14 @@
 
 ## 安装与加载
 
-四个子包均设置 `publishConfig.access: "public"` 并独立发布。请仅选择所需插件包，在对应的 DSH 运行环境或 profile 目录中按宿主插件加载与导入机制安装：
+五个子包均设置 `publishConfig.access: "public"` 并独立发布。请仅选择所需插件包，在对应的 DSH 运行环境或 profile 目录中按宿主插件加载与导入机制安装：
 
 ```bash
 npm install @delthin/dsh-feishu-notify
 npm install @delthin/dsh-agent-roles
 npm install @delthin/dsh-fast
 npm install @delthin/dsh-tool-wrap
+npm install @delthin/dsh-global-pins
 ```
 
 如需从本仓库源码生成离线安装包进行本地隔离验证，可在通过根级检查后执行：
@@ -42,6 +43,7 @@ npm pack --workspace @delthin/dsh-feishu-notify
 npm pack --workspace @delthin/dsh-agent-roles
 npm pack --workspace @delthin/dsh-fast
 npm pack --workspace @delthin/dsh-tool-wrap
+npm pack --workspace @delthin/dsh-global-pins
 ```
 
 随后将生成的 `.tgz` 包或子包入口按当前 DSH 宿主的本地插件接入与补丁导入流程加载到目标 profile，并在 Web UI 设置页完成各包配置。

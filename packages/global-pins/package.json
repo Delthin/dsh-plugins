@@ -1,7 +1,6 @@
 {
   "name": "@delthin/dsh-global-pins",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.2.0",
   "type": "module",
   "description": "Lift actual native pinned rows above or inside the DSH workspace list",
   "license": "Apache-2.0",

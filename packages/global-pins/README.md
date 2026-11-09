@@ -23,14 +23,20 @@
 
 ## 安装
 
-当前为 `0.1.0` 私有开发版。从仓库根目录检查并生成本地安装包：
+在 DSH 插件管理页安装 `@delthin/dsh-global-pins`，或在目标 DSH 环境中执行：
+
+```bash
+npm install @delthin/dsh-global-pins
+```
+
+从仓库源码生成本地安装包：
 
 ```bash
 npm run check -- --package=global-pins
 npm run check:pack -- --package=global-pins
 ```
 
-安装包输出到仓库缓存目录 `.cache/packs/`。在目标 DSH 环境中安装生成的 `.tgz`，按宿主插件接入流程加载包内 [cordis.patch.yml](<cordis.patch.yml>)。服务重启需单独确认时间窗口。
+安装包输出到仓库缓存目录 `.cache/packs/`。在目标 DSH 环境中安装生成的 `.tgz`，按宿主插件接入流程加载包内 [cordis.patch.yml](<cordis.patch.yml>)。
 
 ## 兼容与安全
 

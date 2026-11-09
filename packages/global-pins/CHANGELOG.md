@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
+- First public npm release.
 - Replace bespoke pinned rows with visual reordering of the actual native conversation rows; inherit the active theme, native hover cards, menus, selection and live status.
 - Preserve React-owned row parents and rebind when the native workspace view rebuilds; restore layout on disposal.
 - Keep Above workspaces and Inside workspace list placement with native configuration persistence and cross-page updates.
@@ -14,4 +15,4 @@
 - Preserve the native browser and pin state when disabling the plugin.
 - Isolate the Web sidebar DOM adapter, including remount and disposal cleanup.
 
-Private development package; not published.
+Version 0.1.0 was a private development package.
