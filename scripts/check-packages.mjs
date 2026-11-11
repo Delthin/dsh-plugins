@@ -11,7 +11,7 @@ const output = path.join(root, '.cache/packs');
 await mkdir(output, {recursive:true});
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const baseEnv = {...process.env, npm_config_cache:cache};
-const slugs = ['feishu-notify', 'agent-roles', 'fast', 'tool-wrap', 'global-pins'];
+const slugs = ['feishu-notify', 'agent-roles', 'fast', 'tool-wrap', 'global-pins', 'cardex'];
 const selected = process.argv.find(arg => arg.startsWith('--package='))?.slice('--package='.length);
 assert(!selected || slugs.includes(selected), 'Unknown workspace selection');
 const results = [];
@@ -30,7 +30,12 @@ for (const slug of slugs) {
   const packed = run(npm, ['pack', '--json', '--ignore-scripts', '--pack-destination', output], source, baseEnv, true)[0];
   assert.equal(packed.name, pkg.name);
   const files = new Set(packed.files.map(file => file.path));
-  for (const file of ['package.json', 'README.md', 'README.en.md', 'CHANGELOG.md', 'index.js', 'client.js', 'cordis.patch.yml']) assert(files.has(file), pkg.name + ' missing packaged file: ' + file);
+  for (const file of ['package.json', 'README.md', 'README.en.md', 'CHANGELOG.md', 'index.js', 'cordis.patch.yml']) assert(files.has(file), pkg.name + ' missing packaged file: ' + file);
+  if (slug === 'cardex') {
+    for (const file of ['assets/template.html', 'assets/graph.js', 'assets/graph.css', 'prompts/knowledge-card.md']) assert(files.has(file), pkg.name + ' missing packaged file: ' + file);
+    assert(!files.has('client.js'), pkg.name + ' must be server-only');
+    assert(!Object.hasOwn(pkg.exports, './client'), pkg.name + ' must not export a client');
+  } else assert(files.has('client.js'), pkg.name + ' missing packaged file: client.js');
   assert(files.has('LICENSE'));
   assert(files.has('NOTICE'));
   if (['agent-roles', 'fast'].includes(slug)) assert(files.has('LICENSE-MIT-legacy'));
@@ -75,12 +80,17 @@ for (const slug of slugs) {
     'const plugin = await import(name);',
     "assert.equal(typeof plugin.apply, 'function');",
     'const manifest = JSON.parse(await readFile(new URL(\'./node_modules/\' + name + \'/package.json\', import.meta.url), \'utf8\'));',
-    'const registrations = [];',
-    'globalThis.window = {__ModuleLoader__:{load:entry => registrations.push(entry)}};',
-    "await import(name + '/client');",
-    'assert.equal(registrations.length, 1);',
-    'assert.equal(registrations[0].id, name);',
-    "assert.equal(typeof registrations[0].factory, 'function');",
+    ...(slug === 'cardex' ? [
+      "assert.equal(manifest.exports['./client'], undefined);",
+      "await assert.rejects(import(name + '/client'), {code: 'ERR_PACKAGE_PATH_NOT_EXPORTED'});",
+    ] : [
+      'const registrations = [];',
+      'globalThis.window = {__ModuleLoader__:{load:entry => registrations.push(entry)}};',
+      "await import(name + '/client');",
+      'assert.equal(registrations.length, 1);',
+      'assert.equal(registrations[0].id, name);',
+      "assert.equal(typeof registrations[0].factory, 'function');",
+    ]),
     "if (manifest.exports['./origin-bootstrap']) assert.equal(typeof (await import(name + '/origin-bootstrap')).apply, 'function');",
     "console.log('Isolated runtime imports and client registration passed: ' + name);",
   ].join('\n');

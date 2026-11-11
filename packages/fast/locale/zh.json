@@ -1,1 +1,1 @@
-{"meta":{"title":"Fast 档位","description":"在模型选择器中为当前会话切换标准 / Fast；角色使用启动时固定的档位。"}}
+{"meta":{"title":"Fast 档位","description":"通过模型选择器或 `/fast` 命令在会话中按需切换 Standard 与 Fast 档位，在开启 Fast 时为符合配置的 Responses 请求附带 `priority` 档位并转发至目标端点。交互会话支持随时切换，团队角色则在启动时锁定所用档位；启用 Fast 且完成前置配置与上游接口支持时请求即按 `priority` 档位发送，实际响应速度与计费规则由上游服务商决定。"}}

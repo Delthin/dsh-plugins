@@ -22,6 +22,7 @@ const expected = new Map([
   ['fast', '@delthin/dsh-fast'],
   ['tool-wrap', '@delthin/dsh-tool-wrap'],
   ['global-pins', '@delthin/dsh-global-pins'],
+  ['cardex', '@delthin/dsh-cardex'],
 ]);
 const selected = process.argv.find(arg => arg.startsWith('--package='))?.slice('--package='.length);
 assert(!selected || expected.has(selected), 'Unknown workspace selection');

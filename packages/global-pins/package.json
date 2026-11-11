@@ -2,7 +2,7 @@
   "name": "@delthin/dsh-global-pins",
   "version": "0.2.0",
   "type": "module",
-  "description": "Lift actual native pinned rows above or inside the DSH workspace list",
+  "description": "Aggregate pinned sessions that are currently rendered and visible across workspaces into a single sidebar view, saving you from digging through separate workspaces. The aggregated section can either stay above the workspace list with independent scrolling or scroll inline with the list, directly reusing native session rows, status indicators, and actions while respecting current folding and search filters without forcibly expanding hidden items.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

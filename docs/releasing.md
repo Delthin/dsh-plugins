@@ -1,8 +1,8 @@
 # 发布与市场维护指南 / Releasing & Marketplace Guide
 
-本文档说明 `Delthin/dsh-plugins` 五个插件包的版本管理、手动 npm 发布流程与社区市场申报维护规则。注意区分三个独立阶段：**源码推送至 GitHub 仓库**、**发布包至 npm 注册表**、**向外部插件市场提交收录或更新**；完成前一阶段不等于自动完成后一阶段。
+本文档说明 `Delthin/dsh-plugins` 六个插件包的版本管理、手动 npm 发布流程与社区市场申报维护规则。注意区分三个独立阶段：**源码推送至 GitHub 仓库**、**发布包至 npm 注册表**、**向外部插件市场提交收录或更新**；完成前一阶段不等于自动完成后一阶段。
 
-This document covers version management, manual npm publishing, and marketplace maintenance for the five packages in `Delthin/dsh-plugins`. Keep three independent stages distinct: **pushing source code to GitHub**, **publishing packages to the npm registry**, and **submitting/updating marketplace listings**.
+This document covers version management, manual npm publishing, and marketplace maintenance for the six packages in `Delthin/dsh-plugins`. Keep three independent stages distinct: **pushing source code to GitHub**, **publishing packages to the npm registry**, and **submitting/updating marketplace listings**.
 
 ---
 
@@ -10,13 +10,14 @@ This document covers version management, manual npm publishing, and marketplace 
 
 ### 中文说明
 
-仓库使用 `Changesets` 管理版本（`fixed: []`、`linked: []`），五个子包版本彼此独立，根包保持 `"private": true` 不发布：
+仓库使用 `Changesets` 管理版本（`fixed: []`、`linked: []`），六个子包版本彼此独立，根包保持 `"private": true` 不发布：
 
 - `@delthin/dsh-feishu-notify`（当前 `1.1.1`）
 - `@delthin/dsh-agent-roles`（当前 `0.4.1`）
 - `@delthin/dsh-fast`（当前 `0.1.4`；npm 注册表已存在历史版本 `0.1.2`，新发布版本必须高于注册表现有版本）
 - `@delthin/dsh-tool-wrap`（当前 `1.2.0`）
 - `@delthin/dsh-global-pins`（当前 `0.2.0`）
+- `@delthin/dsh-cardex`（当前源码版本 `0.1.0`，server-only）
 
 日常开发与版本更新步骤：
 
@@ -38,13 +39,14 @@ This document covers version management, manual npm publishing, and marketplace 
 
 ### English
 
-The monorepo uses `Changesets` (`fixed: []`, `linked: []`) so all five packages version independently while the root package remains `"private": true`:
+The monorepo uses `Changesets` (`fixed: []`, `linked: []`) so all six packages version independently while the root package remains `"private": true`:
 
 - `@delthin/dsh-feishu-notify` (`1.1.1`)
 - `@delthin/dsh-agent-roles` (`0.4.1`)
 - `@delthin/dsh-fast` (`0.1.4`; version `0.1.2` already exists on the npm registry, and any new publish must use a version strictly higher than existing registry versions)
 - `@delthin/dsh-tool-wrap` (`1.2.0`)
 - `@delthin/dsh-global-pins` (`0.2.0`)
+- `@delthin/dsh-cardex` (source version `0.1.0`, server-only)
 
 Standard versioning and verification steps:
 
@@ -78,6 +80,7 @@ Standard versioning and verification steps:
    npm publish --dry-run --workspace @delthin/dsh-fast --access public --registry=https://registry.npmjs.org
    npm publish --dry-run --workspace @delthin/dsh-tool-wrap --access public --registry=https://registry.npmjs.org
    npm publish --dry-run --workspace @delthin/dsh-global-pins --access public --registry=https://registry.npmjs.org
+   npm publish --dry-run --workspace @delthin/dsh-cardex --access public --registry=https://registry.npmjs.org
    ```
 3. 核对无误后，按需逐包正式发布（仅对本次需要发版的包执行，本人完成 2FA 确认）：
    ```bash
@@ -86,6 +89,7 @@ Standard versioning and verification steps:
    npm publish --workspace @delthin/dsh-fast --access public --registry=https://registry.npmjs.org
    npm publish --workspace @delthin/dsh-tool-wrap --access public --registry=https://registry.npmjs.org
    npm publish --workspace @delthin/dsh-global-pins --access public --registry=https://registry.npmjs.org
+   npm publish --workspace @delthin/dsh-cardex --access public --registry=https://registry.npmjs.org
    ```
 
 ### English
@@ -104,6 +108,7 @@ Never store long-lived npm tokens in the repository or commit `.npmrc` credentia
    npm publish --dry-run --workspace @delthin/dsh-fast --access public --registry=https://registry.npmjs.org
    npm publish --dry-run --workspace @delthin/dsh-tool-wrap --access public --registry=https://registry.npmjs.org
    npm publish --dry-run --workspace @delthin/dsh-global-pins --access public --registry=https://registry.npmjs.org
+   npm publish --dry-run --workspace @delthin/dsh-cardex --access public --registry=https://registry.npmjs.org
    ```
 3. Publish the specific package(s) being released and complete interactive 2FA when prompted:
    ```bash
@@ -112,6 +117,7 @@ Never store long-lived npm tokens in the repository or commit `.npmrc` credentia
    npm publish --workspace @delthin/dsh-fast --access public --registry=https://registry.npmjs.org
    npm publish --workspace @delthin/dsh-tool-wrap --access public --registry=https://registry.npmjs.org
    npm publish --workspace @delthin/dsh-global-pins --access public --registry=https://registry.npmjs.org
+   npm publish --workspace @delthin/dsh-cardex --access public --registry=https://registry.npmjs.org
    ```
 
 ---
@@ -120,30 +126,30 @@ Never store long-lived npm tokens in the repository or commit `.npmrc` credentia
 
 ### 中文说明
 
-虽然五个插件源码集中在同一 monorepo（`Delthin/dsh-plugins`）维护，但在外部市场中按五个独立插件条目分别申报与维护：
+虽然六个插件源码集中在同一 monorepo（`Delthin/dsh-plugins`）维护，但在外部市场中按六个独立插件条目分别申报与维护：
 
 - **包名与地址稳定性**：采用 npm 包名（`@delthin/dsh-*`）作为稳定安装标识，日常发版后无需每次修改仓库地址。若使用 Git 引用方式，则需指向 monorepo 对应子目录 `path`。
 - **Awesome DSH（YAML PR 模式）**：
-  - 每个条目指向 monorepo 下的对应子包目录 `path`（如 `packages/feishu-notify` 等）与稳定的 npm 包名。
-  - 遵守上游单次 PR 条目数量限制（每个 PR 最多新增 3 个条目；五个插件首次完整申报需拆分为至少两个 PR）。
+  - 每个条目的 `url` 指向 monorepo 对应子包目录（如 `packages/feishu-notify`）；npm 包信息由市场从注册表自动关联，不在 YAML 中添加 `npm` 字段。
+  - 遵守上游单次 PR 条目数量限制（每个 PR 最多新增 3 个条目；六个插件首次完整申报需拆分为至少两个 PR）。
 - **`dshopen`（Issue 申报模式）**：
   - 每个插件包单独提交一个 Issue。
   - 支持基于已发布的 npm 包名申报，或基于完整 40 位 Git commit SHA 加子包 `path` 申报；若采用固定 commit SHA 方式，后续每次版本升级均需提交更新并重新触发复审。
 - **许可证与市场审核说明**：
-  - 仓库根目录与五个子包新版本统一采用 `Apache-2.0` 开源许可证；历史已按 MIT 发布的旧版本（`@delthin/dsh-agent-roles` `<= 0.4.0`、`@delthin/dsh-fast` `<= 0.1.2`）保留其对应版本的既有 MIT 授权。
+  - 仓库根目录与六个子包新版本统一采用 `Apache-2.0` 开源许可证；历史已按 MIT 发布的旧版本（`@delthin/dsh-agent-roles` `<= 0.4.0`、`@delthin/dsh-fast` `<= 0.1.2`）保留其对应版本的既有 MIT 授权。
   - 外部市场的收录结果仍由各市场维护者（maintainer）按其审核流程独立决定。
 
 ### English
 
-Although all five plugins live in a single monorepo (`Delthin/dsh-plugins`), each plugin is submitted and maintained as an independent marketplace entry:
+Although all six plugins live in a single monorepo (`Delthin/dsh-plugins`), each plugin is submitted and maintained as an independent marketplace entry:
 
-- **Identifier Stability**: Using the published npm package names (`@delthin/dsh-*`) keeps installation identifiers stable across releases without updating repository URLs on every bump.
+- **Identifier Stability**: Using npm package names after publication (`@delthin/dsh-*`) keeps installation identifiers stable across releases without updating repository URLs on every bump.
 - **Awesome DSH (YAML PR Workflow)**:
-  - Specify each package's monorepo subdirectory `path` (`packages/feishu-notify`, `packages/agent-roles`, `packages/fast`, `packages/tool-wrap`, `packages/global-pins`) and npm package name.
-  - Respect the upstream limit of at most 3 new plugins per PR (submitting all five packages requires splitting across at least two PRs).
+  - Point each entry's `url` to its monorepo subdirectory. The marketplace links npm packages from the registry; do not add an `npm` field to the YAML.
+  - Respect the upstream limit of at most 3 new plugins per PR (submitting all six packages requires splitting across at least two PRs).
 - **`dshopen` (Issue Workflow)**:
   - Open one Issue per plugin package.
   - Reference either the published npm package or a full 40-character Git commit SHA plus workspace `path`. Note that commit-pinned Git entries require submitting an update and passing review again on every version upgrade.
 - **License & Marketplace Review**:
-  - Current releases across the repository root and all five packages use the `Apache-2.0` open-source license; historical MIT releases (`@delthin/dsh-agent-roles` `<= 0.4.0` and `@delthin/dsh-fast` `<= 0.1.2`) retain their prior MIT grants.
+  - The repository root and current package source versions use the `Apache-2.0` open-source license; historical MIT releases (`@delthin/dsh-agent-roles` `<= 0.4.0` and `@delthin/dsh-fast` `<= 0.1.2`) retain their prior MIT grants.
   - Marketplace listing decisions remain subject to each upstream maintainer's independent review process.

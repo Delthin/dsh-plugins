@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Knowledge Cards",
+    "description": "Turn useful conversations into a knowledge base you can revisit. Start a discussion with /cardex and end it with /cardex end; a model organizes the questions and answers into Markdown cards, a knowledge tree, and an offline graph. Related discussions can add to existing cards, with links back to the original questions and answers, so your knowledge keeps growing and stays easy to browse."
+  }
+}

@@ -2,7 +2,7 @@
   "name": "@delthin/dsh-feishu-notify",
   "version": "1.1.1",
   "type": "module",
-  "description": "Host-side Feishu application notifications with profile settings",
+  "description": "Send one-way session notifications to Feishu direct messages or group chats via a custom app so you can keep track of key checkpoints while away from your desk. It pushes alerts for approval requests, questions, and plan confirmations, allows the model to actively send a completion summary when overall work lasting at least three minutes wraps up, and supports custom recipients along with Do Not Disturb time windows and timezones.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

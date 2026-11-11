@@ -1,0 +1,63 @@
+{
+  "name": "@delthin/dsh-cardex",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Turn useful conversations into a knowledge base you can revisit. Start a discussion with /cardex and end it with /cardex end; a model organizes the questions and answers into Markdown cards, a knowledge tree, and an offline graph. Related discussions can add to existing cards, with links back to the original questions and answers, so your knowledge keeps growing and stays easy to browse.",
+  "license": "Apache-2.0",
+  "author": "Delthin",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "knowledge-base",
+    "notes"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Delthin/dsh-plugins.git",
+    "directory": "packages/cardex"
+  },
+  "engines": {
+    "node": ">=22.19.0",
+    "dsh": ">=0.2.2-rc.1"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "index.js",
+    "lib/*.js",
+    "assets/*",
+    "locale/*.json",
+    "prompts/*.md",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check lib/config.js && node --check lib/state.js && node --check lib/session.js && node --check lib/llm.js && node --check lib/files.js && node --check lib/store.js && node --check lib/graph.js && node --check lib/reading.js && node --check lib/intelligence.js && node --check lib/constants.js",
+    "test": "node --test test/*.test.js",
+    "prepack": "npm run check && npm test"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.5",
+    "@deepseek-ai/dsh-llm": ">=0.2.2-rc.1",
+    "@deepseek-ai/schemastery": ">=3.18.5",
+    "zod": "^4.6.7"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

@@ -1,0 +1,4 @@
+- insert:
+    - id: cardex
+      name: '@delthin/dsh-cardex'
+      config: {}
