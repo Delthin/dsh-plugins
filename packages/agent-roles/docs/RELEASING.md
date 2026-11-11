@@ -4,7 +4,7 @@ This document describes pre-release verification, Changesets versioning, manual 
 
 ## Current Publication Status
 
-- **Package Name & Version**: `@delthin/dsh-agent-roles` (`0.4.1`), located at `packages/agent-roles`.
+- **Package Name & Version**: `@delthin/dsh-agent-roles` (`0.5.0`), located at `packages/agent-roles`.
 - **Publish Access & Workspace Boundary**: The monorepo root remains `"private": true`, while publishable subpackages omit `private` and set `"publishConfig": { "access": "public" }`.
 - **License Files**: Current releases (`>= 0.4.1`) are licensed under `Apache-2.0` (`./LICENSE` and root `../../LICENSE`); historical MIT notices for `<= 0.4.0` are retained in `./LICENSE-MIT-legacy` without revoking prior grants.
 - **Legacy History**: The former standalone repository ([Legacy Repository](https://github.com/Delthin/dsh-agent-roles)) and its release list ([Legacy Releases](https://github.com/Delthin/dsh-agent-roles/releases)) remain online for historical reference. Old releases are not re-created in the monorepo.
@@ -35,7 +35,7 @@ This document describes pre-release verification, Changesets versioning, manual 
 
 The monorepo uses **Changesets** for independent package versioning rather than running `npm version` and manually editing lockfiles.
 
-1. Record user-facing changes with Changesets and update `packages/agent-roles/CHANGELOG.md`. Ensure compatibility notes accurately distinguish between minimum declared ranges (`Node.js >= 22.18.0` for this package, `Node.js >= 22.19.0` for the monorepo root, `engines.dsh >= 0.2.1-rc.5`) and actual tested environments.
+1. Record user-facing changes with Changesets and update `packages/agent-roles/CHANGELOG.md`. Ensure compatibility notes accurately distinguish between minimum declared ranges (`Node.js >= 22.18.0` for this package, `Node.js >= 22.19.0` for the monorepo root, `engines.dsh >= 0.2.2-rc.1`) and actual tested environments.
 2. Verify package metadata and workspace boundaries:
    - Keep `"private": true` in the monorepo root `package.json`.
    - Ensure `packages/agent-roles/package.json` has no `private` field, sets `"publishConfig": { "access": "public" }`, and includes both `LICENSE` and `LICENSE-MIT-legacy` in the packed files.
@@ -46,7 +46,7 @@ The monorepo uses **Changesets** for independent package versioning rather than 
    - Commit the reviewed release state before tagging.
 4. Perform manual release and publication (complete interactive 2FA when prompted):
    ```sh
-   VERSION=0.4.1
+   VERSION=0.5.0
    TARBALL="delthin-dsh-agent-roles-${VERSION}.tgz"
 
    npm pack --workspace @delthin/dsh-agent-roles

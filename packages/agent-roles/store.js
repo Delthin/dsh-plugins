@@ -18,8 +18,21 @@ export function validateRole(input) {
   const skills=input.skills??[];
   if (!Array.isArray(skills) || skills.length>64 || skills.some(s=>typeof s!=='string' || s.length>128 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s))) throw new Error('技能必须是有效名称列表（最多 64 项）');
   if (!Array.isArray(input.tools) || input.tools.some(t => !TOOLS.includes(t))) throw new Error('工具不在允许的 DSH 工具清单中');
+  const primary={provider:string('provider',100),model:string('model',200),reasoningEffort:string('reasoningEffort',80,true),fast:input.fast??false};
+  let fallbacks;
+  if(input.fallbacks!==undefined){
+    if(!Array.isArray(input.fallbacks)||input.fallbacks.length>15)throw new Error('备用模型必须是列表，最多 15 项');
+    fallbacks=input.fallbacks.map((route,index)=>{
+      if(!route||typeof route!=='object'||Array.isArray(route))throw new Error('备用模型 '+(index+1)+' 格式无效');
+      const text=(key,max,empty=false)=>{const value=route[key]??(empty?'':undefined);if(typeof value!=='string'||value.length>max||(!empty&&!value.trim()))throw new Error('备用模型 '+(index+1)+' 的 '+key+' 无效');return value;};
+      if(route.fast!==undefined&&typeof route.fast!=='boolean')throw new Error('备用模型 '+(index+1)+' 的 fast 必须为布尔值');
+      return {provider:text('provider',100),model:text('model',200),reasoningEffort:text('reasoningEffort',80,true),fast:route.fast??false};
+    });
+    const keys=[primary,...fallbacks].map(r=>JSON.stringify([r.provider,r.model,r.reasoningEffort,r.fast]));
+    if(new Set(keys).size!==keys.length)throw new Error('模型调用链包含重复配置，请移除重复项');
+  }
   return { id, name, displayName:string('displayName',100), description:string('description',4000), prompt:string('prompt',100000), enabled:input.enabled,
-    provider:string('provider',100), model:string('model',200), reasoningEffort:string('reasoningEffort',80,true), fast:input.fast??false, tools:[...new Set(input.tools)], skills:[...new Set(skills)] };
+    ...primary, tools:[...new Set(input.tools)], skills:[...new Set(skills)], ...(fallbacks===undefined?{}:{fallbacks}) };
 }
 // The launch snapshot, never the current catalog or parent session, owns the tier.
 export function roleTierForRun(record) {

@@ -1,10 +1,10 @@
 import { installModelSelection } from '@deepseek-ai/dsh-agent';
+import { nativeSelection } from './fallback.js';
 
 // Capability detection keeps the rc.5 integration while using the public rc.1 APIs.
 export async function installRoleRuntime(agent,selection,allowed) {
   const scoped=agent.ctx,disposers=[];
-  const {provider,model,reasoningEffort}=selection;
-  const route={provider,model,...reasoningEffort?{reasoningEffort}:{}};
+  const route=nativeSelection(selection);
   try {
     if(typeof scoped.tools.setExecutor==='function') {
       const {NativeToolExecutor}=await import('@deepseek-ai/dsh-tool-executor-native');

@@ -12,6 +12,17 @@ test('旧角色目录移除模式与来源字段，保留正文、选择和历�
  try {const legacy={...seed[0],promptMode:'replace',source:'legacy',sourceModel:'old',sourceHash:'hash'};await writeFile(join(dir,'roles.json'),JSON.stringify({version:1,revision:5,roles:[legacy]}));await writeFile(join(dir,'runs.json'),JSON.stringify({version:1,items:[{sessionId:'existing',role:legacy}]}));const s=new RoleStore(dir);await s.load(seed);assert.deepEqual(s.catalog.roles,[{...seed[0],fast:false,skills:[]}]);assert.equal(s.catalog.revision,6);assert.deepEqual(s.run('existing').role,legacy);const restored=new RoleStore(dir);await restored.load(seed);assert.deepEqual(restored.catalog,s.catalog);}finally{await rm(dir,{recursive:true,force:true});}
 });
 
+test('有序备用配置持久化、独立档位和旧角色兼容，拒绝重复和越界链',async()=>{
+ const role={...seed[0],fallbacks:[{provider:'backup',model:'model-a'},{provider:'third',model:'model-b',reasoningEffort:'high',fast:true}]};
+ const normalized=validateRole(role);assert.equal(normalized.fallbacks[0].fast,false);assert.equal(normalized.fallbacks[1].fast,true);
+ assert.equal('fallbacks' in validateRole(seed[0]),false);
+ assert.throws(()=>validateRole({...role,fallbacks:[{...seed[0]}]}),/重复/);
+ assert.throws(()=>validateRole({...role,fallbacks:Array(16).fill(role.fallbacks[0])}),/最多/);
+ assert.throws(()=>validateRole({...role,fallbacks:[{provider:'backup',model:'model',fast:'true'}]}),/布尔/);
+ const dir=await mkdtemp(join(tmpdir(),'agent-roles-chain-'));
+ try{const s=new RoleStore(dir);await s.load([role]);const reload=new RoleStore(dir);await reload.load([]);assert.deepEqual(reload.catalog.roles[0].fallbacks,normalized.fallbacks);assert.equal(reload.catalog.revision,s.catalog.revision);}finally{await rm(dir,{recursive:true,force:true});}
+});
+
 test('并发保存只接受当前 revision；失败不破坏后续队列',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'agent-roles-test-'));
  try {const s=new RoleStore(dir);await s.load(seed);const results=await Promise.allSettled([s.change(1,r=>r),s.change(1,r=>r)]);assert.equal(results.filter(x=>x.status==='fulfilled').length,1);assert.match(results.find(x=>x.status==='rejected').reason.message,/刷新/);await s.change(2,r=>r);assert.equal(s.catalog.revision,3);}finally{await rm(dir,{recursive:true,force:true});}

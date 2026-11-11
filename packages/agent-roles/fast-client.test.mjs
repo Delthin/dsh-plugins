@@ -6,7 +6,7 @@ import {runInNewContext} from 'node:vm';
 const source=await readFile(new URL('./client.js',import.meta.url),'utf8');
 const role={id:'test',name:'test',displayName:'测试角色',description:'职责',prompt:'任务',enabled:true,provider:'test',model:'same-model',reasoningEffort:'',tools:[]};
 function panel(draft=role,fastProviders=['test']) {
-  const state=[{revision:1,roles:[draft]},[{provider:'test',id:'same-model'}],[],draft,JSON.stringify(draft),{},false,'','','roles','config','','',[],null,null,[],'','',false,fastProviders];
+  const state=[{revision:1,roles:[draft]},[{provider:'test',id:'same-model'},{provider:'backup',id:'backup-model'},{provider:'third',id:'third-model'}],[],draft,JSON.stringify(draft),{},false,'','','roles','config','','',[],null,null,[],'','',false,fastProviders];
   let cursor=0,entry,module,request;
   const h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)});
   const primitives=Object.fromEntries(['Button','Switch','Checkbox','SegmentedControl','Modal'].map(name=>[name,()=>{}]));
@@ -17,6 +17,26 @@ function panel(draft=role,fastProviders=['test']) {
 }
 function nodes(tree) {return !tree||typeof tree!=='object'?[]:[tree,...tree.children.flatMap(nodes)];}
 function text(tree) {return !tree||typeof tree==='boolean'?'':typeof tree!=='object'?String(tree):tree.children.map(text).join(' ');}
+
+test('备用模型按序增删移动并保存各自档位，不改动首选模型',async()=>{
+  const app=panel();
+  const chain=()=>{const node=nodes(app.render()).find(n=>typeof n.type==='function'&&n.props.primary);return node.type(node.props);};
+  const add=()=>nodes(chain()).find(n=>n.type===app.primitives.Button&&n.children.includes('添加备用模型')).props.onClick();
+  add();add();
+  assert.equal(app.state[3].fallbacks.map(r=>r.provider).join(','),'backup,third');
+  let rows=nodes(chain()).filter(n=>typeof n.type==='function'&&n.props.route);
+  rows[1].props.onMove(-1);
+  assert.equal(app.state[3].fallbacks.map(r=>r.provider).join(','),'third,backup');
+  rows=nodes(chain()).filter(n=>typeof n.type==='function'&&n.props.route);
+  rows[0].props.onChange({...rows[0].props.route,reasoningEffort:'high',fast:true});
+  nodes(app.render()).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.request.role.model,role.model);
+  assert.equal(app.request.role.fallbacks[0].provider,'third');
+  assert.equal(app.request.role.fallbacks[0].reasoningEffort,'high');assert.equal(app.request.role.fallbacks[0].fast,true);
+  rows=nodes(chain()).filter(n=>typeof n.type==='function'&&n.props.route);rows[0].props.onRemove();
+  assert.equal(app.state[3].fallbacks.length,1);assert.equal(app.state[3].fallbacks[0].provider,'backup');
+});
 
 const tier=(tree,name)=>nodes(tree).find(n=>n.type==='button'&&n.children.includes(name));
 test('模型选择器内显示标准 / Fast，切档保持模型并保存布尔值；新增角色默认标准',async()=>{

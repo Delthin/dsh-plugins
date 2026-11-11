@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0
+
+### Minor Changes
+
+- Add per-role ordered fallback models with independent provider, reasoning effort and Standard / Fast settings, plus add/reorder/remove controls.
+
+  Recover from quota exhaustion by switching models immediately; bound other model retries to 1/2/4-second backoff before advancing, while retaining the member session and committed tool results.
+
+  Snapshot the full chain, enforce model delegation restrictions, and record active selections and fallback history. Require DSH >=0.2.2-rc.1 for the public model-selection and inbox APIs.
+
 ## Unreleased
 
 ## 0.4.1 — 2026-11-05

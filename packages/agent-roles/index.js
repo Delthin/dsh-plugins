@@ -3,6 +3,7 @@ import { dshHomePath, expandHomePath } from '@deepseek-ai/dsh-home-paths';
 import Schema from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { installRoleRuntime } from './runtime.js';
+import { installRoleFallback, isFallbackContinuing } from './fallback.js';
 import { skillDirectory, captureSkills, skillSection, skillEvidence } from './skills.js';
 import { RoleStore, validateRole, hash, TOOLS } from './store.js';
 export { roleTierForRun } from './store.js';
@@ -53,6 +54,21 @@ export function selectionFor(role,info,fastProviders=DEFAULT_FAST_PROVIDERS) {
   validateFastProvider(role,fastProviders);
   const reasoningEffort=role.reasoningEffort==='off' && !info.reasoning?'':role.reasoningEffort;
   return {provider:role.provider,model:role.model,...reasoningEffort?{reasoningEffort}:{},fast:role.fast===true};
+}
+export function roleModelChain(role) {return [role,...role.fallbacks??[]];}
+export function assertFallbackHost(agent,role) {
+  if(!role.fallbacks?.length)return;
+  if(typeof agent?.model?.select!=='function'||typeof agent?.inbox?.append!=='function'||typeof agent?.inbox?.remove!=='function'||typeof agent?.followup!=='function')throw new Error('角色模型回退需要 DSH >=0.2.2-rc.1 的模型选择与原生 inbox API');
+}
+export async function validateModelChain(llm,role,signal,fastProviders=DEFAULT_FAST_PROVIDERS) {
+  const selections=[];
+  for(const candidate of roleModelChain(role)) {
+    signal?.throwIfAborted();
+    const info=await validateModel(llm,candidate,signal,fastProviders);
+    signal?.throwIfAborted();
+    selections.push(selectionFor(candidate,info,fastProviders));
+  }
+  return selections;
 }
 export function normalizeDelegationRules(value=[]) {
   if(!Array.isArray(value)||value.length>128) throw new Error('委派规则必须是数组，最多 128 条');
@@ -116,11 +132,12 @@ export async function apply(ctx,config) {
         const catalog=store.catalog, roleRevision=catalog.revision;
         const role=structuredClone(catalog.roles.find(r=>r.id===id));
         if(!role?.enabled) throw new Error('角色已停用或删除：'+id);
-        assertDelegation(parent,role.model);
-        const info=await validateModel(ctx.llm,role,signal,fastProviders); signal.throwIfAborted();
+        assertFallbackHost(parent,role);
+        for(const candidate of roleModelChain(role))assertDelegation(parent,candidate.model);
+        const modelChain=await validateModelChain(ctx.llm,role,signal,fastProviders); signal.throwIfAborted();
         const skillSnapshot=await captureSkills(ctx.skills,role.skills,{cwd,signal}); signal.throwIfAborted();
-        assertDelegation(parent,role.model);
-        await persist({sessionId,parentSessionId:parent.id,teamProvider:providerName,role,skillSnapshot,selection:selectionFor(role,info,fastProviders),roleRevision,createdAt:new Date().toISOString(),status:'provisioning',audit:{},output:''});
+        for(const candidate of modelChain)assertDelegation(parent,candidate.model);
+        await persist({sessionId,parentSessionId:parent.id,teamProvider:providerName,role,skillSnapshot,modelChain,fallbackIndex:0,fallbackHistory:[],selection:structuredClone(modelChain[0]),roleRevision,createdAt:new Date().toISOString(),status:'provisioning',audit:{},output:''});
         return {};
       }};
     providers.set(providerName,ctx.subagents.registerProvider(provider));
@@ -143,6 +160,11 @@ export async function apply(ctx,config) {
       liveRecords.set(agent.id,record);
       const scoped=agent.ctx, allowed=new Set(role.tools);
       for(const dispose of await installRoleRuntime(agent,record.selection,allowed)) add(dispose);
+      add(installRoleFallback(agent,record,{persist,observe:observed,assertCandidate:selection=>{
+        const parent=ctx.agents.get(record.parentSessionId);
+        if(!parent&&delegationRules.length)throw new Error('无法确认主代理当前模型，拒绝切换角色模型');
+        assertDelegation(parent,selection.model);
+      }}));
       // Remove native discovery as well as the tool schema; bodies come from the launch snapshot.
       if(scoped.tools.get('skill',agent)) add(scoped.tools.restrict({deny:['skill']}));
       add(scoped.systemPrompt.section({name:'agent-roles:skills',order:10310,text:skillSection(record.skillSnapshot),interpolate:false}));
@@ -170,7 +192,7 @@ export async function apply(ctx,config) {
       return model?delegationDenial(currentModel(agent),model,delegationRules):'无法确认成员模型，当前委派策略禁止唤醒该成员。';
     }));
     const directoryText=(model=currentModel(agent))=>{
-      const roles=store.catalog.roles.filter(r=>r.enabled && !delegationDenial(model,r.model,delegationRules));
+      const roles=store.catalog.roles.filter(r=>r.enabled && roleModelChain(r).every(candidate=>!delegationDenial(model,candidate.model,delegationRules)));
       return '可用角色（DSH 原生 Agent Team）\n'+roles.map(r=>r.name+' — '+r.description+' ['+r.provider+'/'+r.model+'; '+(r.reasoningEffort||'模型默认')+']'+(r.skills?.length?' 技能：'+r.skills.join(', '):'')).join('\n')+
         delegationRules.filter(rule=>rule.leaderModel===model).map(rule=>'\n委派限制：当前主代理 '+model+'，禁止创建或唤醒 '+rule.denyModels.join('、')+' 成员。不得改用通用委派工具绕过；如需升级模型，请交由用户切换主代理。').join('')+
         '\n按任务需要自主选择角色，用 spawn_role 创建有明确任务边界的后台成员；不要用通用 spawn_teammate 代替角色分发。独立任务可并行，写文件范围避免重叠。成员没有你的历史，必须提供目标、材料、路径、授权和验收条件。小任务直接完成。使用原生 list_agents 查看成员，send_message({target:成员名称,message:反馈}) 继续沟通，interrupt_agent 中断。结果由原生后台通知回到本会话；仍需要结果时用 wait_agent 等待，不忙轮询。writer/designer 没有工具，应提供完整材料。';
@@ -186,7 +208,8 @@ export async function apply(ctx,config) {
         const role=store.catalog.roles.find(r=>r.name===args.role && r.enabled);
         if(!role) throw new Error('未找到启用角色：'+args.role);
         if(!exec.agent || ctx.agentTeams.membership(exec.agent).role!=='lead') throw new Error('仅主代理可分发角色');
-        assertDelegation(exec.agent,role.model);
+        assertFallbackHost(exec.agent,role);
+        for(const candidate of roleModelChain(role))assertDelegation(exec.agent,candidate.model);
         let result;
         try { result=await ctx.agentTeams.spawnTeammate(exec.agent,{name:args.name,description:role.description,prompt:[{type:'text',text:args.prompt}],context:'fresh',provider:PREFIX+role.id,signal:exec.signal}); }
         catch(error) {
@@ -203,7 +226,13 @@ export async function apply(ctx,config) {
   for(const agent of ctx.agents.list()) await install(agent);
   ctx.on('agent/created',({agent})=>install(agent));
   ctx.on('agent/disposed',({agent})=>{ for(const dispose of installed.get(agent)??[]) dispose(); installed.delete(agent); });
-  ctx.on('agent/status',({agent,status})=>{ const record=liveRecords.get(agent.id); if(record){record.status=status==='running'?'running':record.status==='failed'?'failed':'inactive';if(status==='running')delete record.error;observed(record);} });
+  ctx.on('agent/status',({agent,status})=>{
+    // A scoped idle listener can synchronously start the continuation driver.
+    // Ignore the superseded outer idle notification after that nested running edge.
+    if(agent.status&&agent.status!==status)return;
+    const record=liveRecords.get(agent.id);
+    if(record){record.status=status==='running'||isFallbackContinuing(record)?'running':record.status==='failed'?'failed':'inactive';if(status==='running')delete record.error;observed(record);}
+  });
   ctx.on('session/event',(session,event)=>{
     const record=liveRecords.get(session.id); if(!record) return;
     if(event.type==='system/message') {
@@ -211,16 +240,22 @@ export async function apply(ctx,config) {
       record.audit={...record.audit,systemHash:hash(system),rolePromptPresent:system.includes(record.role.prompt),adaptationPresent:system.includes('DSH 团队协作'),nativeSystemPresent:system.includes('You are an AI agent powered by DeepSeek Harness.'),skills:skillEvidence(record.skillSnapshot,system),systemSeq:event.seq,systemLength:system.length};
     } else if(event.type==='request/header') {
       const {config:selection,tools=[]}=event.data.header;
-      record.audit={...record.audit,provider:selection.provider,model:selection.model,reasoningEffort:selection.reasoningEffort??'',tools:tools.map(t=>t.name),requestSeq:event.seq};
+      record.audit={...record.audit,provider:selection.provider,model:selection.model,reasoningEffort:selection.reasoningEffort??'',fallbackIndex:record.fallbackIndex??0,fast:record.selection.fast===true,tools:tools.map(t=>t.name),requestSeq:event.seq};
     } else if(event.type==='assistant/message') {
       record.output=text(event.data.message.content).slice(0,30000); record.audit={...record.audit,responseReceived:true};
+      if(record.retry&&!event.data.interrupted)record.retry={...record.retry,status:'succeeded',updatedAt:new Date().toISOString()};
     } else if(event.type==='turn/end') {
-      record.status=event.data.reason.kind==='error'?'failed':'inactive';
-      if(event.data.reason.kind==='error')record.error=event.data.reason.error.message;
+      record.status=isFallbackContinuing(record)?'running':event.data.reason.kind==='error'?'failed':'inactive';
+      if(event.data.reason.kind==='error'&&!isFallbackContinuing(record))record.error=event.data.reason.error.message;
     } else return;
     record.updatedAt=new Date().toISOString(); observed(record);
   });
-  ctx.effect(()=>()=>{ for(const ds of installed.values()) for(const d of ds)d(); installed.clear(); for(const d of providers.values()) d(); },'agent-roles:dispose');
+  ctx.effect(()=>async()=>{
+    for(const ds of installed.values())for(const d of ds)d();
+    installed.clear();for(const d of providers.values())d();
+    // A remount reads the exact active route after all already-observed saves.
+    let queue;do await(queue=store.queue);while(queue!==store.queue);
+  },'agent-roles:dispose');
   async function dispatch(body) {
     if(body.action==='list') return {catalog:store.catalog,tools:TOOLS,...delegationSettings(configContext,delegationRules),persistenceError};
     if(body.action==='saveSettings') return saveDelegationSettings(configContext,body.revision,body.delegationRules);
@@ -232,14 +267,16 @@ export async function apply(ctx,config) {
       return {runs:store.runs.items.slice(-200).reverse().map(r=>{
         if(!teams.has(r.parentSessionId)){const parent=ctx.agents.get(r.parentSessionId);teams.set(r.parentSessionId,parent&&ctx.agentTeams.tryMembership(parent)?ctx.agentTeams.listMembers(parent):[]);}
         const member=teams.get(r.parentSessionId).find(m=>m.id===r.sessionId);
-        const status=member?.status??(ctx.agents.get(r.sessionId)?.status==='running'?'running':r.status==='failed'?'failed':'inactive');
+        const liveStatus=member?.status??(ctx.agents.get(r.sessionId)?.status==='running'?'running':undefined);
+        const status=liveStatus==='running'||liveStatus==='provisioning'?liveStatus:r.status==='failed'?'failed':liveStatus??'inactive';
         const {skillSnapshot,...summary}=r;
         return {...summary,memberName:member?.name??r.memberName,status,error:r.error??(status==='failed'?member?.diagnostics.join('\n'):undefined)};
       }),persistenceError};
     }
     if(body.action==='save') {
-      const role=validateRole(body.role); validateFastProvider(role,fastProviders);
-      if(role.enabled) await validateModel(ctx.llm,role,undefined,fastProviders);
+      const role=validateRole(body.role);
+      for(const candidate of roleModelChain(role))validateFastProvider(candidate,fastProviders);
+      if(role.enabled) await validateModelChain(ctx.llm,role,undefined,fastProviders);
       const known=role.skills.length?await skillDirectory(ctx.skills,{cwd:ctx.workingDirectory.defaultDirectory}):[];
       const previous=store.catalog.roles.find(r=>r.id===role.id);
       for(const name of role.skills) if(!known.some(s=>s.name===name) && !previous?.skills?.includes(name)) throw new Error('技能不可用：'+name);

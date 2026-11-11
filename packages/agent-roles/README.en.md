@@ -2,13 +2,13 @@
 
 [中文](README.md) · [Changelog](CHANGELOG.md) · [Releasing Guide](docs/RELEASING.md)
 
-Role management UI for **DeepSeek Harness Web 0.2.1-rc.5+**, built on the native DSH Agent Team APIs to spawn role-based members, delegate tasks, and continue follow-up conversations.
+Role management UI for **DeepSeek Harness Web 0.2.2-rc.1+**, built on the native DSH Agent Team APIs to spawn role-based members, delegate tasks, and continue follow-up conversations.
 
 In this plugin, a **Role** is a reusable configuration template that stores a responsibility prompt, model and reasoning effort, tool allowlist, and selected Skills; a **Member** is a concrete runtime instance spawned by the main agent from a role. During a session, the main agent can inspect the responsibilities, models, and selected Skills of all enabled roles, and decides when to call `spawn_role` based on the task at hand without requiring a predefined fixed workflow.
 
 ## Repository Migration and Publication Status
 
-This plugin lives under `packages/agent-roles` in the monorepo with its full Git history preserved. The package is named `@delthin/dsh-agent-roles` at version `0.4.1`, configured with `publishConfig.access: "public"` for public npm distribution.
+This plugin lives under `packages/agent-roles` in the monorepo with its full Git history preserved. The package is named `@delthin/dsh-agent-roles` at version `0.5.0`, configured with `publishConfig.access: "public"` for public npm distribution.
 
 - The former standalone repository and historical releases remain available at [Legacy Repository](https://github.com/Delthin/dsh-agent-roles) and [Legacy Releases](https://github.com/Delthin/dsh-agent-roles/releases); historical GitHub Releases are not migrated or re-created in the monorepo.
 - `@delthin/dsh-agent-roles` is published manually to npm by the maintainer and is not currently listed in the plugin marketplace.
@@ -16,9 +16,9 @@ This plugin lives under `packages/agent-roles` in the monorepo with its full Git
 
 ## Compatibility and Verification Status
 
-- **Declared Requirements**: The package declares `Node.js >= 22.18.0` (the monorepo root workspace requires `Node.js >= 22.19.0`), `engines.dsh >= 0.2.1-rc.5`, and at least one configured model provider. The underlying Agent Team APIs remain experimental, and minimum version ranges do not guarantee compatibility across all future host API changes.
-- **Verified**: All 28 unit tests (0 skipped) and `npm pack` file allowlist checks pass under `Node.js 25.9.0` with `DSH 0.2.2-rc.1`.
-- **Pending Verification**: Clean-install verification on the minimum declared host version (`0.2.1-rc.5`) and end-to-end browser UI / live model acceptance runs have not yet been recorded.
+- **Declared Requirements**: The package declares `Node.js >= 22.18.0` (the monorepo root workspace requires `Node.js >= 22.19.0`), `engines.dsh >= 0.2.2-rc.1`, and at least one configured model provider. The underlying Agent Team APIs remain experimental, and minimum version ranges do not guarantee compatibility across all future host API changes.
+- **Verification environment**: `Node.js 25.9.0` and `DSH 0.2.2-rc.1`. Tests cover configuration persistence, tool permissions, real native Team lifecycles, and model fallback; packing checks inspect the actual public file allowlist.
+- **Live-provider acceptance**: Automated tests use synthetic model adapters. Actual provider quota and error responses require acceptance checks in the corresponding environment.
 
 ## Installation
 
@@ -30,7 +30,7 @@ npm run check
 npm pack --workspace @delthin/dsh-agent-roles
 ```
 
-To install via npm, run `npm install @delthin/dsh-agent-roles` (or `@delthin/dsh-agent-roles@0.4.1`) and import `@delthin/dsh-agent-roles` in your DSH host profile configuration (such as `cordis.patch.yml`). Local packing produces `delthin-dsh-agent-roles-0.4.1.tgz`, which can be loaded through your DSH host's local package mechanism, profile configuration, or an isolated test environment. Marketplace listing is independent of local packing and npm publication.
+To install via npm, run `npm install @delthin/dsh-agent-roles` (or `@delthin/dsh-agent-roles@0.5.0`) and import `@delthin/dsh-agent-roles` in your DSH host profile configuration (such as `cordis.patch.yml`). Local packing produces `delthin-dsh-agent-roles-0.5.0.tgz`, which can be loaded through your DSH host's local package mechanism, profile configuration, or an isolated test environment. Marketplace listing is independent of local packing and npm publication.
 
 Installation requires no build step and runs no install scripts. After loading the plugin, refresh the DSH Web page to find「多智能体」in the left navigation bar; if the host does not reload plugins automatically, restart the corresponding Web profile.
 
@@ -61,7 +61,20 @@ Runtime and coordination rules:
 - **Inspecting Status and Results**: Open the native member session from the subagent/team entry at the top of the main session, or open「多智能体 → 子智能体」to view recent role member records for the current data directory, expand output summaries, or click「会话」to jump to the session. An `inactive` status only indicates that no turn is currently executing—it does not by itself mean the task succeeded. Check the member's output to verify conclusions or errors.
 - **Request Verification**: Under a member record's「请求详情」, the plugin logs the actual model, reasoning effort, and tool list from the outgoing request, and verifies that the base DSH system prompt, verbatim role prompt, and selected Skills content were loaded (in `0.2.1-rc.5`, the model field in the native member list may retain the parent session's description; rely on「请求详情」for the actual routing).
 
-### 3. Skills Loading and Communication Overhead
+### 3. Ordered Model Fallback
+
+Keep the primary model under the role's Basic tab and use Add backup model to configure up to 15 ordered alternatives. Each entry has its own provider, model, reasoning effort, and Standard / Fast tier, with move-up, move-down, and remove controls.
+
+- **Quota exhausted**: advance directly to the next entry when the provider reports exhausted quota.
+- **Model request errors**: retry the current model three times after 1, 2, and 4 seconds, then advance; each model receives at most four attempts. Exhausting the chain ends the execution with the final error retained.
+- **Continuity**: keep the same member, native session history, and committed tool results. Cancellation or interruption stops pending waits and further fallback.
+- **Snapshots and evidence**: freeze the full chain at member startup, enforce delegation restrictions for alternatives, and show the active model and transition history in the member list. Existing roles without alternatives keep their single-model behavior.
+
+Fallback requires the public model-selection and inbox APIs in `DSH >=0.2.2-rc.1`. The policy handles host-normalized model request failures. Exceptions thrown directly by preparation, prompt plugins, tool execution, or persistence terminate the execution.
+
+The primary selection stays at the top level; the ordered `fallbacks` array uses the same `provider`, `model`, `reasoningEffort`, and `fast` fields. Fast still requires a compatible host transport adapter.
+
+### 4. Skills Loading and Communication Overhead
 
 New and existing roles default to `skills: []`. When Skills are checked, the plugin reads them via the native DSH skills service at member startup and injects the full content into the new member's system prompt using the native `<skill_content>` format (preserving the resource base directory and literal body). Even a zero-tool role can receive instructions from selected Skills.
 
@@ -143,4 +156,4 @@ See the [Releasing Guide](docs/RELEASING.md) for pre-release checks, Changesets 
 
 Starting with `0.4.1`, this package is licensed under the [Apache-2.0](./LICENSE) open-source license (see also root [LICENSE](../../LICENSE)), Copyright © 2026 Delthin. Commercial and noncommercial use, modification, and distribution are permitted without requiring a separate paid commercial license or forcing derivative works as a whole to be open-sourced, provided that copyright and license notices are retained, modified files are marked, and the patent terms in [LICENSE](./LICENSE) are followed. Prior MIT grants for historical releases `<= 0.4.0` are not revoked, and the legacy notice is retained in [LICENSE-MIT-legacy](./LICENSE-MIT-legacy).
 
-Because npm's default semver rules exclude prerelease versions of a different version tuple from standard `>=` ranges, package and DSH `engines.dsh` host ranges with a `>=0.2.1-rc.5` minimum explicitly use `>=0.2.1-rc.5 || >=0.2.2-rc.1`, while entries that already start at `>=0.2.2-rc.1` keep their original range. This ensures resolution across the current RC series and newer stable releases without guaranteeing compatibility with every future RC or API change.
+The host and DSH runtime dependencies use the minimum-supported range `>=0.2.2-rc.1`; development dependencies pin `0.2.2-rc.1` for reproducible verification. Review experimental Agent Team API changes when upgrading the host.
