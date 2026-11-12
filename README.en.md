@@ -13,7 +13,7 @@ A home for six DeepSeek Harness (DSH) plugins. Each plugin is developed, version
 | :--- | :--- |
 | [`feishu-notify`](./packages/feishu-notify/README.en.md) | Feishu notifications and task-completion reminders |
 | [`agent-roles`](./packages/agent-roles/README.en.md) | Reusable sub-agent roles on the native Agent Team |
-| [`fast`](./packages/fast/README.en.md) | Standard / Fast session toggle |
+| [`fast`](./packages/fast/README.en.md) | Standard / Fast tier and model reasoning-effort controls |
 | [`tool-wrap`](./packages/tool-wrap/README.en.md) | On-demand folding of plugin tools and prompts |
 | [`global-pins`](./packages/global-pins/README.en.md) | Globally pinned conversations |
 | [`cardex`](./packages/cardex/README.en.md) | Turn sessions into knowledge cards, trees, and graphs via `/cardex` |
@@ -33,7 +33,7 @@ npm install @delthin/dsh-global-pins
 npm install @delthin/dsh-cardex
 ```
 
-See each plugin's README for loading and configuration entry points. Restart DSH after first install or upgrades. Marketplace entries: [tool-wrap](https://dshmarket.com/zh/p/Delthin/dsh-plugins--packages-tool-wrap/), [agent-roles](https://dshmarket.com/zh/p/Delthin/dsh-plugins--packages-agent-roles/).
+See each plugin's README for loading and configuration entry points. Restart DSH after first install or upgrades.
 
 ## Notes
 
@@ -56,4 +56,4 @@ Never commit runtime profiles, logs, secrets, or `.tgz` artifacts.
 
 ## License
 
-Apache-2.0 ([LICENSE](./LICENSE)) for this repo and all packages; commercial use is permitted, keep license notices and mark modifications when redistributing. Previously published MIT versions (`agent-roles <= 0.4.0`, `fast <= 0.1.2`) keep their granted rights.
+Current versions use Apache-2.0 ([LICENSE](./LICENSE)); commercial use is permitted. Keep license notices and mark modifications when redistributing. Historical licenses are preserved for [agent-roles](./packages/agent-roles/LICENSE-MIT-legacy) and [Fast](./packages/fast/LICENSE-MIT-legacy).

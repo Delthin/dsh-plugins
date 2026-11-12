@@ -4,14 +4,15 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
     const h = React.createElement;
     const dictionaries = {
       zh: {
-        systemPrompts: '系统提示词', userContext: '用户上下文', emptyRole: '拖入提示词以改变归属。', promptDetails: '查看提示词', morePrompt: '更多', moveToSystem: '移到系统提示词', moveToUser: '移到用户上下文', resetRole: '恢复默认角色', invalidRole: '角色待恢复', roleMoveDraft: '角色与顺序已调整，保存后生效。',
-        intro: "按插件查看提示词与工具，拖动把手调整顺序。", enabled: "工具按需发现", discoveryHint: "先提供插件索引，调用时再加载工具定义。", compositionHint: "按实际角色分区，拖动调整归属与顺序。", groupHint: "系统提示词与用户上下文自动分区；跨区拖动改变角色，工具包在工具页签独立管理。", compositionScope: "组设置作用于组内提示词；单段可覆盖，暂未出现的来源保留设置。", search: "搜索插件、工具或提示词", noResults: "没有匹配的插件、工具或提示词。", sourceDetails: "查看提示词与工具", dragHint: "拖动排序；也可按 Alt + ↑ / ↓", orderUnavailable: "当前来源暂不支持排序", orderDraft: "顺序已调整，保存后生效。", wholePackage: "整包按需加载（含今后新增工具）", toolCheck: "选择工具包", prompts: "提示词分段", toolsTitle: "工具", noTools: "此来源没有可执行工具。", promptDefault: "整组设置", adjustPrompt: "调整此段", promptHint: "各段按此顺序排列；系统与用户消息分别排序。", descriptionSection: "插件简介 · 用于按需发现索引", dynamicPreview: "随会话动态生成。", unavailablePreview: "正文暂无预览，宿主仅提供来源信息。", emptyPreview: "此段当前注册的文本为空。", staticPreview: "注册文本", showFull: "展开全文", collapseFull: "收起全文", injection: "注入", injectionOn: "启用", injectionOff: "停用", inheritInjection: "继承组设置", noPromptPreview: "仅工具", detailsLabel: "来源详情", defaultOption: "默认", onDemandPacks: "按需工具包", packCount: "插件 {count}", toolSelectionCount: "工具 {selected}/{total}", promptsTab: "提示词",
+        systemPrompts: '系统提示词', userContext: '用户上下文', userFixed: '用户（固定）', userState: '用户（状态）', moveToFixed: '移到用户（固定）', moveToState: '移到用户（状态）', resetGrouping: '恢复默认分区', emptyRole: '拖入提示词以改变归属。', promptDetails: '查看提示词', morePrompt: '更多', moveToSystem: '移到系统提示词', moveToUser: '移到用户上下文', resetRole: '恢复默认角色', invalidRole: '角色待恢复', roleMoveDraft: '角色与顺序已调整，保存后生效。',
+        intro: "按插件查看提示词与工具，拖动把手调整顺序。", enabled: "工具按需发现", discoveryHint: "先提供插件索引，调用时再加载工具定义。", compositionHint: "系统、用户固定与用户状态分别排序；状态更新追加到对话末尾。", groupHint: "固定内容保留原位，变化状态追加到对话末尾；跨区拖动调整归属，工具包独立管理。", compositionScope: "组设置作用于组内提示词；单段可覆盖，暂未出现的来源保留设置。", search: "搜索插件、工具或提示词", noResults: "没有匹配的插件、工具或提示词。", sourceDetails: "查看提示词与工具", dragHint: "拖动排序；也可按 Alt + ↑ / ↓", orderUnavailable: "当前来源暂不支持排序", orderDraft: "顺序已调整，保存后生效。", wholePackage: "整包按需加载（含今后新增工具）", toolCheck: "选择工具包", prompts: "提示词分段", toolsTitle: "工具", noTools: "此来源没有可执行工具。", promptDefault: "整组设置", adjustPrompt: "调整此段", promptHint: "各段按此顺序排列；系统与用户消息分别排序。", descriptionSection: "插件简介 · 用于按需发现索引", dynamicPreview: "随会话动态生成。", unavailablePreview: "正文暂无预览，宿主仅提供来源信息。", emptyPreview: "此段当前注册的文本为空。", staticPreview: "注册文本", showFull: "展开全文", collapseFull: "收起全文", injection: "注入", injectionOn: "启用", injectionOff: "停用", inheritInjection: "继承组设置", noPromptPreview: "仅工具", detailsLabel: "来源详情", defaultOption: "默认", onDemandPacks: "按需工具包", packCount: "插件 {count}", toolSelectionCount: "工具 {selected}/{total}", promptsTab: "提示词",
+        collapseZone: '收起', expandZone: '展开', directoryPreview: '按当前会话可见工具与按需配置生成，实际目录在请求组装时填入。',
         injectedTab: '注入', sectionSettings: '逐段设置', editGroup: '调整', collapseGroup: '收起', archive: '不注入', archivePrompt: '移到不注入', restorePrompt: '恢复', emptyArchive: '暂无不注入的提示词。', addPack: '移入按需工具包', removePack: '移出按需工具包', moveIn: '移入', moveOut: '移出', addPackHint: '移入按需工具包，整包工具改为按需加载（含今后新增工具）。', removePackHint: '移出按需工具包，清除此包的按需工具选择，恢复直接提供工具定义。', emptyPacks: '在来源旁点击“移入”添加工具包。', resetInjection: '重置停用设置', archivedOnly: '请在“不注入”中恢复提示词。',
         compositionEnable: '启用提示词编排', compositionDefault: '恢复提示词默认', compositionDefaultDraft: '提示词默认值已恢复为草稿，保存后生效。', compositionMissing: '宿主尚未提供提示词来源，工具设置仍可使用。',  compositionOrderHint: '系统消息与用户消息分别排序；“随工具包”在解包时加载。', compositionInactive: '尚未启用编排，角色、加载、顺序和不注入设置暂不生效。', globalInstructions: '全局 AGENTS', projectInstructions: '项目 AGENTS', unattributedSources: '其他注入来源', noToolGeneration: '当前没有可用于生成简介的工具，可直接编辑简介。', unattributedPack: '尚未确认所属插件，可调整角色与顺序，暂不随工具包加载。', role: '消息角色', delivery: '加载方式', order: '顺序', inherit: '继承', inheritGroup: '继承组设置', system: '系统', user: '用户', developer: '开发者', always: '始终加载', pack: '随工具包', moveUp: '上移', moveDown: '下移', sources: '来源', sourceCount: '提示词 {count}', sourceTools: '{count} 个工具',  hideDetails: '收起来源与工具', noPrompt: '此来源只有工具，没有可编排的提示词。', childOnly: '请展开后逐项设置。', savedUnavailable: '已存设置当前不可用', partialSaved: '部分设置已保存，失败部分仍保留草稿。', toolsSettings: '工具设置', promptSettings: '提示词设置', hostRequired: '宿主未启用编排适配；角色与加载暂不可调整。', sourceRequired: '来源未确认，暂不可调整。', entryAlways: '入口目录需保持常驻。', personaAlways: '完整身份提示词需保持常驻。', sourceUnavailable: '来源当前未找到，保留已存设置。',
         useDefaults: '使用默认值', followGroup: '跟随组设置', originalRole: '原始角色', originalRoles: '各段原始角色', originalSourceRole: '来源原始角色', automatic: '自动', automaticDelivery: '自动：按会话工具包可用性决定', packConditional: '随工具包（需会话支持）', defaultEnabled: '默认启用', configuredHere: '此段设置', configuredGroup: '本组设置', followSource: '沿用「{source}」', settingsDraftHint: '下方显示配置值；修改后需保存，后续请求采用新设置。', injectionFixed: '此来源不支持更改注入开关。', roleShort: '角色', deliveryShort: '加载', alwaysShort: '常驻',
         panel: '工具与提示词', title: '工具与提示词',
          scope: '保存后，使用当前配置的各会话会在后续请求采用新设置；正在运行的请求不会回溯修改。',
-        groups: '插件',    selectedTools: '已选 / 工具数', collapse: '收起工具', help: '工作原理与占用统计', catalogSummary: '来源 {plugins} · 工具 {tools}', hiddenHint: '没有工具或提示词的条目不展示，原有选择保留。',
+        groups: '插件',    selectedTools: '已选 / 工具数', collapse: '收起工具', help: '工作原理与占用统计', catalogSummary: '来源目录 {plugins} · 工具 {tools}', catalogScope: '汇总全局注册与各会话观察，不代表当前请求全部注入。', registeredSource: '全局注册', observedSource: '会话中观察', hiddenHint: '没有工具或提示词的条目不展示，原有选择保留。',
         selected: '已选 {selected} / {total}', expand: '查看工具', emptyCatalog: '当前没有可选的全局工具。',
         otherTools: '未识别来源的工具', otherToolsHint: '这些全局工具尚无插件来源记录，只能逐项选择。',
         coverage: '来源已识别：{known} 个工具；未识别：{unknown} 个工具。', warnings: '目录提示',
@@ -34,14 +35,15 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
         networkError: '无法读取宿主响应，请检查连接后重试。', timeout: '请求超时，请重试。', restartRequired: '更新需重启服务：简介编辑需要配置版本 3，请重启 DSH 后重新读取。',
       },
       en: {
-        systemPrompts: 'System prompts', userContext: 'User context', emptyRole: 'Drop a prompt here to change its role.', promptDetails: 'View prompt', morePrompt: 'More', moveToSystem: 'Move to system prompts', moveToUser: 'Move to user context', resetRole: 'Reset default role', invalidRole: 'Role needs recovery', roleMoveDraft: 'Role and order updated. Save to apply.',
-        intro: "Inspect prompts and tools by plugin. Drag handles to reorder.", enabled: "On-demand tools", discoveryHint: "Show a plugin index first; load tool definitions when needed.", compositionHint: "Prompts are grouped by effective role. Drag to change role and order.", groupHint: "Drag prompts between role sections. Manage tool packs independently in Tools.", compositionScope: "Group rules apply to their prompts; individual sections can override them. Absent sources retain saved settings.", search: "Search plugins, tools or prompts", noResults: "No matching plugins, tools or prompts.", sourceDetails: "View prompts and tools", dragHint: "Drag to reorder, or press Alt + ↑ / ↓", orderUnavailable: "Ordering is unavailable for this source", orderDraft: "Order updated. Save to apply.", wholePackage: "Defer the whole pack (including future tools)", toolCheck: "Select tool pack", prompts: "Prompt sections", toolsTitle: "Tools", noTools: "This source has no executable tools.", promptDefault: "Group settings", adjustPrompt: "Adjust this section", promptHint: "Sections follow this order; system and user messages are ordered separately.", descriptionSection: "Plugin description · on-demand index", dynamicPreview: "Generated per conversation.", unavailablePreview: "No body preview; the host provides source metadata only.", emptyPreview: "The registered text is currently empty.", staticPreview: "Registered text", showFull: "Expand full text", collapseFull: "Collapse text", injection: "Injection", injectionOn: "Enabled", injectionOff: "Disabled", inheritInjection: "Inherit group", noPromptPreview: "Tools only", detailsLabel: "Source details", defaultOption: "Default", onDemandPacks: "On-demand packs", packCount: "Packs {count}", toolSelectionCount: "Tools {selected}/{total}", promptsTab: "Prompts",
+        systemPrompts: 'System prompts', userContext: 'User context', userFixed: 'User (fixed)', userState: 'User (state)', moveToFixed: 'Move to user (fixed)', moveToState: 'Move to user (state)', resetGrouping: 'Reset default group', emptyRole: 'Drop a prompt here to change its role.', promptDetails: 'View prompt', morePrompt: 'More', moveToSystem: 'Move to system prompts', moveToUser: 'Move to user context', resetRole: 'Reset default role', invalidRole: 'Role needs recovery', roleMoveDraft: 'Role and order updated. Save to apply.',
+        intro: "Inspect prompts and tools by plugin. Drag handles to reorder.", enabled: "On-demand tools", discoveryHint: "Show a plugin index first; load tool definitions when needed.", compositionHint: "Order system, fixed user and state prompts separately. Changed state goes at the history tail.", groupHint: "Unchanged fixed prompts stay in place; changed state follows dialogue history. Drag to change groups; tool packs remain separate.", compositionScope: "Group rules apply to their prompts; individual sections can override them. Absent sources retain saved settings.", search: "Search plugins, tools or prompts", noResults: "No matching plugins, tools or prompts.", sourceDetails: "View prompts and tools", dragHint: "Drag to reorder, or press Alt + ↑ / ↓", orderUnavailable: "Ordering is unavailable for this source", orderDraft: "Order updated. Save to apply.", wholePackage: "Defer the whole pack (including future tools)", toolCheck: "Select tool pack", prompts: "Prompt sections", toolsTitle: "Tools", noTools: "This source has no executable tools.", promptDefault: "Group settings", adjustPrompt: "Adjust this section", promptHint: "Sections follow this order; system and user messages are ordered separately.", descriptionSection: "Plugin description · on-demand index", dynamicPreview: "Generated per conversation.", unavailablePreview: "No body preview; the host provides source metadata only.", emptyPreview: "The registered text is currently empty.", staticPreview: "Registered text", showFull: "Expand full text", collapseFull: "Collapse text", injection: "Injection", injectionOn: "Enabled", injectionOff: "Disabled", inheritInjection: "Inherit group", noPromptPreview: "Tools only", detailsLabel: "Source details", defaultOption: "Default", onDemandPacks: "On-demand packs", packCount: "Packs {count}", toolSelectionCount: "Tools {selected}/{total}", promptsTab: "Prompts",
+        collapseZone: 'Collapse', expandZone: 'Expand', directoryPreview: 'Generated from the tools visible to the current conversation and on-demand settings when assembling a request.',
         injectedTab: 'Injected', sectionSettings: 'Per-prompt settings', editGroup: 'Edit', collapseGroup: 'Close', archive: 'Excluded', archivePrompt: 'Exclude prompt', restorePrompt: 'Restore', emptyArchive: 'No excluded prompts.', addPack: 'Move into on-demand packs', removePack: 'Move out of on-demand packs', moveIn: 'Move in', moveOut: 'Move out', addPackHint: 'Defer the whole pack, including future tools.', removePackHint: 'Clear this pack’s on-demand tool selections and provide its tool definitions directly.', emptyPacks: 'Use Move in beside a source to add a tool pack.', resetInjection: 'Reset exclusion', archivedOnly: 'Restore prompts from the Excluded tab.',
         compositionEnable: 'Enable prompt composition', compositionDefault: 'Reset prompt defaults', compositionDefaultDraft: 'Prompt defaults restored as a draft. Save to apply.', compositionMissing: 'The host has not provided prompt sources. Tool settings remain available.', compositionOrderHint: 'System and user messages are ordered separately. With tool pack loads the text when unwrapped.', compositionInactive: 'Composition is off. Role, loading, ordering and exclusion settings are not applied yet.', globalInstructions: 'Global AGENTS', projectInstructions: 'Project AGENTS', unattributedSources: 'Other injected sources', noToolGeneration: 'No tool descriptions are currently available for generation. You can edit the description directly.', unattributedPack: 'Plugin ownership is unconfirmed. Role and ordering remain editable, but pack delivery is unavailable.', role: 'Message role', delivery: 'Loading', order: 'Order', inherit: 'Inherit', inheritGroup: 'Inherit group', system: 'System', user: 'User', developer: 'Developer', always: 'Always', pack: 'With tool pack', moveUp: 'Move up', moveDown: 'Move down', sources: 'Sources', sourceCount: 'Prompts {count}', sourceTools: '{count} tools', hideDetails: 'Collapse sources and tools', noPrompt: 'This source has tools only, with no prompt to compose.', childOnly: 'Expand to configure individual sources.', savedUnavailable: 'Saved setting currently unavailable', partialSaved: 'Some settings were saved. Failed changes remain as a draft.', toolsSettings: 'Tool settings', promptSettings: 'Prompt settings', hostRequired: 'Host composition support is not enabled; roles and loading cannot be changed.', sourceRequired: 'Source is unconfirmed and cannot be changed.', entryAlways: 'The entrypoint directory must remain always loaded.', personaAlways: 'Complete persona instructions must remain always loaded.', sourceUnavailable: 'Source not currently found. Saved settings are retained.',
         useDefaults: 'Use defaults', followGroup: 'Follow group', originalRole: 'Original role', originalRoles: 'Original roles per section', originalSourceRole: 'Original source role', automatic: 'Automatic', automaticDelivery: 'Automatic: determined by tool-pack availability in each conversation', packConditional: 'With tool pack (requires conversation support)', defaultEnabled: 'Enabled by default', configuredHere: 'Section setting', configuredGroup: 'Group setting', followSource: 'From “{source}”', settingsDraftHint: 'These are configured values. Save changes to apply them to subsequent requests.', injectionFixed: 'Injection cannot be changed for this source.', roleShort: 'Role', deliveryShort: 'Loading', alwaysShort: 'Always',
         panel: 'Tools and prompts', title: 'Tools and prompts',
         scope: 'Saved settings apply to subsequent requests in conversations using this configuration. In-flight requests are not changed retroactively.',
-        groups: 'Plugins', selectedTools: 'Selected / tools', collapse: 'Hide tools', help: 'How it works and context size', catalogSummary: 'Sources {plugins} · Tools {tools}', hiddenHint: 'Entries without tools or prompts are hidden. Existing selections are preserved.',
+        groups: 'Plugins', selectedTools: 'Selected / tools', collapse: 'Hide tools', help: 'How it works and context size', catalogSummary: 'Source catalog {plugins} · Tools {tools}', catalogScope: 'Global registrations and observations across conversations, not a list of everything injected into this request.', registeredSource: 'Global registration', observedSource: 'Observed in a conversation', hiddenHint: 'Entries without tools or prompts are hidden. Existing selections are preserved.',
         selected: '{selected} / {total} selected', expand: 'View tools', emptyCatalog: 'No global tools are currently available to select.',
         otherTools: 'Tools with unidentified sources', otherToolsHint: 'These global tools have no recorded plugin source and can only be selected individually.',
         coverage: 'Identified sources: {known} tools; unidentified: {unknown} tools.', warnings: 'Catalog notices',
@@ -96,10 +98,14 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
       .td-settings input.td-switch:before{content:'';display:block;width:14px;height:14px;position:absolute;top:2px;left:2px;border-radius:50%;background:var(--dsw-alias-label-secondary)}
       .td-settings input.td-switch:checked:before{left:16px;background:var(--dsw-alias-bg-base)}
       .td-settings .td-master-list.td-role-master-list{display:flex;flex-direction:column;padding:0;overflow:hidden}
-      .td-settings .td-role-zone{position:relative;flex:1;min-height:88px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--dsw-alias-border-l2) transparent}
+      .td-settings .td-role-zone{position:relative;flex:1;min-height:72px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--dsw-alias-border-l2) transparent}
       .td-settings .td-role-zone+.td-role-zone{border-top:1px solid var(--dsw-alias-border-l2)}
-      .td-settings .td-role-zone-heading{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 10px 6px;background:var(--dsw-alias-bg-layer-1)}
-      .td-settings .td-role-zone-heading h3{font-size:13px}
+      .td-settings .td-role-zone-heading{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:0;background:var(--dsw-alias-bg-layer-1)}
+      .td-settings .td-role-zone-heading h3{font-size:13px;flex:1;min-width:0}
+      .td-settings .td-role-zone.is-collapsed{flex:0 0 auto;min-height:0;overflow:hidden}
+      .td-settings .td-zone-toggle{display:flex;align-items:center;gap:8px;width:100%;min-height:38px;padding:8px 10px;text-align:left;border:0;border-radius:0;background:transparent;font-size:13px;font-weight:600}
+      .td-settings .td-zone-toggle-label{margin-left:auto;font-size:11px;font-weight:400;color:var(--dsw-alias-label-secondary)}
+      .td-settings .td-role-list[hidden]{display:none}
       .td-settings .td-role-list{list-style:none;margin:0;padding:2px 4px 8px;min-height:44px}
       .td-settings .td-role-empty{padding:8px 10px;min-height:44px}
       .td-settings .td-prompt-row .td-source-line2{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -135,7 +141,6 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
       .td-settings .td-source-line2{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dsw-alias-label-secondary);min-width:0}
       .td-settings .td-count{flex-shrink:0;white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums}
       .td-settings .td-source-line2 .td-count{font-size:inherit}
-      .td-settings .td-mini-badge{font-size:12px;color:var(--dsw-alias-label-secondary);white-space:nowrap}
       .td-settings .td-dirty-dot{width:5px;height:5px;background:var(--dsw-alias-brand-primary);border-radius:50%;flex-shrink:0}
       .td-settings .td-detail{min-width:0;overflow:auto;overscroll-behavior:contain;padding:12px 14px;border:1px solid var(--dsw-alias-border-l1);border-radius:6px;background:var(--dsw-alias-bg-base)}
       .td-settings .td-detail-header{margin-bottom:12px}
@@ -155,29 +160,13 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
       .td-settings .td-readonly{font-size:12px;padding:6px 0}
       .td-settings .td-row-order{display:flex;gap:4px;margin-left:auto}
       .td-settings .td-row-order button{display:grid;place-items:center;width:28px;min-height:28px;padding:3px}
-      .td-settings .td-detail-tabs{display:flex;gap:16px;margin-bottom:16px;border-bottom:1px solid var(--dsw-alias-border-l1)}
-      .td-settings .td-detail-tabs button{display:flex;align-items:center;gap:8px;padding:8px 2px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;font-size:13px}
-      .td-settings .td-detail-tabs button[aria-selected=true]{color:var(--dsw-alias-brand-primary);border-bottom-color:var(--dsw-alias-brand-primary);font-weight:600}
-      .td-settings .td-view-heading{display:flex;align-items:center;gap:8px;margin-bottom:16px}
-      .td-settings .td-detail-view[hidden],.td-settings .td-pack-list[hidden]{display:none}
-      .td-settings .td-group-options{margin:0 0 24px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:6px}
-      .td-settings .td-group-options-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px}
-      .td-settings .td-group-options-head h4{margin:0;font-size:13px;font-weight:600}
-      .td-settings .td-group-options-toggle{min-height:28px;padding:3px 8px;background:var(--dsw-alias-bg-base);font-size:12px}
-      .td-settings .td-group-options-body{padding:0 12px 8px}
-      .td-settings .td-group-options-body .td-composition-controls{gap:8px 16px}
-      .td-settings .td-prompt-section-title{margin:0 0 12px;font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary)}
-      .td-settings .td-group-options-body[hidden],.td-settings .td-source-list[hidden]{display:none}
+      .td-settings .td-pack-list[hidden]{display:none}
       .td-settings .td-source-content{min-width:0}
       .td-settings .td-outer-action-slot{display:flex;align-items:center;gap:2px}
       .td-settings .td-list-action{display:inline-flex;align-items:center;justify-content:center;min-width:26px;min-height:28px;padding:3px 4px;border-color:transparent;background:transparent;font-size:12px;white-space:nowrap}
       .td-settings .td-pack-action{color:var(--dsw-alias-label-primary)}
       .td-settings .td-fixed-source{display:grid;place-items:center;width:26px;color:var(--dsw-alias-label-secondary)}
-      .td-settings .td-source-disclosure{display:inline-flex;align-items:center;gap:2px;font-size:12px;line-height:1.2;min-height:24px;padding:0;border:0;background:transparent}
-      .td-settings .td-source-disclosure svg{width:12px;height:12px;flex-shrink:0}
-      .td-settings .td-source-list{grid-column:2/-1;list-style:none;margin:2px 0 4px;padding:0 0 0 7px;border-left:1px solid var(--dsw-alias-border-l2)}
-      .td-settings .td-source-list li,.td-settings .td-archive-list li{display:flex;align-items:center;gap:4px;min-height:34px;min-width:0}
-      .td-settings .td-prompt-link{flex:1;min-width:0;text-align:left;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px;border:0;background:transparent}
+      .td-settings .td-archive-list li{display:flex;align-items:center;gap:4px;min-height:34px;min-width:0}
       .td-settings .td-archive-list{flex:1;list-style:none;overflow:auto;overscroll-behavior:contain;margin:0;padding:4px 6px;min-height:0;scrollbar-width:thin;scrollbar-color:var(--dsw-alias-border-l2) transparent}
       .td-settings .td-archive-source{display:flex;flex:1;flex-direction:column;min-width:0;text-align:left;gap:1px;border:0;background:transparent;padding:5px 4px}
       .td-settings .td-archive-source>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
@@ -189,11 +178,8 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
       .td-settings .td-pack-heading{display:flex;align-items:center;gap:6px;min-height:40px;padding:4px}
       .td-settings .td-pack-heading strong{flex:1;font-size:12px}
       .td-settings .td-pack-toggle{display:grid;place-items:center;min-height:28px;width:24px;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-secondary)}
-      .td-settings .td-prompt-list{list-style:none;margin:0;padding:0}
       .td-settings .td-prompt-card{position:relative;padding-bottom:16px;margin-bottom:20px;border-bottom:1px solid var(--dsw-alias-border-l1)}
       .td-settings .td-prompt-card:last-child{border-bottom:0;margin-bottom:0}
-      .td-settings .td-prompt-card-head{display:flex;align-items:center;gap:6px;padding:0}
-      .td-settings .td-prompt-card-head strong{flex:1;min-width:0;font-size:14px}
       .td-settings .td-prompt-body{margin:4px 0 0;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.65 system-ui,sans-serif;max-height:152px;overflow:auto;background:var(--dsw-alias-bg-layer-1);border-radius:4px}
       .td-settings .td-prompt-body.is-expanded{max-height:none}
       .td-settings .td-prompt-foot{display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:12px;color:var(--dsw-alias-label-secondary)}
@@ -249,14 +235,14 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
     const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
     const strings = value => Array.isArray(value) && value.every(item => typeof item === 'string');
     const copyComposition = config => ({ version: 1, enabled: config.enabled, order: [...config.order], rules: Object.fromEntries(Object.entries(config.rules).map(([id, rule]) => [id, { ...rule }])), ...(config.sourceOrder ? { sourceOrder: [...config.sourceOrder] } : {}) });
-    const compositionKey = config => JSON.stringify({ ...copyComposition(config), rules: Object.entries(config.rules).sort(([a], [b]) => a.localeCompare(b)).map(([id, rule]) => [id, rule.role, rule.delivery, rule.enabled]) });
+    const compositionKey = config => JSON.stringify({ ...copyComposition(config), rules: Object.entries(config.rules).sort(([a], [b]) => a.localeCompare(b)).map(([id, rule]) => [id, rule.role, rule.delivery, rule.enabled, rule.placement]) });
     const validComposition = data => data?.config?.version === 1 && typeof data.config.enabled === 'boolean' && strings(data.config.order) && (data.config.sourceOrder === undefined || strings(data.config.sourceOrder)) && object(data.config.rules) &&
-      Object.values(data.config.rules).every(rule => object(rule) && ['inherit', 'system', 'developer', 'user'].includes(rule.role) && ['inherit', 'always', 'pack'].includes(rule.delivery) && (rule.enabled === undefined || typeof rule.enabled === 'boolean')) &&
+      Object.values(data.config.rules).every(rule => object(rule) && ['inherit', 'system', 'developer', 'user'].includes(rule.role) && ['inherit', 'always', 'pack'].includes(rule.delivery) && (rule.enabled === undefined || typeof rule.enabled === 'boolean') && (rule.placement === undefined || ['inherit', 'fixed', 'state'].includes(rule.placement))) &&
       typeof data.capabilities?.admission === 'boolean' && strings(data.capabilities.roles) &&
       Array.isArray(data.sources) && data.sources.every(source => source && ['id', 'label', 'kind'].every(key => typeof source[key] === 'string') && strings(source.roles) && strings(source.deliveryModes) && (source.owner == null || typeof source.owner === 'string'));
     const ordered = (items, key, order) => {
       const ranks = new Map(order.map((id, index) => [id, index]));
-      return items.map((item, index) => ({ item, index })).sort((a, b) => (ranks.get(key(a.item)) ?? Infinity) - (ranks.get(key(b.item)) ?? Infinity) || a.index - b.index).map(({ item }) => item);
+      return [...items].sort((a, b) => (ranks.get(key(a)) ?? Infinity) - (ranks.get(key(b)) ?? Infinity));
     };
     // Replace only the moved sibling slots, preserving absent sources and other groups' order.
     const mergeOrder = (previous, siblings) => {
@@ -314,6 +300,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
           const [packsOpen, setPacksOpen] = React.useState(true);
           const [listView, setListView] = React.useState('injected');
           const [expandedPrompts, setExpandedPrompts] = React.useState({});
+          const [collapsedZones, setCollapsedZones] = React.useState({});
           const [dragging, setDragging] = React.useState(null);
           const [dropTarget, setDropTarget] = React.useState(null);
           const [orderNotice, setOrderNotice] = React.useState('');
@@ -483,7 +470,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
               const previous = Object.hasOwn(rules, id) ? rules[id] : { role: 'inherit', delivery: 'inherit' };
               const next = { ...previous, [field]: value };
               if (value === undefined) delete next[field];
-              if (next.role === 'inherit' && next.delivery === 'inherit' && next.enabled === undefined) delete rules[id];
+              if (next.role === 'inherit' && next.delivery === 'inherit' && next.enabled === undefined && (!next.placement || next.placement === 'inherit')) delete rules[id];
               else Object.defineProperty(rules, id, { value: next, enumerable: true, configurable: true, writable: true });
               return { ...current, rules };
             });
@@ -608,6 +595,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
             editRule(source.id, 'enabled', resolveSetting(source, 'enabled', false).value ? undefined : true);
             setSelectedId(source.id);
             setListView('injected');
+            setCollapsedZones(current => ({ ...current, [zoneOf(source)]: false }));
           }
           const currentView = compositionForm ? listView : 'tools';
           const allPromptEntries = rows.flatMap(row => promptItems(row).map(source => ({ row, source })));
@@ -621,39 +609,51 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
             .flatMap(([, entries]) => ordered(entries, entry => entry.source.id, compositionOrder));
           const promptEntries = compositionForm?.sourceOrder ? ordered(legacyEntries, entry => entry.source.id, compositionForm.sourceOrder) : legacyEntries;
           const roleOf = source => resolveSetting(source, 'role').value;
-          const roleOrders = Object.fromEntries(['system', 'user', 'invalid'].map(role => [role, promptEntries.filter(({ source }) => !isArchived(source) && (role === 'invalid' ? !['system', 'user'].includes(roleOf(source)) : roleOf(source) === role)).map(({ source }) => source.id)]));
+          const placementsSupported = Array.isArray(capabilities?.placements);
+          const placementOf = source => resolveSetting(source, 'placement').value;
+          const zones = placementsSupported ? ['system', 'user-fixed', 'user-state'] : ['system', 'user'];
+          const zoneRole = zone => zone.startsWith('user') ? 'user' : zone;
+          const zonePlacement = zone => zone === 'user-fixed' ? 'fixed' : zone === 'user-state' ? 'state' : null;
+          const zoneTitle = zone => t(zone === 'system' ? 'systemPrompts' : zone === 'user-fixed' ? 'userFixed' : zone === 'user-state' ? 'userState' : zone === 'user' ? 'userContext' : 'invalidRole');
+          const zoneAction = zone => t(zone === 'system' ? 'moveToSystem' : zone === 'user-fixed' ? 'moveToFixed' : zone === 'user-state' ? 'moveToState' : 'moveToUser');
+          const zoneOf = source => roleOf(source) === 'user' && placementsSupported ? ['fixed', 'state'].includes(placementOf(source)) ? 'user-' + placementOf(source) : 'invalid' : ['system', 'user'].includes(roleOf(source)) ? roleOf(source) : 'invalid';
+          const roleOrders = Object.fromEntries([...zones, 'invalid'].map(zone => [zone, promptEntries.filter(({ source }) => !isArchived(source) && zoneOf(source) === zone).map(({ source }) => source.id)]));
           const promptOrderBase = current => current.sourceOrder ?? [...promptEntries.map(({ source }) => source.id), ...current.order.filter(id => compositionSources.get(id)?.kind === 'unavailable')];
           const saveSiblingOrder = (ids, siblings) => changeComposition(current => Object.values(roleOrders).includes(ids)
             ? { ...current, sourceOrder: mergeOrder(promptOrderBase(current), siblings) }
             : { ...current, order: mergeOrder(current.order, siblings) });
-          const canMoveRole = (source, role) => canSort && (roleOf(source) === role || source.roles.includes(role) && capabilities.roles.includes(role));
-          function movePromptRole(source, role, targetId = null, after = true) {
-            if (!canMoveRole(source, role) || source.id === targetId) return;
+          const canMoveZone = (source, zone) => canSort && (roleOf(source) === zoneRole(zone) || source.roles.includes(zoneRole(zone)) && capabilities.roles.includes(zoneRole(zone)))
+            && (!zonePlacement(zone) || placementOf(source) === zonePlacement(zone) || source.placements?.includes(zonePlacement(zone)) && capabilities.placements.includes(zonePlacement(zone)));
+          function movePromptZone(source, zone, targetId = null, after = true) {
+            if (!canMoveZone(source, zone) || source.id === targetId) return;
             const ids = promptEntries.map(entry => entry.source.id).filter(id => id !== source.id);
-            const target = targetId ?? roleOrders[role].filter(id => id !== source.id).at(-1);
+            const target = targetId ?? roleOrders[zone].filter(id => id !== source.id).at(-1);
             ids.splice(target ? ids.indexOf(target) + Number(after) : ids.length, 0, source.id);
             changeComposition(current => {
               const rule = current.rules[source.id] ?? { role: 'inherit', delivery: 'inherit' };
+              const role = zoneRole(zone), placement = zonePlacement(zone);
+              const next = { ...rule, ...(roleOf(source) !== role ? { role } : {}), ...(placement && placementOf(source) !== placement ? { placement } : {}) };
               return { ...current, sourceOrder: mergeOrder(promptOrderBase(current), ids),
-                rules: roleOf(source) === role ? current.rules : { ...current.rules, [source.id]: { ...rule, role } } };
+                rules: roleOf(source) === role && (!placement || placementOf(source) === placement) ? current.rules : { ...current.rules, [source.id]: next } };
             });
+            setCollapsedZones(current => ({ ...current, [zone]: false }));
             setSelectedId(source.id); setOrderNotice(t('roleMoveDraft'));
           }
-          const promptDropProps = (role, id = null) => ({
+          const promptDropProps = (zone, id = null) => ({
             onDragOver: event => {
               const from = drag.current?.scope === 'prompts' && promptEntries.find(entry => entry.source.id === drag.current.id)?.source;
-              if (!from || !canMoveRole(from, role) || from.id === id) return;
+              if (!from || !canMoveZone(from, zone) || from.id === id) return;
               event.preventDefault(); event.stopPropagation?.(); trackDragScroll(event);
               if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
               const rect = event.currentTarget.getBoundingClientRect();
-              setDropTarget({ id: id ?? 'role:' + role, after: id ? event.clientY > rect.top + rect.height / 2 : true });
+              setDropTarget({ id: id ?? 'role:' + zone, after: id ? event.clientY > rect.top + rect.height / 2 : true });
             },
             onDrop: event => {
               const from = drag.current?.scope === 'prompts' && promptEntries.find(entry => entry.source.id === drag.current.id)?.source;
-              if (!from || !canMoveRole(from, role)) return;
+              if (!from || !canMoveZone(from, zone)) return;
               event.preventDefault(); event.stopPropagation?.();
               const rect = event.currentTarget.getBoundingClientRect();
-              movePromptRole(from, role, id, id ? event.clientY > rect.top + rect.height / 2 : true); finishDrag();
+              movePromptZone(from, zone, id, id ? event.clientY > rect.top + rect.height / 2 : true); finishDrag();
             },
           });
           const term = query.trim().toLocaleLowerCase();
@@ -771,47 +771,40 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
               if (field === 'enabled' ? typeof candidate === 'boolean' : candidate && candidate !== 'inherit') { value = candidate; origin = id; }
             }
             if (field === 'role' && value === 'inherit') value = source.defaultRole || 'inherit';
+            if (field === 'placement' && value === 'inherit') value = source.defaultPlacement || (source.preview?.kind === 'static' ? 'fixed' : 'state');
             return { value, origin };
           }
           const settingValueLabel = (field, value) => value === 'inherit' ? field === 'role' ? '' : t('automatic') : t(value === 'always' ? 'alwaysShort' : value);
           const compositionControls = (source, label) => {
-            if (!source) return null;
-            const rule = compositionForm?.rules[source.id] || { role: 'inherit', delivery: 'inherit' };
-            const editable = Boolean(canSort && compositionForm.enabled && source.kind !== 'unavailable');
-            const control = field => {
-              const choices = field === 'role' ? ['inherit', 'system', 'user', 'developer'].filter(value => source.roles.includes(value) && capabilities?.roles?.includes(value) && (value !== 'developer' || capabilities.developer === true))
-                : ['inherit', 'always', 'pack'].filter(value => source.deliveryModes.includes(value));
-              const value = rule[field];
-              const summaryId = scopeId + '-setting-' + encodeURIComponent(source.id) + '-' + field;
-              const inherited = resolveSetting(source, field, false), effective = resolveSetting(source, field);
-              const inheritedLabel = settingValueLabel(field, inherited.value);
-              const defaultLabel = t('defaultOption') + (inheritedLabel ? '：' + inheritedLabel : '');
-              const origin = compositionSources.get(inherited.origin);
-              const originLabel = origin ? packageText(origin.label, origin.id) : inherited.origin;
-              const defaultTitle = originLabel ? text('followSource', { source: originLabel }) : defaultLabel;
-              const optionLabel = option => option === 'inherit' ? defaultLabel : t(option === 'always' ? 'alwaysShort' : option);
-              const disabled = !editable || !choices.length || (choices.length === 1 && choices.includes(value));
-              const choose = option => { if (!disabled) editRule(source.id, field, option); };
-              const keyDown = event => {
-                if (disabled || event.altKey || event.ctrlKey || event.metaKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
-                event.preventDefault();
-                const index = choices.indexOf(value), backwards = event.key === 'ArrowLeft' || event.key === 'ArrowUp';
-                const next = event.key === 'Home' ? 0 : event.key === 'End' ? choices.length - 1 : index < 0 ? (backwards ? choices.length - 1 : 0) : (index + (backwards ? -1 : 1) + choices.length) % choices.length;
-                choose(choices[next]);
-                event.currentTarget?.parentElement?.querySelectorAll('[role="radio"]')[next]?.focus();
-              };
-              const unavailable = !choices.includes(value);
-              const storedUnavailable = unavailable;
-              return h('div', { className: 'td-choice-row', key: field, 'data-field': field, 'data-source-id': source.id },
-                h('span', { className: 'td-choice-label' }, t(field === 'role' ? 'roleShort' : 'deliveryShort')),
-                h('div', { className: 'td-choice-options' },
-                  storedUnavailable && h('span', { className: 'td-unavailable', role: 'status' }, optionLabel(value) + ' · ' + t('savedUnavailable')),
-                  choices.length ? h('div', { className: 'td-segments', role: 'radiogroup', 'aria-label': t(field) + ' · ' + label, 'aria-describedby': summaryId, 'aria-disabled': disabled, title: reasonText(source.reason) },
-                    choices.map((option, index) => h('button', { key: option, type: 'button', className: 'td-segment', role: 'radio', value: option, title: option === 'inherit' ? defaultTitle : undefined, 'aria-checked': value === option, tabIndex: value === option || (unavailable && index === 0) ? 0 : -1, disabled, onClick: () => choose(option), onKeyDown: keyDown }, optionLabel(option))))
-                    : h('span', { className: 'td-readonly' }, settingValueLabel(field, effective.value))),
-                h('span', { className: 'td-sr-only', id: summaryId }, defaultTitle));
+            const value = compositionForm?.rules[source.id]?.delivery ?? 'inherit';
+            const choices = ['inherit', 'always', 'pack'].filter(option => source.deliveryModes.includes(option));
+            const summaryId = scopeId + '-setting-' + encodeURIComponent(source.id) + '-delivery';
+            const inherited = resolveSetting(source, 'delivery', false);
+            const defaultLabel = t('defaultOption') + '：' + settingValueLabel('delivery', inherited.value);
+            const origin = compositionSources.get(inherited.origin);
+            const originLabel = origin ? packageText(origin.label, origin.id) : inherited.origin;
+            const defaultTitle = originLabel ? text('followSource', { source: originLabel }) : defaultLabel;
+            const optionLabel = option => option === 'inherit' ? defaultLabel : t(option === 'always' ? 'alwaysShort' : option);
+            const disabled = !canSort || source.kind === 'unavailable' || !choices.length || (choices.length === 1 && choices.includes(value));
+            const choose = option => { if (!disabled) editRule(source.id, 'delivery', option); };
+            const keyDown = event => {
+              if (disabled || event.altKey || event.ctrlKey || event.metaKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const index = choices.indexOf(value), backwards = event.key === 'ArrowLeft' || event.key === 'ArrowUp';
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? choices.length - 1 : index < 0 ? (backwards ? choices.length - 1 : 0) : (index + (backwards ? -1 : 1) + choices.length) % choices.length;
+              choose(choices[next]);
+              event.currentTarget?.parentElement?.querySelectorAll('[role="radio"]')[next]?.focus();
             };
-            return h('div', { className: 'td-composition-controls' }, control('delivery'));
+            const unavailable = !choices.includes(value);
+            return h('div', { className: 'td-composition-controls' },
+              h('div', { className: 'td-choice-row', 'data-field': 'delivery', 'data-source-id': source.id },
+                h('span', { className: 'td-choice-label' }, t('deliveryShort')),
+                h('div', { className: 'td-choice-options' },
+                  unavailable && h('span', { className: 'td-unavailable', role: 'status' }, optionLabel(value) + ' · ' + t('savedUnavailable')),
+                  choices.length ? h('div', { className: 'td-segments', role: 'radiogroup', 'aria-label': t('delivery') + ' · ' + label, 'aria-describedby': summaryId, 'aria-disabled': disabled, title: reasonText(source.reason) },
+                    choices.map((option, index) => h('button', { key: option, type: 'button', className: 'td-segment', role: 'radio', value: option, title: option === 'inherit' ? defaultTitle : undefined, 'aria-checked': value === option, tabIndex: value === option || (unavailable && index === 0) ? 0 : -1, disabled, onClick: () => choose(option), onKeyDown: keyDown }, optionLabel(option))))
+                    : h('span', { className: 'td-readonly' }, settingValueLabel('delivery', resolveSetting(source, 'delivery').value))),
+                h('span', { className: 'td-sr-only', id: summaryId }, defaultTitle)));
           };
           const stat = (key, value) => h('div', { className: 'td-stat', key }, h('dt', null, t(key)), h('dd', null, value));
           const charValue = value => text('chars', { value: number(value) });
@@ -850,10 +843,10 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
             if (!source.canToggleInjection) return h('span', { className: 'td-fixed-source', title: reasonText(source.reason) || t('injectionFixed'), 'aria-label': t('injectionFixed') + ' · ' + source.label }, actionIcon('lock'));
             return h('button', { type: 'button', className: 'td-list-action td-archive-action', 'aria-label': t('archivePrompt') + ' · ' + source.label, title: t('archivePrompt'), disabled: !canSort, onClick: () => archivePrompt(source) }, actionIcon('archive'));
           };
-          const renderRow = (row, element = 'li') => {
+          const renderRow = row => {
             const group = row.toolGroup, tools = group?.tools || row.tools || [], label = rowLabel(row), ids = rowOrder(row), scope = rowScope(row);
             const selected = tools.filter(tool => isSelected(form, group, tool.name)).length;
-            return h(element, { key: row.id, className: 'td-group' + (activeRow?.id === row.id && currentView === 'tools' ? ' is-selected' : '') + dragClass(row.orderId), 'data-source-id': row.id, 'data-sort-id': row.orderId, ...dropProps(row.orderId, ids, scope) },
+            return h('li', { key: row.id, className: 'td-group' + (activeRow?.id === row.id && currentView === 'tools' ? ' is-selected' : '') + dragClass(row.orderId), 'data-source-id': row.id, 'data-sort-id': row.orderId, ...dropProps(row.orderId, ids, scope) },
               dragHandle(ids, row.orderId, label, scope),
               h('div', { className: 'td-source-content' },
                 h('button', { type: 'button', className: 'td-source-main', 'aria-label': t('sourceDetails') + ' · ' + label, 'aria-current': activeRow?.id === row.id && currentView === 'tools' ? 'true' : undefined, 'aria-controls': detailId, title: label,
@@ -876,21 +869,46 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
             const index = names.indexOf(currentView), next = names[event.key === 'Home' ? 0 : event.key === 'End' ? names.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : names.length - 1)) % names.length];
             selectListView(next); event.currentTarget.parentElement.querySelector('[data-list-view="' + next + '"]')?.focus();
           };
-          const promptLabel = source => source.id === 'instructions:global' ? t('globalInstructions') : source.id === 'instructions:project' ? t('projectInstructions') : packageText(source.label, source.id);
+          const sourceLocation = source => {
+            if (source.kind === 'instructions' && source.id.startsWith('instructions:')) {
+              try { return decodeURIComponent(source.id.slice('instructions:'.length)); } catch { /* Keep legacy labels readable. */ }
+            }
+            return packageText(source.label, source.id);
+          };
+          const promptLabel = source => {
+            if (source.id === 'instructions:global') return t('globalInstructions');
+            if (source.id === 'instructions:project') return t('projectInstructions');
+            const peers = promptEntries.filter(entry => entry.source.kind === 'instructions' && entry.source.label === source.label);
+            if (source.kind !== 'instructions' || peers.length < 2) return packageText(source.label, source.id);
+            const parts = sourceLocation(source).split('/');
+            for (let size = 2; size <= parts.length; size++) {
+              const suffix = parts.slice(-size).join('/');
+              if (peers.every(entry => entry.source.id === source.id || sourceLocation(entry.source).split('/').slice(-size).join('/') !== suffix)) return suffix;
+            }
+            return sourceLocation(source);
+          };
+          const sourceCaption = (row, source) => {
+            const ambiguous = source.name && promptEntries.some(entry => entry.source.id !== source.id && entry.source.kind === source.kind && entry.source.name === source.name);
+            const origin = source.catalogOrigin === 'registered' ? t('registeredSource') : source.catalogOrigin === 'observed' ? t('observedSource') : '';
+            return displayName(row) + (ambiguous && origin ? ' · ' + origin : '');
+          };
           const selectPrompt = source => setSelectedId(source.id);
-          const renderPromptRow = ({ row, source }, role) => h('li', { key: source.id, className: 'td-group td-prompt-row' + (activePrompt?.source.id === source.id ? ' is-selected' : '') + dragClass(source.id), 'data-prompt-id': source.id, 'data-sort-id': source.id, ...(['system', 'user'].includes(role) ? promptDropProps(role, source.id) : {}) },
+          const renderPromptRow = ({ row, source }, role) => h('li', { key: source.id, className: 'td-group td-prompt-row' + (activePrompt?.source.id === source.id ? ' is-selected' : '') + dragClass(source.id), 'data-prompt-id': source.id, 'data-sort-id': source.id, ...(zones.includes(role) ? promptDropProps(role, source.id) : {}) },
             dragHandle(roleOrders[role], source.id, source.label, 'prompts'),
-            h('button', { type: 'button', className: 'td-source-main', 'aria-label': t('promptDetails') + ' · ' + source.label, 'aria-current': activePrompt?.source.id === source.id ? 'true' : undefined, 'aria-controls': detailId, title: source.label, onClick: () => selectPrompt(source), onKeyDown: event => sortKey(event, roleOrders[role], source.id) },
-              h('span', { className: 'td-source-name' }, promptLabel(source)), h('span', { className: 'td-source-line2' }, displayName(row))), promptAction(source));
+            h('button', { type: 'button', className: 'td-source-main', 'aria-label': t('promptDetails') + ' · ' + source.label, 'aria-current': activePrompt?.source.id === source.id ? 'true' : undefined, 'aria-controls': detailId, title: sourceLocation(source), onClick: () => selectPrompt(source), onKeyDown: event => sortKey(event, roleOrders[role], source.id) },
+              h('span', { className: 'td-source-name' }, promptLabel(source)), h('span', { className: 'td-source-line2' }, sourceCaption(row, source))), promptAction(source));
           const renderRoleZone = role => {
-            const entries = visiblePromptEntries.filter(({ source }) => !isArchived(source) && (role === 'invalid' ? !['system', 'user'].includes(roleOf(source)) : roleOf(source) === role));
+            const entries = visiblePromptEntries.filter(({ source }) => !isArchived(source) && zoneOf(source) === role);
             if (role === 'invalid' && !entries.length) return null;
-            return h('section', { key: role, className: 'td-role-zone' + dragClass('role:' + role), 'data-role-zone': role, 'aria-label': t(role === 'system' ? 'systemPrompts' : role === 'user' ? 'userContext' : 'invalidRole'), ...(['system', 'user'].includes(role) ? promptDropProps(role) : {}) },
-              h('div', { className: 'td-role-zone-heading' }, h('h3', null, t(role === 'system' ? 'systemPrompts' : role === 'user' ? 'userContext' : 'invalidRole')), h('span', { className: 'td-count' }, entries.length)),
-              h('ul', { className: 'td-role-list' }, entries.length ? entries.map(entry => renderPromptRow(entry, role)) : h('li', { className: 'td-muted td-role-empty' }, t(term ? 'noResults' : 'emptyRole'))));
+            const collapsed = Boolean(collapsedZones[role]), listId = scopeId + '-zone-' + role;
+            const action = t(collapsed ? 'expandZone' : 'collapseZone');
+            return h('section', { key: role, className: 'td-role-zone' + (collapsed ? ' is-collapsed' : '') + dragClass('role:' + role), 'data-role-zone': role, 'aria-label': zoneTitle(role), ...(zones.includes(role) ? promptDropProps(role) : {}) },
+              h('div', { className: 'td-role-zone-heading' }, h('h3', null, h('button', { type: 'button', className: 'td-zone-toggle', 'aria-label': action + ' · ' + zoneTitle(role), 'aria-expanded': !collapsed, 'aria-controls': listId, onClick: () => { stopDragScroll(); setCollapsedZones(current => ({ ...current, [role]: !collapsed })); } },
+                h('span', null, zoneTitle(role)), h('span', { className: 'td-count' }, entries.length), h('span', { className: 'td-zone-toggle-label', 'aria-hidden': true }, action)))),
+              h('ul', { className: 'td-role-list', id: listId, hidden: collapsed }, entries.length ? entries.map(entry => renderPromptRow(entry, role)) : h('li', { className: 'td-muted td-role-empty' }, t(term ? 'noResults' : 'emptyRole'))));
           };
           const renderArchive = () => h('ul', { className: 'td-archive-list' }, visibleArchive.length ? visibleArchive.map(({ row, source }) => h('li', { key: source.id, 'data-archived-id': source.id },
-            h('button', { type: 'button', className: 'td-archive-source', title: source.label + ' · ' + rowLabel(row), 'aria-label': t('promptDetails') + ' · ' + source.label, 'aria-current': activePrompt?.source.id === source.id && currentView === 'archive' ? 'true' : undefined, 'aria-controls': detailId, onClick: () => selectPrompt(source) }, h('span', null, promptLabel(source)), h('small', null, displayName(row))),
+            h('button', { type: 'button', className: 'td-archive-source', title: source.label + ' · ' + rowLabel(row), 'aria-label': t('promptDetails') + ' · ' + source.label, 'aria-current': activePrompt?.source.id === source.id && currentView === 'archive' ? 'true' : undefined, 'aria-controls': detailId, onClick: () => selectPrompt(source) }, h('span', null, promptLabel(source)), h('small', null, sourceCaption(row, source))),
             h('button', { type: 'button', className: 'td-list-action', disabled: !canSort, 'aria-label': t('restorePrompt') + ' · ' + source.label, onClick: () => restorePrompt(source, row) }, t('restorePrompt')))) : h('li', { className: 'td-muted td-archive-empty', role: 'status' }, t(term ? 'noResults' : 'emptyArchive')));
           const renderPrompt = source => {
             const preview = source.preview, body = preview?.kind === 'static' && typeof preview.text === 'string' ? preview.text : null;
@@ -899,7 +917,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
             return h('div', { className: 'td-prompt-card' },
               source.reason && h('p', { className: 'td-source-reason' }, reasonText(source.reason)),
               body !== null ? (body ? h('pre', { id: bodyId, className: 'td-prompt-body' + (expanded ? ' is-expanded' : ''), tabIndex: 0, 'aria-label': source.label }, body) : h('div', { className: 'td-preview-notice' }, t('emptyPreview')))
-                : h('div', { className: 'td-preview-notice' }, t(preview?.kind === 'dynamic' ? 'dynamicPreview' : 'unavailablePreview')),
+                : h('div', { className: 'td-preview-notice' }, t(preview?.reason === 'tool-directory-assembly-required' ? 'directoryPreview' : preview?.kind === 'dynamic' ? 'dynamicPreview' : 'unavailablePreview')),
               body !== null && h('div', { className: 'td-prompt-foot' }, h('span', { title: t('staticPreview') }, charValue(body.length)),
                 body && h('button', { type: 'button', 'aria-expanded': expanded, 'aria-controls': bodyId, onClick: () => setExpandedPrompts(current => ({ ...current, [source.id]: !expanded })) }, t(expanded ? 'collapseFull' : 'showFull'))));
           };
@@ -911,17 +929,19 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
               tools.length > 0 && row !== packAnchor && h('div', { className: 'td-tool-policy' }, packAction(row)),
               tools.length ? toolList(tools, group, scopeId + '-tools') : h('p', { className: 'td-muted' }, t('noTools')),
               group && h('details', { key: row.id + '-description' }, h('summary', null, t('descriptionSection')), descriptionEditor(group, scopeId + '-description')));
-            const source = activePrompt.source, role = roleOf(source), ids = roleOrders[role] || roleOrders.invalid;
+            const source = activePrompt.source, zone = zoneOf(source), ids = roleOrders[zone] || roleOrders.invalid;
             const rule = compositionForm?.rules[source.id], inherited = resolveSetting(source, 'role', false).value;
-            const roleUnavailable = !source.roles.includes(rule?.role ?? 'inherit') || !capabilities?.roles?.includes(rule?.role ?? 'inherit');
+            const resetLabel = t(placementsSupported ? 'resetGrouping' : 'resetRole');
+            const inheritedZone = inherited === 'user' && placementsSupported ? 'user-' + resolveSetting(source, 'placement', false).value : inherited;
+            const roleUnavailable = !source.roles.includes(rule?.role ?? 'inherit') || !capabilities?.roles?.includes(rule?.role ?? 'inherit') || placementsSupported && rule?.placement && !source.placements?.includes(rule.placement);
             return h('div', { className: 'td-detail', ...scrollDragProps, id: detailId, key: source.id, role: 'region', 'aria-label': t('promptDetails') + ' · ' + source.label },
-              h('div', { className: 'td-detail-header' }, h('div', { className: 'td-detail-title-row' }, h('h3', null, promptLabel(source)), currentView === 'injected' && orderButtons(ids, source.id, source.label)),
-                h('div', { className: 'td-source-line2' }, displayName(row), h('span', { 'aria-hidden': true }, '·'), t(role === 'system' ? 'systemPrompts' : role === 'user' ? 'userContext' : 'invalidRole'))),
+              h('div', { className: 'td-detail-header' }, h('div', { className: 'td-detail-title-row' }, h('h3', { title: sourceLocation(source) }, promptLabel(source)), currentView === 'injected' && orderButtons(ids, source.id, source.label)),
+                h('div', { className: 'td-source-line2' }, sourceCaption(row, source), h('span', { 'aria-hidden': true }, '·'), zoneTitle(zone))),
               roleUnavailable && h('p', { className: 'td-unavailable', role: 'status' }, t('savedUnavailable') + ' · ' + t('role')),
               renderPrompt(source),
               h('details', { className: 'td-prompt-options' }, h('summary', null, t('morePrompt')),
-                h('div', { className: 'td-prompt-actions' }, ['system', 'user'].filter(target => target !== role).map(target => h('button', { key: target, type: 'button', disabled: !canMoveRole(source, target), 'aria-label': t(target === 'system' ? 'moveToSystem' : 'moveToUser') + ' · ' + source.label, onClick: () => movePromptRole(source, target) }, t(target === 'system' ? 'moveToSystem' : 'moveToUser'))),
-                  h('button', { type: 'button', disabled: !canSort || !source.roles.includes('inherit') || !rule || rule.role === 'inherit', 'aria-label': t('resetRole') + ' · ' + source.label, title: t('defaultOption') + '：' + settingValueLabel('role', inherited), onClick: () => editRule(source.id, 'role', 'inherit') }, t('resetRole'))),
+                h('div', { className: 'td-prompt-actions' }, zones.filter(target => target !== zone).map(target => h('button', { key: target, type: 'button', disabled: !canMoveZone(source, target), 'aria-label': zoneAction(target) + ' · ' + source.label, onClick: () => movePromptZone(source, target) }, zoneAction(target))),
+                  h('button', { type: 'button', disabled: !canSort || !source.roles.includes('inherit') || !rule || rule.role === 'inherit' && (!rule.placement || rule.placement === 'inherit'), 'aria-label': resetLabel + ' · ' + source.label, title: t('defaultOption') + '：' + (placementsSupported ? zoneTitle(inheritedZone) : settingValueLabel('role', inherited)), onClick: () => { editRule(source.id, 'role', 'inherit'); if (placementsSupported) editRule(source.id, 'placement', undefined); setCollapsedZones(current => ({ ...current, [inheritedZone]: false })); } }, resetLabel)),
                 compositionControls(source, source.label)),
               group && !tools.length && h('details', { key: row.id + '-description' }, h('summary', null, t('descriptionSection')), descriptionEditor(group, scopeId + '-description')));
           };
@@ -945,11 +965,11 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
                   h('aside', { className: 'td-master', 'aria-label': t('sources') },
                     h('div', { className: 'td-master-tabs', role: 'tablist', 'aria-label': t('promptSettings') }, (compositionForm ? ['injected', 'archive', 'tools'] : ['tools']).map(name => h('button', { key: name, type: 'button', role: 'tab', id: listPanelId(name) + '-tab', 'data-list-view': name, 'aria-selected': currentView === name, 'aria-controls': listPanelId(name), tabIndex: currentView === name ? 0 : -1, onClick: () => selectListView(name), onKeyDown: listTabKey }, t(name === 'injected' ? 'injectedTab' : name === 'tools' ? 'toolsTitle' : 'archive'), h('span', { className: 'td-count' }, name === 'archive' ? archivedPrompts.length : name === 'tools' ? toolRows.length : promptEntries.filter(({ source }) => !isArchived(source)).length)))),
                     h('div', { className: 'td-master-header' },
-                      h('input', { type: 'search', value: query, placeholder: t('search'), 'aria-label': t('search'), onChange: event => setQuery(event.target.value) }),
-                      h('div', { className: 'td-master-summary' }, h('span', null, text('catalogSummary', { plugins: rows.length, tools: totalTools })),
+                      h('input', { type: 'search', value: query, placeholder: t('search'), 'aria-label': t('search'), onChange: event => { setQuery(event.target.value); if (event.target.value.trim()) setCollapsedZones({}); } }),
+                      h('div', { className: 'td-master-summary' }, h('span', { title: t('catalogScope') }, text('catalogSummary', { plugins: rows.length, tools: totalTools })),
                         h('button', { type: 'button', disabled: Boolean(busy || generating), onClick: () => load(false) }, t(busy === 'loading' ? 'refreshing' : 'refresh')))),
                     h('div', { className: 'td-master-panel', id: listPanelId('injected'), role: 'tabpanel', 'aria-labelledby': listPanelId('injected') + '-tab', hidden: currentView !== 'injected' },
-                      h('div', { className: 'td-master-list td-role-master-list', ...scrollDragProps }, ['system', 'user', 'invalid'].map(renderRoleZone))),
+                      h('div', { className: 'td-master-list td-role-master-list', ...scrollDragProps }, [...zones, 'invalid'].map(renderRoleZone))),
                     h('div', { className: 'td-master-panel', id: listPanelId('archive'), role: 'tabpanel', 'aria-labelledby': listPanelId('archive') + '-tab', hidden: currentView !== 'archive' }, renderArchive()),
                     h('div', { className: 'td-master-panel', id: listPanelId('tools'), role: 'tabpanel', 'aria-labelledby': listPanelId('tools') + '-tab', hidden: currentView !== 'tools' },
                       h('ul', { className: 'td-master-list td-tools-master-list', ...scrollDragProps }, outerRows.filter(row => visibleRows.includes(row)).map(row => renderRow(row)), showPacks && renderPacks()))),

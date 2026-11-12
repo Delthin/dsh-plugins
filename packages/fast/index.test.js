@@ -6,7 +6,9 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getGlobalDispatcher } from 'undici';
-import { apply } from './index.js';
+import { Context } from '@deepseek-ai/cordis';
+import * as Fast from './index.js';
+const { apply } = Fast;
 
 const collect = async iterable => {
   const values = [];
@@ -14,7 +16,7 @@ const collect = async iterable => {
   return values;
 };
 
-async function fixture(t, config, records = new Map()) {
+async function fixture(t, config, records = new Map(), native = false) {
   const hooks = new Map();
   const disposers = [];
   const inspected = [];
@@ -36,12 +38,24 @@ async function fixture(t, config, records = new Map()) {
       fetch: { register(value) { endpoint = value; return () => {}; } },
     },
   };
-  await apply(ctx, config);
-  t.after(async () => { for (const dispose of disposers.reverse()) await dispose?.(); assert.equal(closed, true); });
+  const root = native ? new Context() : undefined;
+  let mount;
+  if (root) {
+    for (const name of Fast.inject) root.provide(name, ctx[name] ?? {});
+    mount = root.plugin(Fast, config);
+    await mount.await();
+  } else await apply(ctx, config);
+  t.after(async () => {
+    if (root) await mount.dispose();
+    else for (const dispose of disposers.reverse()) await dispose?.();
+    assert.equal(closed, true);
+  });
   const response = body => endpoint.fetch(new Request('http://localhost/api/fast', { method: 'POST', body: JSON.stringify(body) }));
   return {
-    ctx, records, inspected, response,
-    stream: (sessionId, provider, next) => hooks.get('llm/stream')({ sessionId, provider }, next),
+    ctx, root, mount, records, inspected, response,
+    stream: (sessionId, provider, next) => root
+      ? root.waterfall('llm/stream', { sessionId, provider }, next)
+      : hooks.get('llm/stream')({ sessionId, provider }, next),
     command: (rawInput, id = 'ordinary') => command.handler({ agent: { id }, rawInput }),
     async api(body) {
       const result = await response(body);
@@ -155,6 +169,70 @@ test('role snapshots remain immutable and old snapshots default to Standard', as
     assert.match((await f.command('off', sessionId)).text, /角色档位固定/);
   }
   assert.equal((await f.api({ sessionId: 'ordinary', action: 'get' })).locked, false);
+});
+
+test('live role tiers take precedence without reading legacy history and follow active route changes', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-fast-live-role-'));
+  t.after(async () => { await rm(dir, { recursive: true }); });
+  const roleRunsPath = join(dir, 'runs.json');
+  await writeFile(roleRunsPath, JSON.stringify({ items: [{ sessionId: 'role', selection: { fast: true } }] }));
+  const f = await fixture(t, { roleRunsPath }, new Map([['role', { fast: true }]]), true);
+  assert.equal((await f.api({ sessionId: 'role', action: 'get' })).fast, true);
+  let fast = false;
+  const unprovide = f.root.provide('roleTiers', { get(id) {
+    return id === 'role' ? { fast, locked: true, source: 'role' } : undefined;
+  } });
+  await writeFile(roleRunsPath, 'unreadable legacy history');
+  assert.equal((await f.api({ sessionId: 'role', action: 'get' })).fast, false);
+  fast = true;
+  assert.equal((await f.api({ sessionId: 'role', action: 'get' })).fast, true);
+  assert.match((await f.command('off', 'role')).text, /角色档位固定/);
+  assert.equal((await f.api({ sessionId: 'ordinary', action: 'get' })).source, 'session');
+  await unprovide();
+  await writeFile(roleRunsPath, JSON.stringify({ items: [{ sessionId: 'role', selection: { fast: false } }] }));
+  assert.equal((await f.api({ sessionId: 'role', action: 'get' })).fast, false);
+});
+
+test('native config updates drain old Fast streams while new requests use the replacement route', { timeout: 10000 }, async t => {
+  const arrived = Promise.withResolvers(), release = Promise.withResolvers();
+  const seen = [];
+  const server = createServer(async (req, res) => {
+    for await (const _chunk of req) {}
+    seen.push(req.url);
+    if (req.url === '/old') { arrived.resolve(); await release.promise; }
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ path: req.url }));
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(async () => { release.resolve(); server.closeAllConnections(); await new Promise(done => server.close(done)); });
+  const origin = 'http://127.0.0.1:' + server.address().port;
+  const config = { provider: complete.provider, sourceURL: origin + '/v1/responses', targetURL: origin + '/old' };
+  const before = getGlobalDispatcher();
+  const f = await fixture(t, config, new Map([['ordinary', { fast: true }]]), true);
+  const next = async function* () {
+    const reply = await fetch(config.sourceURL, { method: 'POST', body: JSON.stringify({ input: 'synthetic' }) });
+    yield await reply.json();
+  };
+  const pending = collect(f.stream('ordinary', complete.provider, next));
+  try {
+    await arrived.promise;
+    await f.mount.update({ ...config, targetURL: origin + '/new' });
+    assert.deepEqual(await collect(f.stream('ordinary', complete.provider, next)), [{ path: '/new' }]);
+    await assert.rejects(async () => f.mount.update({ ...config, targetURL: 'invalid' }), /valid HTTP/);
+    assert.deepEqual(await collect(f.stream('ordinary', complete.provider, next)), [{ path: '/new' }]);
+    release.resolve();
+    assert.deepEqual(await pending, [{ path: '/old' }]);
+    await f.mount.update({});
+    await assert.rejects(collect(f.stream('ordinary', complete.provider, next)), /Fast 通道未配置/);
+    assert.equal((await f.command('off')).kind, 'success');
+    assert.deepEqual(await collect(f.stream('ordinary', complete.provider, next)), [{ path: '/v1/responses' }]);
+    assert.deepEqual(seen, ['/old', '/new', '/new', '/v1/responses']);
+    await f.mount.dispose();
+    assert.equal(getGlobalDispatcher(), before);
+  } finally {
+    release.resolve();
+    await pending;
+  }
 });
 
 test('configured loopback route preserves Standard, forwards authenticated priority and reports delivery', async t => {

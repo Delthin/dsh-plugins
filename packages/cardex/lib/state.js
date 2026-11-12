@@ -62,10 +62,8 @@ export function createSessionState(table) {
   };
   return {
     get,
-    update,
     setDraft: (sessionId, value) => update(sessionId, (current) => ({ ...current, draft: value })),
     setPrepared: (sessionId, value) => update(sessionId, (current) => ({ ...current, prepared: value })),
     clear: (sessionId) => update(sessionId, () => ({})),
-    clearDraft: (sessionId) => update(sessionId, (current) => ({ draft: null, prepared: null })),
   };
 }

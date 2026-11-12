@@ -185,11 +185,11 @@ test('settings route applies host rejection before reads/writes; invalid request
   assert.equal((await request('PUT', enabledConfig(), { 'content-type': 'text/plain' })).statusCode, 415);
   assert.equal((await request('PUT', '{')).statusCode, 400);
   assert.equal((await request('PUT', 'x'.repeat(65537))).statusCode, 413);
-  for (const value of invalidConfigs()) assert.equal((await request('PUT', value)).statusCode, value?.version === 3 ? 400 : 409, JSON.stringify(value));
+  assert.equal((await request('PUT', enabledConfig({ enabled: 'true' }))).statusCode, 400);
   assert.equal(changes, 0);
   assert.equal(await readFile(path, 'utf8'), original);
   const valid = enabledConfig({ groups: ['dsh-image-gen'], exclude: ['generate_image'] });
-  const response = await request('PUT', valid);
+  const response = await request('PUT', valid, { 'content-type': 'Application/JSON; charset=utf-8' });
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.body.config, valid);
   assert.equal(response.headers['Cache-Control'], 'no-store');

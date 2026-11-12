@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, realpath, rm, watch } from 'node:fs/promises';
+import { Readable } from 'node:stream';
 import { tmpdir } from 'node:os';
 import { join, dirname, basename } from 'node:path';
 import { Context } from '@deepseek-ai/cordis';
@@ -96,7 +97,8 @@ async function nativeHost(t,stream,{role,prepare,delegationRules=[]}={}) {
   ctx.on('session/event',(session,event)=>events.push({sessionId:session.id,...event}));
   ctx.on('subagent/end',event=>settlements.push(event));
   ctx.provide('workingDirectory',{defaultDirectory:directory,ensure:async(_agent,signal)=>{signal.throwIfAborted();return directory;},set:async(_agent,_cwd,signal)=>{signal.throwIfAborted();}});
-  ctx.provide('webServer',{register:()=>()=>{}});
+  let handler;
+  ctx.provide('webServer',{register(route){handler=route.handler;return ()=>{handler=undefined;};}});
   ctx.provide('connection',{requestRejection:()=>undefined});
   ctx.provide('skills',{snapshot:async()=>({complete:true,skills:[]}),get:async()=>undefined});
   await ctx.plugin(Sessions);await ctx.plugin(Projections);
@@ -121,7 +123,24 @@ async function nativeHost(t,stream,{role,prepare,delegationRules=[]}={}) {
   const roleMount=await ctx.plugin(Roles,{dataDir:directory,fastProviders:['backup'],delegationRules});
   const rootHandle=await ctx.agents.create({sessionId:'fallback-lead',agentOptions:{provider:'lead',model:'lead'},meta:{cwd:directory}});
   t.after(()=>rootHandle.dispose());
-  return {ctx,directory,calls,events,settlements,logs,roleMount,root:rootHandle.agent,async spawn(){return ctx.agentTeams.spawnTeammate(rootHandle.agent,{name:'worker',description:'Synthetic role',prompt:[{type:'text',text:'ORIGINAL_TASK'}],context:'fresh',provider:'agent-role-synthetic',signal:new AbortController().signal});},async runs(){return JSON.parse(await readFile(join(directory,'runs.json'),'utf8')).items;}};
+  return {ctx,directory,calls,events,settlements,logs,roleMount,root:rootHandle.agent,
+    async spawn(name='worker'){return ctx.agentTeams.spawnTeammate(rootHandle.agent,{name,description:'Synthetic role',prompt:[{type:'text',text:'ORIGINAL_TASK'}],context:'fresh',provider:'agent-role-synthetic',signal:new AbortController().signal});},
+    async runs(){return JSON.parse(await readFile(join(directory,'runs.json'),'utf8')).items;},
+    async api(action,body={}) {
+      const req=Readable.from([JSON.stringify({action,...body})]);req.method='POST';req.headers={'content-type':'application/json'};
+      const res={statusCode:200,setHeader(){},end(value){this.body=value;}};
+      await handler(req,res);return {status:res.statusCode,...JSON.parse(res.body)};
+    },
+    async waiting() {
+      const changes=watch(directory,{signal:AbortSignal.timeout(5000)});
+      try {
+        for await(const _change of changes) {
+          let records;try{records=await this.runs();}catch(error){if(error.code==='ENOENT')continue;throw error;}
+          const record=records.find(record=>record.retry?.status==='waiting');if(record)return record;
+        }
+      } finally {await changes.return();}
+    },
+  };
 }
 
 test('native Team activation: committed tool executes once; same member continues, remounts on its active route, and settles once',async t=>{
@@ -179,6 +198,69 @@ test('native Team activation: committed tool executes once; same member continue
   assert.equal(record.fallbackHistory.length,1);
 });
 
+test('native live config preserves an owned retry; disposal drains its final native idle state',async t=>{
+  for(const mode of ['update','dispose'])await t.test(mode,async t=>{
+    const h=await nativeHost(t,async function*(request,calls){
+      if(request.provider==='lead'){yield* completed('lead received result');return;}
+      if(request.provider==='primary')throw new LlmError('synthetic failure',calls.filter(call=>call.sessionId===request.sessionId).length===1?'PROVIDER':'QUOTA');
+      yield* completed('BACKUP_SUCCESS');
+    });
+    const bridge=h.ctx.get('roleTiers'),settled=Promise.withResolvers();h.ctx.on('subagent/end',event=>settled.resolve(event));
+    assert.equal(bridge.get(h.root.id),undefined);assert.ok(Object.isFrozen(bridge));
+    const waiting=h.waiting(),{member}=await h.spawn(),agent=h.ctx.agents.get(member.id);await waiting;
+    assert.deepEqual(bridge.get(member.id),{fast:false,locked:true,source:'role'});
+    if(mode==='update') {
+      const config={dataDir:h.directory,fastProviders:['primary','backup'],delegationRules:[{leaderModel:'unrelated',denyModels:['second']}]};
+      await h.roleMount.update(config);
+      assert.equal(h.ctx.get('roleTiers'),bridge,'ordinary policy updates must retain the instance');
+      const active=(await h.api('runs')).runs.find(record=>record.sessionId===member.id);
+      assert.equal(active.status,'running');assert.equal(active.retry.status,'waiting');
+      assert.deepEqual((await h.api('models')).fastProviders,['primary','backup']);
+      await settled.promise;await agent.whenIdle();await h.root.whenIdle();
+      assert.deepEqual(h.calls.filter(call=>call.sessionId===member.id).map(call=>call.provider),['primary','primary','backup']);
+      assert.deepEqual(bridge.get(member.id),{fast:true,locked:true,source:'role'});
+      const {catalog}=await h.api('list');
+      assert.equal((await h.api('save',{revision:catalog.revision,role:{...catalog.roles[0],fast:true}})).status,200,'new saves read the live Fast provider policy');
+      await h.roleMount.update({...config,delegationRules:[{leaderModel:'lead',denyModels:['first']}]});
+      await assert.rejects(h.spawn('denied'),/委派限制/);
+      await h.roleMount.update({...config,dataDir:h.directory+'/.',delegationRules:[]});
+      assert.notEqual(h.ctx.get('roleTiers'),bridge,'structural config changes remount');
+      assert.deepEqual(h.ctx.get('roleTiers').get(member.id),{fast:true,locked:true,source:'role'});
+      const api=(await h.api('runs')).runs.find(record=>record.sessionId===member.id);
+      assert.equal(api.status,'inactive');assert.equal(api.nativeStatus,'inactive');assert.equal(api.turnEndReason.kind,'completed');
+      await h.roleMount.dispose();
+      const record=(await h.runs()).find(record=>record.sessionId===member.id);
+      assert.equal(record.status,api.status);assert.deepEqual(record.turnEndReason,api.turnEndReason);
+    } else {
+      await h.roleMount.dispose();await agent.whenIdle();await settled.promise;await h.root.whenIdle();
+      const record=(await h.runs()).find(record=>record.sessionId===member.id);
+      assert.equal(record.retry.status,'cancelled');assert.equal(record.status,'inactive');assert.equal(record.nativeStatus,'inactive');
+      assert.equal(record.turnEndReason.kind,'error');assert.equal(h.calls.filter(call=>call.sessionId===member.id).length,1);
+      await h.ctx.plugin(Roles,{dataDir:h.directory,fastProviders:['backup']});
+      assert.equal((await h.api('runs')).runs.find(record=>record.sessionId===member.id).status,record.status);
+    }
+  });
+});
+
+test('native failed remount releases prior agents and the partially installed member effects',async t=>{
+  const h=await nativeHost(t,async function*(){yield* completed('SUCCESS');});
+  const settled=Promise.withResolvers();h.ctx.on('subagent/end',event=>settled.resolve(event));
+  const {member}=await h.spawn();await settled.promise;await h.root.whenIdle();
+  const restored=await h.ctx.agents.resume({resumeSessionId:member.id,parentAgent:h.root,agentOptions:{provider:'primary',model:'first'}});t.after(()=>restored.dispose());
+  await h.roleMount.dispose();
+  const records=await h.runs();records[0].modelChain[0].model='mismatched-snapshot';
+  await writeFile(join(h.directory,'runs.json'),JSON.stringify({version:1,items:records}));
+  await assert.rejects(async()=>{await h.ctx.plugin(Roles,{dataDir:h.directory,fastProviders:['backup']});},/快照不一致/);
+  assert.equal(h.ctx.tools.get('spawn_role',h.root),undefined);
+  assert.equal(h.ctx.get('roleTiers'),undefined);
+  // This succeeds only when the failed mount released its provider registration.
+  const unregister=h.ctx.subagents.registerProvider({name:'agent-role-synthetic',prepareContinuable:async()=>({})});unregister();
+  const agent=h.ctx.agents.get(member.id);
+  // Native executor disposal intentionally leaves an unavailable scoped slot.
+  assert.throws(()=>agent.ctx.tools.selectExecutor(agent),{code:'TOOL_EXECUTOR_UNAVAILABLE'});
+  const replace=agent.ctx.tools.setExecutor(new NativeToolExecutor(agent.ctx));replace();
+});
+
 test('native cancellation after a failed turn removes the staged continuation without a backup call',async t=>{
   const h=await nativeHost(t,async function*(request){
     if(request.provider==='lead'){yield* completed('lead received cancellation');return;}
@@ -202,8 +284,9 @@ test('native delegation policy validates every launch candidate and rechecks the
       const h=await nativeHost(t,async function*(request){
         if(request.provider==='lead'){yield* completed('lead received denial');return;}
         h.root.model.select({provider:'lead',model:'restricted'});
+        await h.roleMount.update({dataDir:h.directory,fastProviders:['backup'],delegationRules:[{leaderModel:'restricted',denyModels:['second']}]});
         throw new LlmError('synthetic quota','QUOTA');
-      },{delegationRules:[{leaderModel:mode==='launch'?'lead':'restricted',denyModels:['second']}]});
+      },{delegationRules:mode==='launch'?[{leaderModel:'lead',denyModels:['second']}]:[]});
       if(mode==='launch') {
         await assert.rejects(h.spawn(),/委派限制.*second/);
         await assert.rejects(readFile(join(h.directory,'runs.json'),'utf8'),error=>error.code==='ENOENT');

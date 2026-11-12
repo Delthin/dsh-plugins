@@ -62,7 +62,7 @@ The settings file defaults to `$DSH_HOME/cardex.json` (`~/.dsh/cardex.json` when
 }
 ```
 
-If the settings file omits `directory`, the default is `~/journal/cardex`; a `null` `model` follows the session model. Plugin config values (`directory`, `configPath`, `model`, `timeoutMs`) act as defaults that the settings file overrides.
+If the settings file omits `directory`, the plugin default applies, falling back to `~/journal/cardex`; a `null` `model` follows the session model. Plugin values `directory`, `model`, and `timeoutMs` provide defaults that the settings file overrides. Changes to these defaults apply live: an operation keeps its starting configuration, and later commands read the new values. An open recording keeps its original archive directory. `configPath` selects the settings file; changing it reloads the plugin.
 
 ## Data
 

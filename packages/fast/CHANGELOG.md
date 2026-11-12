@@ -1,6 +1,12 @@
 # Changelog / 变更日志
 
-See also: [中文说明](<./README.md>) | [English README](<./README.en.md>)
+## 0.1.5
+
+### Patch Changes
+
+- Read live locked role tiers, apply configuration updates to new requests while in-flight streams finish, and preserve reasoning-effort controls. Shorten the npm summary to a complete readable description.
+
+See also: [中文说明](./README.md) | [English README](./README.en.md)
 
 ## [0.1.4] - 2026-11-06
 

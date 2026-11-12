@@ -37,7 +37,7 @@ The model tool is now `unwrap` (`discover_tools` remains callable in old session
 Enable the plugin, then open "Tools & Prompts" from the left navigation or settings. The page has three tabs:
 
 1. Turn on the top switches; prompt roles, ordering, and exclusion additionally require the "prompt composition" switch.
-2. The "Inject" tab shows system prompts on top and user context below, grouped by each section's actual role. Reorder by dragging or `Alt + ↑ / ↓`; dragging across zones changes a section's role. "More" on the right offers role moves, reset to default, and load strategy (default / always / with tool pack).
+2. The Injected tab has three zones: System prompts, User (fixed), and User (state). Both user zones use real user messages. Unchanged fixed content stays in place; changed state is appended as a complete snapshot after the current input. Drag or use `Alt + ↑ / ↓` to reorder, and drag across zones to change role and placement. More offers zone moves, reset to defaults, and loading options. Zones collapse independently; searching or moving content into a zone expands it.
 3. On the "Tools" tab, "Move in" adds a whole plugin to the on-demand tool pack; click a name to pick individual tools. "Move out" restores normal exposure. Sources sort independently.
 4. On "Inject", the trash button moves a section to "Exclude"; "Restore" brings it back. Exclusion only flips the enabled flag and keeps role, load strategy, and tool selection.
 5. Click "Save". Everything is a draft until saved; saved settings apply to subsequent prompt assembly for all sessions of the profile. In-flight requests are unaffected.
@@ -68,6 +68,10 @@ The settings page shows before/after comparisons for PTC tool-description projec
 With "prompt composition" enabled you can adjust roles, ordering, and load strategies per prompt section; changes apply to subsequent requests. Full composition (including pack descriptions entering real system/user messages) requires an explicit host adaptation: see [host-support](host-support/README.md). The adapter only accepts audited `0.2.2-rc.1` file shapes and must be reviewed and run manually with a backup; installing from npm does not perform the adaptation. Without it, all known sources and limitation reasons are still shown, but unified composition stays unavailable.
 
 Composition config lives separately in `prompt-composition.json` and is off by default; existing `prompt-order.json` priorities are migrated and the original file kept.
+
+### Automatic updates and cache prefixes
+
+Fixed-body updates append per-source overrides, while state updates append complete superseding snapshots, preserving the previous request prefix. Explicit exclusions and role or placement changes withdraw affected historical copies. Models supporting in-history system updates retain the native incremental path. After updating the plugin, check and apply the host adapter using its existing backup and manifest, then restart DSH and refresh the browser. Actual cache hits depend on provider usage reports.
 
 ## Config file
 

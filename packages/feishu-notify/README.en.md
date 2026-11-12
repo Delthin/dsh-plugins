@@ -110,7 +110,7 @@ Verify your custom app settings in the official Feishu Open Platform console:
 ## Compatibility & Verification Scope
 
 - **Environment Baseline**: Node.js `>= 22` and DSH `>=0.2.1-rc.5 || >=0.2.2-rc.1` (verified against `0.2.2-rc.1`). This version range documents the tested baseline and does not guarantee compatibility against future breaking changes in DSH internal APIs.
-- **Automated Test Coverage**: 35 unit tests across `core.test.js` and `summary.test.js` pass, along with syntax checks on `index.js` and `client.js`.
+- **Automated Test Coverage**: Core delivery, credential redaction, quiet hours, manual-notification deduplication, session projection recovery, and host event integration. Run `npm run check` and `npm test` to verify the current source.
 - **Verification Boundaries**: Automated checks do not cover live Feishu API delivery, real browser UI automation, or full host end-to-end tests. Verify live delivery using **Send Test Message** in an isolated test profile.
 
 ## FAQ

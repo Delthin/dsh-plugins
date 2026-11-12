@@ -1,5 +1,11 @@
 # Changelog / 更新日志
 
+## 1.1.2
+
+### Patch Changes
+
+- Remove obsolete automatic-summary model calls while retaining active approval alerts and explicit task summaries. Store delivery identity and receipts without retaining private prompt content.
+
 本文件记录 `@delthin/dsh-feishu-notify` 的版本变更。 / This file documents notable changes to `@delthin/dsh-feishu-notify`.
 
 说明文档 / Documentation: [简体中文 README](./README.md) | [English README](./README.en.md)

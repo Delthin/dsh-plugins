@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Agent roles",
+    "description": "Configure reusable role templates in the Web UI so the lead agent can launch native DSH teammates on demand for different tasks. Each role defines its own duty prompt, model, thinking effort, tool whitelist, and skills; during execution, the lead agent can communicate continuously with teammates while you inspect their logs, summaries, and request details at any time."
+  }
+}

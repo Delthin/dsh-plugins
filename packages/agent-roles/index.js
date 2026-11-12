@@ -13,11 +13,11 @@ export const inject=['agents','agentTeams','subagents','systemPrompt','tools','l
 const DEFAULT_FAST_PROVIDERS=[];
 export const Config=Schema.object({
   dataDir:Schema.string().description("Role data directory; defaults to $DSH_HOME/agent-roles"),
-  fastProviders:Schema.array(Schema.string()).default(DEFAULT_FAST_PROVIDERS),
+  fastProviders:Schema.array(Schema.string()).default(DEFAULT_FAST_PROVIDERS).volatile(),
   delegationRules:Schema.array(Schema.object({
     leaderModel:Schema.string().required().description("主代理模型 ID（精确匹配，不区分供应商）"),
     denyModels:Schema.array(Schema.string()).required().description("禁止创建或继续联系的子代理模型 ID"),
-  })).default([]).description("模型委派限制；默认不限制。可在多智能体 → 设置中编辑。"),
+  })).default([]).description("模型委派限制；默认不限制。可在多智能体 → 设置中编辑。").volatile(),
 });
 const PREFIX='agent-role-';
 // Persisted native sessions retain their original provider identifier.
@@ -102,7 +102,15 @@ function currentModel(agent) {
   return agent?.model?.current()?.model??agent?.session?.requestHeader()?.config.model??agent?.options?.model;
 }
 export async function apply(ctx,config) {
-  const fastProviders=config.fastProviders??DEFAULT_FAST_PROVIDERS;
+  const fastProviders=()=>config.fastProviders?.get?.()??config.fastProviders??DEFAULT_FAST_PROVIDERS;
+  const delegationRules=()=>normalizeDelegationRules(config.delegationRules?.get?.()??config.delegationRules);
+  delegationRules();
+  // Loader commits volatile refs in place; direct Fiber updates supply fresh refs.
+  ctx.on('internal/update',(next,resume)=>{
+    if(next.dataDir!==config.dataDir)return resume();
+    normalizeDelegationRules(next.delegationRules?.get?.()??next.delegationRules);
+    config=next;
+  });
   let configContext={};
   // Cordis dependencies are service-name maps, not required/optional groups.
   // A child injection enables settings when the optional native service exists.
@@ -111,18 +119,54 @@ export async function apply(ctx,config) {
     configContext=active;
     settings.effect(()=>()=>{if(configContext===active)configContext={};});
   });
-  const delegationRules=normalizeDelegationRules(config.delegationRules);
-  const isRestricted=agent=>delegationRules.some(rule=>rule.leaderModel===currentModel(agent));
+  const isRestricted=agent=>delegationRules().some(rule=>rule.leaderModel===currentModel(agent));
   function assertDelegation(parent,model) {
-    const reason=delegationDenial(currentModel(parent),model,delegationRules);
+    const reason=delegationDenial(currentModel(parent),model,delegationRules());
     if(reason) throw new Error(reason);
   }
   const directory=config.dataDir?resolve(expandHomePath(config.dataDir)):dshHomePath('agent-roles');
   const store=new RoleStore(directory); await store.load([]);
   const providers=new Map(), installed=new Map(), liveRecords=new Map();
   let persistenceError;
-  const persist=record=>{ liveRecords.set(record.sessionId,record); return store.saveRun(structuredClone(record)); };
-  const observed=record=>{ persist(record).catch(e=>{persistenceError=String(e.message??e);}); };
+  const reportPersistence=e=>{persistenceError=String(e.message??e);};
+  function project(record) {
+    const agent=ctx.agents.get(record.sessionId),parent=ctx.agents.get(record.parentSessionId);
+    const member=parent&&ctx.agentTeams?.tryMembership(parent)?ctx.agentTeams.listMembers(parent).find(m=>m.id===record.sessionId):undefined;
+    const nativeStatus=member?.status??agent?.status??'inactive';
+    const continuing=!!agent&&isFallbackContinuing(record);
+    const failed=record.retry?.status!=='cancelled'&&(record.turnEndReason?.kind==='error'||record.status==='failed');
+    const status=nativeStatus==='running'||agent?.status==='running'||continuing?'running':nativeStatus==='failed'||failed?'failed':nativeStatus==='provisioning'?'provisioning':'inactive';
+    return {...record,nativeStatus,status,memberName:member?.name??record.memberName,...!record.error&&status==='failed'&&member?.diagnostics?.length?{error:member.diagnostics.join('\n')}:{}};
+  }
+  const persist=record=>{ liveRecords.set(record.sessionId,record);Object.assign(record,project(record));return store.saveRun(record); };
+  const observed=record=>{ liveRecords.set(record.sessionId,record);Object.assign(record,project(record));store.observeRun(record,reportPersistence); };
+  ctx.provide('roleTiers',Object.freeze({get(sessionId){
+    const record=liveRecords.get(sessionId)??store.run(sessionId);
+    return record?Object.freeze({fast:record.selection?.fast===true,locked:true,source:'role'}):undefined;
+  }}));
+  function release(disposers,errors=[]) {
+    for(const dispose of disposers.splice(0).reverse())try{dispose();}catch(error){errors.push(error);}
+    return errors;
+  }
+  function endTurn(record,reason) {
+    record.turnEndReason=structuredClone(reason);
+    if(reason.kind==='error'&&!isFallbackContinuing(record))record.error=reason.error.message;
+  }
+  // Own scoped effects before traversing existing agents, including failed mounts.
+  ctx.effect(()=>async()=>{
+    const errors=[],settling=[...installed.keys()].filter(agent=>['waiting','switching'].includes(liveRecords.get(agent.id)?.retry?.status)).map(agent=>({agent,from:agent.session.seq}));
+    for(const ds of installed.values())release(ds,errors);
+    installed.clear();release([...providers.values()],errors);providers.clear();
+    // Aborting an owned wait finishes its native driver after root hooks unload.
+    // Observe that final boundary before flushing; unrelated active calls keep running.
+    for(const {agent,from} of settling) {
+      try{await agent.whenIdle();}catch(error){errors.push(error);}
+      const record=liveRecords.get(agent.id),end=agent.session.snapshotEvents(from).findLast(event=>event.type==='turn/end');
+      if(record){if(end)endTurn(record,end.data.reason);observed(record);}
+    }
+    try{await store.flushRuns();}catch(error){errors.push(error);}
+    if(errors.length)throw new AggregateError(errors,'角色插件清理失败');
+  },'agent-roles:dispose');
   function registerProvider(id,prefix=PREFIX) {
     const providerName=prefix+id;
     if(providers.has(providerName)) return;
@@ -134,9 +178,9 @@ export async function apply(ctx,config) {
         if(!role?.enabled) throw new Error('角色已停用或删除：'+id);
         assertFallbackHost(parent,role);
         for(const candidate of roleModelChain(role))assertDelegation(parent,candidate.model);
-        const modelChain=await validateModelChain(ctx.llm,role,signal,fastProviders); signal.throwIfAborted();
+        const modelChain=await validateModelChain(ctx.llm,role,signal,fastProviders()); signal.throwIfAborted();
         const skillSnapshot=await captureSkills(ctx.skills,role.skills,{cwd,signal}); signal.throwIfAborted();
-        for(const candidate of modelChain)assertDelegation(parent,candidate.model);
+        for(const candidate of modelChain){assertDelegation(parent,candidate.model);validateFastProvider(candidate,fastProviders());}
         await persist({sessionId,parentSessionId:parent.id,teamProvider:providerName,role,skillSnapshot,modelChain,fallbackIndex:0,fallbackHistory:[],selection:structuredClone(modelChain[0]),roleRevision,createdAt:new Date().toISOString(),status:'provisioning',audit:{},output:''});
         return {};
       }};
@@ -148,13 +192,14 @@ export async function apply(ctx,config) {
     if(installed.has(agent)) return;
     const disposers=[]; installed.set(agent,disposers);
     const add=dispose=>disposers.push(dispose);
-    const snapshot=store.run(agent.id);
+    try {
+    const snapshot=liveRecords.get(agent.id)??store.run(agent.id);
     if(snapshot) {
       const record=structuredClone(snapshot), role=record.role;
       // Legacy snapshots are normalized once; new snapshots retain their exact route.
       if(!record.selection) {
         const legacyRole={...role,fast:false};
-        record.selection=selectionFor(legacyRole,await validateModel(ctx.llm,legacyRole,undefined,fastProviders),fastProviders);
+        record.selection=selectionFor(legacyRole,await validateModel(ctx.llm,legacyRole,undefined,fastProviders()),fastProviders());
         await persist(record);
       }
       liveRecords.set(agent.id,record);
@@ -162,8 +207,9 @@ export async function apply(ctx,config) {
       for(const dispose of await installRoleRuntime(agent,record.selection,allowed)) add(dispose);
       add(installRoleFallback(agent,record,{persist,observe:observed,assertCandidate:selection=>{
         const parent=ctx.agents.get(record.parentSessionId);
-        if(!parent&&delegationRules.length)throw new Error('无法确认主代理当前模型，拒绝切换角色模型');
+        if(!parent&&delegationRules().length)throw new Error('无法确认主代理当前模型，拒绝切换角色模型');
         assertDelegation(parent,selection.model);
+        validateFastProvider(selection,fastProviders());
       }}));
       // Remove native discovery as well as the tool schema; bodies come from the launch snapshot.
       if(scoped.tools.get('skill',agent)) add(scoped.tools.restrict({deny:['skill']}));
@@ -189,12 +235,13 @@ export async function apply(ctx,config) {
       if(!member || member.role==='lead') return;
       const record=liveRecords.get(member.id)??store.run(member.id);
       const model=record?.selection?.model??record?.role.model??currentModel(ctx.agents.get(member.id))??member.model;
-      return model?delegationDenial(currentModel(agent),model,delegationRules):'无法确认成员模型，当前委派策略禁止唤醒该成员。';
+      return model?delegationDenial(currentModel(agent),model,delegationRules()):'无法确认成员模型，当前委派策略禁止唤醒该成员。';
     }));
     const directoryText=(model=currentModel(agent))=>{
-      const roles=store.catalog.roles.filter(r=>r.enabled && roleModelChain(r).every(candidate=>!delegationDenial(model,candidate.model,delegationRules)));
+      const rules=delegationRules();
+      const roles=store.catalog.roles.filter(r=>r.enabled && roleModelChain(r).every(candidate=>!delegationDenial(model,candidate.model,rules)));
       return '可用角色（DSH 原生 Agent Team）\n'+roles.map(r=>r.name+' — '+r.description+' ['+r.provider+'/'+r.model+'; '+(r.reasoningEffort||'模型默认')+']'+(r.skills?.length?' 技能：'+r.skills.join(', '):'')).join('\n')+
-        delegationRules.filter(rule=>rule.leaderModel===model).map(rule=>'\n委派限制：当前主代理 '+model+'，禁止创建或唤醒 '+rule.denyModels.join('、')+' 成员。不得改用通用委派工具绕过；如需升级模型，请交由用户切换主代理。').join('')+
+        rules.filter(rule=>rule.leaderModel===model).map(rule=>'\n委派限制：当前主代理 '+model+'，禁止创建或唤醒 '+rule.denyModels.join('、')+' 成员。不得改用通用委派工具绕过；如需升级模型，请交由用户切换主代理。').join('')+
         '\n按任务需要自主选择角色，用 spawn_role 创建有明确任务边界的后台成员；不要用通用 spawn_teammate 代替角色分发。独立任务可并行，写文件范围避免重叠。成员没有你的历史，必须提供目标、材料、路径、授权和验收条件。小任务直接完成。使用原生 list_agents 查看成员，send_message({target:成员名称,message:反馈}) 继续沟通，interrupt_agent 中断。结果由原生后台通知回到本会话；仍需要结果时用 wait_agent 等待，不忙轮询。writer/designer 没有工具，应提供完整材料。';
     };
     add(agent.ctx.systemPrompt.context({name:'agent-roles:directory',order:130,required:true,interpolate:false,text:()=>directoryText()}));
@@ -222,18 +269,31 @@ export async function apply(ctx,config) {
         if(record){record.memberName=args.name;await persist(record);}
         return {member:result.member,role:role.name,selection:record?.selection??null};
       }})));
+    } catch(error) {
+      const errors=release(disposers);
+      installed.delete(agent);
+      if(errors.length)throw new AggregateError([error,...errors],'角色挂载失败且清理出错',{cause:error});
+      throw error;
+    }
   }
   for(const agent of ctx.agents.list()) await install(agent);
   ctx.on('agent/created',({agent})=>install(agent));
-  ctx.on('agent/disposed',({agent})=>{ for(const dispose of installed.get(agent)??[]) dispose(); installed.delete(agent); });
+  ctx.on('agent/disposed',({agent})=>{
+    for(const dispose of (installed.get(agent)??[]).splice(0).reverse())dispose();installed.delete(agent);
+    const record=liveRecords.get(agent.id);if(record)observed(record);
+  });
   ctx.on('agent/status',({agent,status})=>{
-    // A scoped idle listener can synchronously start the continuation driver.
-    // Ignore the superseded outer idle notification after that nested running edge.
+    // A scoped idle listener may already have started a replacement driver.
     if(agent.status&&agent.status!==status)return;
     const record=liveRecords.get(agent.id);
-    if(record){record.status=status==='running'||isFallbackContinuing(record)?'running':record.status==='failed'?'failed':'inactive';if(status==='running')delete record.error;observed(record);}
+    if(record){if(status==='running'){delete record.error;delete record.turnEndReason;}observed(record);}
   });
   ctx.on('session/event',(session,event)=>{
+    if(event.type==='team/member') {
+      const record=liveRecords.get(event.data.member.id)??store.run(event.data.member.id);
+      if(record)observed(record);
+      return;
+    }
     const record=liveRecords.get(session.id); if(!record) return;
     if(event.type==='system/message') {
       const system=text(event.data.message.content);
@@ -245,38 +305,30 @@ export async function apply(ctx,config) {
       record.output=text(event.data.message.content).slice(0,30000); record.audit={...record.audit,responseReceived:true};
       if(record.retry&&!event.data.interrupted)record.retry={...record.retry,status:'succeeded',updatedAt:new Date().toISOString()};
     } else if(event.type==='turn/end') {
-      record.status=isFallbackContinuing(record)?'running':event.data.reason.kind==='error'?'failed':'inactive';
-      if(event.data.reason.kind==='error'&&!isFallbackContinuing(record))record.error=event.data.reason.error.message;
+      endTurn(record,event.data.reason);
     } else return;
     record.updatedAt=new Date().toISOString(); observed(record);
   });
-  ctx.effect(()=>async()=>{
-    for(const ds of installed.values())for(const d of ds)d();
-    installed.clear();for(const d of providers.values())d();
-    // A remount reads the exact active route after all already-observed saves.
-    let queue;do await(queue=store.queue);while(queue!==store.queue);
-  },'agent-roles:dispose');
+  for(const snapshot of store.runs.items) {
+    const record=liveRecords.get(snapshot.sessionId)??snapshot;
+    if(['running','provisioning'].includes(record.status)&&project(record).status!==record.status)observed(record);
+  }
   async function dispatch(body) {
-    if(body.action==='list') return {catalog:store.catalog,tools:TOOLS,...delegationSettings(configContext,delegationRules),persistenceError};
+    if(body.action==='list') return {catalog:store.catalog,tools:TOOLS,...delegationSettings(configContext,delegationRules()),persistenceError};
     if(body.action==='saveSettings') return saveDelegationSettings(configContext,body.revision,body.delegationRules);
-    if(body.action==='models') return {...await modelDirectory(ctx.llm),fastProviders};
+    if(body.action==='models') return {...await modelDirectory(ctx.llm),fastProviders:fastProviders()};
     if(body.action==='skills') return {skills:await skillDirectory(ctx.skills,{cwd:ctx.workingDirectory.defaultDirectory})};
     if(body.action==='modelInfo') return ctx.llm.resolveModelInfo(body.provider,body.model);
     if(body.action==='runs') {
-      const teams=new Map();
       return {runs:store.runs.items.slice(-200).reverse().map(r=>{
-        if(!teams.has(r.parentSessionId)){const parent=ctx.agents.get(r.parentSessionId);teams.set(r.parentSessionId,parent&&ctx.agentTeams.tryMembership(parent)?ctx.agentTeams.listMembers(parent):[]);}
-        const member=teams.get(r.parentSessionId).find(m=>m.id===r.sessionId);
-        const liveStatus=member?.status??(ctx.agents.get(r.sessionId)?.status==='running'?'running':undefined);
-        const status=liveStatus==='running'||liveStatus==='provisioning'?liveStatus:r.status==='failed'?'failed':liveStatus??'inactive';
-        const {skillSnapshot,...summary}=r;
-        return {...summary,memberName:member?.name??r.memberName,status,error:r.error??(status==='failed'?member?.diagnostics.join('\n'):undefined)};
+        const {skillSnapshot,...summary}=project(liveRecords.get(r.sessionId)??r);
+        return summary;
       }),persistenceError};
     }
     if(body.action==='save') {
       const role=validateRole(body.role);
-      for(const candidate of roleModelChain(role))validateFastProvider(candidate,fastProviders);
-      if(role.enabled) await validateModelChain(ctx.llm,role,undefined,fastProviders);
+      for(const candidate of roleModelChain(role))validateFastProvider(candidate,fastProviders());
+      if(role.enabled) await validateModelChain(ctx.llm,role,undefined,fastProviders());
       const known=role.skills.length?await skillDirectory(ctx.skills,{cwd:ctx.workingDirectory.defaultDirectory}):[];
       const previous=store.catalog.roles.find(r=>r.id===role.id);
       for(const name of role.skills) if(!known.some(s=>s.name===name) && !previous?.skills?.includes(name)) throw new Error('技能不可用：'+name);

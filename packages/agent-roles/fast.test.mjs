@@ -34,6 +34,7 @@ async function boot(dir,agents=[],config={fastProviders:['test']}) {
     llm:{listProviders:()=>[{id:'test'}],listModels:async()=>[{id:'same-model'}],resolveModelInfo:async()=>info},
     agents:{list:()=>agents,get:id=>agents.find(a=>a.id===id)},
     subagents:{registerProvider(provider){providers.set(provider.name,provider);return noop;}},
+    provide(name,value){this[name]=value;},
     on(name,fn){events.set(name,fn);return noop;},effect:fn=>fn(),
     webServer:{register(route){handler=route.handler;return noop;}},
     connection:{requestRejection:()=>undefined},

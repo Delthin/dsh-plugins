@@ -16,8 +16,8 @@ export function validateComposition(value) {
   if (Object.hasOwn(value, 'sourceOrder') && (!Array.isArray(value.sourceOrder) || value.sourceOrder.length > 1024 || value.sourceOrder.some(id => !validId(id)) || new Set(value.sourceOrder).size !== value.sourceOrder.length)) throw new DiscoveryError('提示词逐项顺序必须是不重复的来源 ID 数组');
   if (!object(value.rules) || Object.keys(value.rules).length > 1024) throw new DiscoveryError('提示词规则必须是来源 ID 对象');
   const rules = Object.fromEntries(Object.entries(value.rules).map(([id, rule]) => {
-    if (!validId(id) || !object(rule) || Object.keys(rule).some(key => !['role', 'delivery', 'enabled'].includes(key)) || !['inherit', 'system', 'developer', 'user'].includes(rule.role) || !['inherit', 'always', 'pack'].includes(rule.delivery) || Object.hasOwn(rule, 'enabled') && typeof rule.enabled !== 'boolean') throw new DiscoveryError('提示词角色、投递或注入规则无效');
-    return [id, { role: rule.role, delivery: rule.delivery, ...(Object.hasOwn(rule, 'enabled') ? { enabled: rule.enabled } : {}) }];
+    if (!validId(id) || !object(rule) || Object.keys(rule).some(key => !['role', 'delivery', 'enabled', 'placement'].includes(key)) || !['inherit', 'system', 'developer', 'user'].includes(rule.role) || !['inherit', 'always', 'pack'].includes(rule.delivery) || Object.hasOwn(rule, 'enabled') && typeof rule.enabled !== 'boolean' || Object.hasOwn(rule, 'placement') && !['inherit', 'fixed', 'state'].includes(rule.placement)) throw new DiscoveryError('提示词角色、投递、位置或注入规则无效');
+    return [id, { role: rule.role, delivery: rule.delivery, ...(Object.hasOwn(rule, 'enabled') ? { enabled: rule.enabled } : {}), ...(Object.hasOwn(rule, 'placement') ? { placement: rule.placement } : {}) }];
   }));
   return { version: 1, enabled: value.enabled, order: [...value.order], ...(Object.hasOwn(value, 'sourceOrder') ? { sourceOrder: [...value.sourceOrder] } : {}), rules };
 }
@@ -26,7 +26,7 @@ export function validateCapabilities(config, sources, capabilities, previous = D
   if (config.enabled && !capabilities.admission) throw new DiscoveryError('完整提示词编排需要审核并启用宿主适配', 409);
   for (const [id, rule] of Object.entries(config.rules)) {
     const source = all.get(id);
-    const unchanged = previous.rules[id]?.role === rule.role && previous.rules[id]?.delivery === rule.delivery && previous.rules[id]?.enabled === rule.enabled;
+    const unchanged = previous.rules[id]?.role === rule.role && previous.rules[id]?.delivery === rule.delivery && previous.rules[id]?.enabled === rule.enabled && (previous.rules[id]?.placement ?? 'inherit') === (rule.placement ?? 'inherit');
     if (!source || source.kind === 'unavailable') {
       if (unchanged) continue;
       throw new DiscoveryError('提示词来源已变化，请刷新后重新保存', 409);
@@ -35,9 +35,9 @@ export function validateCapabilities(config, sources, capabilities, previous = D
       if (!config.enabled && unchanged) continue;
       throw new DiscoveryError(`来源 ${source.label} 不支持更改注入开关`, 409);
     }
-    if (!source.roles.includes(rule.role) || !source.deliveryModes.includes(rule.delivery)) {
+    if (!source.roles.includes(rule.role) || !source.deliveryModes.includes(rule.delivery) || !(source.placements ?? ['inherit']).includes(rule.placement ?? 'inherit')) {
       if (!config.enabled && unchanged) continue;
-      throw new DiscoveryError(`来源 ${source.label} 不支持所选角色或投递方式`, 409);
+      throw new DiscoveryError(`来源 ${source.label} 不支持所选角色、投递方式或位置`, 409);
     }
   }
   if (config.order.some(id => !all.has(id) && !previous.order.includes(id))) throw new DiscoveryError('排序包含未知提示词来源，请刷新后重试', 409);
@@ -74,11 +74,11 @@ export class CompositionStore {
   }
 }
 export function effectiveRule(config, source) {
-  const result = { role: 'inherit', delivery: 'inherit', enabled: true };
+  const result = { role: 'inherit', delivery: 'inherit', placement: 'inherit', enabled: true };
   for (const id of [ownerId(source.owner), source.parent ?? source.groupId, source.id]) {
     const rule = config.rules[id];
     if (typeof rule?.enabled === 'boolean') result.enabled = rule.enabled;
-    for (const field of ['role', 'delivery']) if (rule?.[field] && rule[field] !== 'inherit') result[field] = rule[field];
+    for (const field of ['role', 'delivery', 'placement']) if (rule?.[field] && rule[field] !== 'inherit') result[field] = rule[field];
   }
   return result;
 }

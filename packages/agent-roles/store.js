@@ -39,7 +39,7 @@ export function roleTierForRun(record) {
   return record?{locked:true,fast:record.selection?.fast===true}:null;
 }
 export class RoleStore {
-  constructor(directory) { this.directory=directory; this.queue=Promise.resolve(); }
+  constructor(directory) { this.directory=directory; this.queue=Promise.resolve(); this.runRevision=0; this.savedRunRevision=0; }
   async load(seed) {
     await mkdir(this.directory,{recursive:true,mode:0o700});
     try { this.catalog=JSON.parse(await readFile(join(this.directory,'roles.json'),'utf8')); }
@@ -73,12 +73,34 @@ export class RoleStore {
       const next={version:1,revision:revision+1,roles}; await this.atomic('roles.json',next); this.catalog=next; return next;
     });
   }
-  saveRun(record) {
-    return this.transaction(async()=>{
-      const next=structuredClone(this.runs), index=next.items.findIndex(r=>r.sessionId===record.sessionId);
-      if(index<0) next.items.push(record); else next.items[index]={...next.items[index],...record};
-      await this.atomic('runs.json',next); this.runs=next;
+  updateRun(record) {
+    const snapshot=structuredClone(record),index=this.runs.items.findIndex(r=>r.sessionId===record.sessionId);
+    if(index<0)this.runs.items.push(snapshot);else this.runs.items[index]=snapshot;
+    this.runRevision++;
+  }
+  saveRun(record) { this.updateRun(record);return this.flushRuns(); }
+  observeRun(record,onError) {
+    this.updateRun(record);
+    // One timer and one in-flight snapshot, regardless of observation count.
+    if(this.runTimer||this.runFlush)return;
+    this.runTimer=setTimeout(()=>{this.runTimer=undefined;this.flushRuns().catch(onError);},50);
+  }
+  flushRuns() {
+    clearTimeout(this.runTimer);this.runTimer=undefined;
+    if(this.runFlush)return this.runFlush.then(()=>this.flushRuns());
+    if(this.savedRunRevision===this.runRevision)return Promise.resolve();
+    const task=this.transaction(async()=>{
+      try {
+        while(this.savedRunRevision!==this.runRevision) {
+          const revision=this.runRevision,snapshot=structuredClone(this.runs);
+          await this.atomic('runs.json',snapshot);
+          this.savedRunRevision=revision;
+        }
+      } finally {this.runFlush=undefined;}
     });
+    this.runFlush=task;
+    // Failed writes leave the latest in-memory records dirty for the next flush.
+    return task;
   }
   run(id) { return this.runs.items.find(r=>r.sessionId===id); }
 }

@@ -20,36 +20,75 @@ export async function apply(ctx, config = {}) {
     tables: { sessions: { valueSchema: z.object({ fast: z.boolean() }) } },
   });
   ctx.effect(() => () => domain.close());
-  const state = createTierState(domain.table('sessions'), id => readRoleTier(config.roleRunsPath, id));
+  let roleRunsPath = config.roleRunsPath;
+  const state = createTierState(domain.table('sessions'), id => {
+    const roles = ctx.get?.('roleTiers');
+    return roles ? roles.get(id) : readRoleTier(roleRunsPath, id);
+  });
   // Ephemeral routing receipts contain no prompts, headers, or credentials.
   const deliveries = new Map();
-  const transport = route ? await createFastTransport({ sourceURL: route.sourceURL, targetURL: route.targetURL,
-    onForward(receipt) {
-      if (!receipt.sessionId) return;
-      const previous = deliveries.get(receipt.sessionId);
-      deliveries.delete(receipt.sessionId);
-      deliveries.set(receipt.sessionId, { ...receipt, count: (previous?.count ?? 0) + 1, at: new Date().toISOString() });
-      if (deliveries.size > 1000) deliveries.delete(deliveries.keys().next().value);
-    },
-  }) : undefined;
-  if (transport) ctx.effect(() => () => transport.close());
-
-  const configured = Boolean(route);
+  const transports = new Set();
+  async function routing(route) {
+    const transport = route ? await createFastTransport({ sourceURL: route.sourceURL, targetURL: route.targetURL,
+      onForward(receipt) {
+        if (!receipt.sessionId) return;
+        const previous = deliveries.get(receipt.sessionId);
+        deliveries.delete(receipt.sessionId);
+        deliveries.set(receipt.sessionId, { ...receipt, count: (previous?.count ?? 0) + 1, at: new Date().toISOString() });
+        if (deliveries.size > 1000) deliveries.delete(deliveries.keys().next().value);
+      },
+    }) : undefined;
+    if (transport) transports.add(transport);
+    return { route, transport, active: 0, retired: false };
+  }
+  async function close(value) {
+    if (!value.transport) return;
+    await value.transport.close();
+    transports.delete(value.transport);
+  }
+  let current = await routing(route), updates = Promise.resolve(), disposed = false;
+  ctx.effect(() => async () => {
+    disposed = true;
+    await updates;
+    await Promise.all([...transports].map(transport => transport.close()));
+  });
+  ctx.on('internal/update', candidate => {
+    const nextRoute = configuredRoute(candidate);
+    const update = updates.then(async () => {
+      if (disposed) return;
+      if (JSON.stringify(nextRoute) !== JSON.stringify(current.route)) {
+        const next = await routing(nextRoute), previous = current;
+        current = next;
+        previous.retired = true;
+        if (!previous.active) await close(previous);
+      }
+      roleRunsPath = candidate.roleRunsPath;
+    });
+    updates = update.catch(() => {});
+    return update;
+  });
   async function setTier(sessionId, value) {
-    if (!configured && value !== false) {
+    if (!current.route && value !== false) {
       // Resolve unconfigured toggles to an explicit off write so concurrent
       // toggles can never re-enable a persisted Fast session.
       if (value === 'toggle' && (await state.get(sessionId)).fast) return state.set(sessionId, false);
-      assertFastProvider(route);
+      assertFastProvider(current.route);
     }
     return state.set(sessionId, value);
   }
 
   ctx.on('llm/stream', async function* (options, next) {
-    const tier = options.sessionId ? await state.get(options.sessionId) : { fast: false };
-    if (!tier.fast) { yield* next(); return; }
-    assertFastProvider(route, options.provider);
-    yield* transport.wrap(next, { sessionId: options.sessionId });
+    const selected = current;
+    selected.active++;
+    try {
+      const tier = options.sessionId ? await state.get(options.sessionId) : { fast: false };
+      if (!tier.fast) { yield* next(); return; }
+      assertFastProvider(selected.route, options.provider);
+      yield* selected.transport.wrap(next, { sessionId: options.sessionId });
+    } finally {
+      selected.active--;
+      if (selected.retired && !selected.active) await close(selected);
+    }
   });
 
   async function assertSession(sessionId) {
@@ -67,7 +106,7 @@ export async function apply(ctx, config = {}) {
         const action = rawInput.trim().toLowerCase() || 'toggle';
         if (!['on', 'off', 'toggle', 'status'].includes(action)) throw new Error('用法：/fast on | off | toggle | status');
         const value = action === 'status' ? await state.get(agent.id) : await setTier(agent.id, action === 'toggle' ? action : action === 'on');
-        return { kind: 'success', text: `${value.fast ? 'Fast' : '标准'}${value.locked ? '（角色固定）' : '（当前会话）'}${configured ? '' : '；Fast 尚未配置'}` };
+        return { kind: 'success', text: `${value.fast ? 'Fast' : '标准'}${value.locked ? '（角色固定）' : '（当前会话）'}${current.route ? '' : '；Fast 尚未配置'}` };
       } catch (error) { return { kind: 'error', text: error.message }; }
     },
   }));
@@ -82,8 +121,8 @@ export async function apply(ctx, config = {}) {
         if (text.length > 4096) throw new Error('请求过大');
         const body = JSON.parse(text);
         await assertSession(body.sessionId);
-        if (body.action === 'get') return reply({ ...await state.get(body.sessionId), configured, provider: route?.provider ?? '', lastDelivery: deliveries.get(body.sessionId) });
-        if (body.action === 'set') return reply({ ...await setTier(body.sessionId, body.fast), configured, provider: route?.provider ?? '' });
+        if (body.action === 'get') return reply({ ...await state.get(body.sessionId), configured: Boolean(current.route), provider: current.route?.provider ?? '', lastDelivery: deliveries.get(body.sessionId) });
+        if (body.action === 'set') return reply({ ...await setTier(body.sessionId, body.fast), configured: Boolean(current.route), provider: current.route?.provider ?? '' });
         throw new Error('未知操作');
       } catch (error) { return reply({ error: error.message }, 400); }
     },

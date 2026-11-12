@@ -1,12 +1,13 @@
 {
   "name": "@delthin/dsh-agent-roles",
-  "version": "0.5.0",
-  "description": "Role management, per-role models and skills for native DeepSeek Harness Agent Teams.",
+  "version": "0.5.1",
+  "description": "Manage reusable roles, per-role models, fallback chains, tools, and skills for native DSH Agent Teams.",
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
@@ -25,11 +26,11 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": ">=4.0.5",
+    "@deepseek-ai/cordis": ">=4.1.0",
     "@deepseek-ai/dsh-agent": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-tools": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-skill": ">=0.2.2-rc.1",
-    "@deepseek-ai/schemastery": ">=3.18.0",
+    "@deepseek-ai/schemastery": ">=3.19.0",
     "@deepseek-ai/dsh-home-paths": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-tool-executor-native": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-llm": ">=0.2.2-rc.1"
@@ -64,6 +65,7 @@
     "store.js",
     "skills.js",
     "cordis.patch.yml",
+    "locale/*.json",
     "README.md",
     "README.en.md",
     "LICENSE",

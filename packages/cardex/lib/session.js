@@ -44,10 +44,9 @@ export function maxSeq(events) {
 }
 
 /** Latest recorded model selection, used when the plugin has no fixed model. */
-export function selectedModel(events, limit = Infinity) {
+export function selectedModel(events) {
   let model;
   for (const event of events) {
-    if (typeof event.seq === 'number' && event.seq > limit) continue;
     if (event.type !== SELECTION) continue;
     const data = event.data ?? {};
     if (typeof data.provider === 'string' && data.provider && typeof data.model === 'string' && data.model) model = `${data.provider}/${data.model}`;

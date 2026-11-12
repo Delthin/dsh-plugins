@@ -1,5 +1,9 @@
 // Audited local adaptation, deliberately independent of the plugin's open host range.
 export const HOST_VERSION = '0.2.2-rc.1';
+const bookkeepingPredicate = `function isPromptCompositionBookkeeping(event) {
+  return event?.type === "user/message" && event.data.content.length === 0 && (event.data.source.kind === "prompt-composition-cleared" || event.data.source.kind === "prompt-composition-state" || event.data.source.kind !== "user" && event.data.source.compositionAuthority === true);
+}
+`;
 export const PATCHES = [
   {
     name: '@deepseek-ai/dsh-system-prompt',
@@ -17,11 +21,11 @@ export const PATCHES = [
     name: '@deepseek-ai/dsh-agent-loop',
     sha256: 'a6fa8e0c7c90191caf5f4a3bb5c624a86e9845cf3c79d020b71420d0e20ae4c1',
     edits: [
-      ['import ', 'import { commitPromptComposition, restorePromptComposition, hasPromptComposition, validatePromptComposition } from "./tool-wrap-admission.js";\nglobalThis[Symbol.for("dsh.tool-wrap.admission.v1")] = true;\nimport ', 1, true],
+      ['import ', 'import { commitPromptComposition, restorePromptComposition, hasPromptComposition, validatePromptComposition, canAppendPromptCompositionSystem } from "./tool-wrap-admission.js";\nglobalThis[Symbol.for("dsh.tool-wrap.admission.v1")] = true;\nimport ', 1, true],
       ['\t\t\tconst sections = renderContextSections(this.loopCtx.systemPrompt.refreshContext(assembly, {\n\t\t\t\t...assembleContextFor(this, signal),\n\t\t\t\tmodelSelection: decision.selection\n\t\t\t}));', '\t\t\tconst admissionAssembly = this.loopCtx.systemPrompt.refreshContext(assembly, {\n\t\t\t\t...assembleContextFor(this, signal),\n\t\t\t\tmodelSelection: decision.selection\n\t\t\t});\n\t\t\tconst sections = renderContextSections(admissionAssembly);\n\t\t\tconst composition = await this.loopCtx.systemPrompt.admitContributions({\n\t\t\t\tagent: this, assembly: admissionAssembly, messages: decision.messages,\n\t\t\t\ttoolSet: decision.toolSet, modelSelection: decision.selection, signal\n\t\t\t});'],
       ['\n\t\t\tconst context = this.runtimeContext.project(joinContextSections(sections), sections);', '\n\t\t\tif (composition !== undefined) validatePromptComposition(composition);\n\t\t\tconst context = this.runtimeContext.project(joinContextSections(sections), sections);'],
       ['this.systemPrompt.project(renderedPrompt, {', 'this.systemPrompt.project(composition?.systemText ?? renderedPrompt, {'],
-      ['inHistory: preparedCall?.systemPromptUpdate === "in-history",', 'inHistory: composition === undefined && !hasPromptComposition(this.session) && preparedCall?.systemPromptUpdate === "in-history",'],
+      ['inHistory: preparedCall?.systemPromptUpdate === "in-history",', 'inHistory: preparedCall?.systemPromptUpdate === "in-history" && (composition === undefined ? !hasPromptComposition(this.session) : canAppendPromptCompositionSystem(this.session, composition)),'],
       ['\t\t\tlet contextAdmitted = false;\n\t\t\tif (firstAttempt)', '\t\t\tif (composition !== undefined) commitPromptComposition(this.session, composition, decision.messages, firstAttempt);\n\t\t\telse {\n\t\t\t\trestorePromptComposition(this.session);\n\t\t\tlet contextAdmitted = false;\n\t\t\tif (firstAttempt)'],
       ['\t\t\tfirstAttempt = false;\n\t\t\tconst request =', '\t\t\t}\n\t\t\tfirstAttempt = false;\n\t\t\tconst request ='],
     ],
@@ -63,14 +67,24 @@ function renderAgentInstructionSet(files, options) {`],
     sha256: '6fad466aa1f7aa64bfa038681ead5721f66c88e9891e25d357d2b8edbccd5494',
     edits: [
       ['import ', 'globalThis[Symbol.for("dsh.tool-wrap.session.v1")] = true;\nimport ', 1, true],
-      ['case "user/message": return event.data;', 'case "user/message": return event.data.content.length === 0 && (event.data.source.kind === "prompt-composition-cleared" || event.data.source.kind === "prompt-composition-state" || event.data.source.kind !== "user" && event.data.source.compositionAuthority === true) ? null : event.data;'],
+      ['function deriveEventMessage(event, projectedMessages) {', bookkeepingPredicate + 'function deriveEventMessage(event, projectedMessages) {'],
+      ['case "user/message": return event.data;', 'case "user/message": return isPromptCompositionBookkeeping(event) ? null : event.data;'],
+      // Only one-to-one, already-invisible bookkeeping replacements retain the native content generation.
+      ['\t\t...range\n\t};', '\t\t...range,\n\t\tcompositionBookkeepingOnly: range.shadowedSeqs.length === 1 && [event, events[range.shadowedSeqs[0] - baseSeq]].every(item => isPromptCompositionBookkeeping(item) && deriveEventMessage(item, state.projectedMessages) === null)\n\t};'],
+      ['\t\tstate.replaceGeneration += 1;\n\t\tstate.contentGeneration += 1;', '\t\tstate.replaceGeneration += 1;\n\t\tif (!plan.compositionBookkeepingOnly) state.contentGeneration += 1;'],
+      // The plugin-record commit uses a class-private brand, so a Session from this adapted copy can
+      // only be reached through its own class; the package export belongs to the original copy.
+      ['\tstatic {\n\t\tcommitPluginRecord = (session, type, data) => session.#appendRecord(type, data);\n\t}', '\t/** Local tool-wrap adapter: commit an ignorable plugin record on this Session class. */\n\ttoolWrapRecordPluginEvent(type, data) { return this.#appendRecord(type, data); }\n\tstatic {\n\t\tcommitPluginRecord = (session, type, data) => session.#appendRecord(type, data);\n\t}', 1],
     ],
   },
   {
     name: '@deepseek-ai/dsh-session', file: 'lib/types/surface.js',
     sha256: 'ebe8920a22fca8d987cbacab94c9db92f71df44863f58370a1be559155be734e',
     edits: [
-      ["case 'user/message': {\n            return event.data;", "case 'user/message': {\n            if (event.data.content.length === 0 && (event.data.source.kind === 'prompt-composition-cleared' || event.data.source.kind === 'prompt-composition-state' || event.data.source.kind !== 'user' && event.data.source.compositionAuthority === true)) return null;\n            return event.data;"],
+      ['export function deriveEventMessage(event, projectedMessages) {', bookkeepingPredicate + 'export function deriveEventMessage(event, projectedMessages) {'],
+      ["case 'user/message': {\n            return event.data;", "case 'user/message': {\n            if (isPromptCompositionBookkeeping(event)) return null;\n            return event.data;"],
+      ['        ...range,\n    };', '        ...range,\n        compositionBookkeepingOnly: range.shadowedSeqs.length === 1 && [event, events[range.shadowedSeqs[0] - baseSeq]].every(item => isPromptCompositionBookkeeping(item) && deriveEventMessage(item, state.projectedMessages) === null),\n    };'],
+      ['        state.replaceGeneration += 1;\n        state.contentGeneration += 1;', '        state.replaceGeneration += 1;\n        if (!plan.compositionBookkeepingOnly) state.contentGeneration += 1;'],
     ],
   },
 ];

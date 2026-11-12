@@ -1,7 +1,7 @@
 import { readFile, open, rename, unlink } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
-import { SummaryGenerator, excerpt, summaryFallback, compactSummary, phoneLine } from './summary.js';
+import { compactSummary, phoneLine } from './summary.js';
 
 export const DEFAULT_CONFIG = Object.freeze({ appId: '', appSecret: '', receive_id: '', enabled: false, quietHours: { enabled: false, start: '22:00', end: '08:00', timeZone: 'Asia/Shanghai' } });
 export class NotifyError extends Error {
@@ -169,19 +169,13 @@ export function questionNotification(session, req) {
 
 function notificationText(notification, body) {
   if (notification.kind === 'test') return 'DSH 飞书通知测试：连接成功。';
-  if (notification.kind === 'completed' || notification.kind === 'manual') return compactSummary(body);
-  if (notification.kind === 'error' || notification.kind === 'interrupted') {
-    const status = notification.kind === 'error' ? '本轮错误' : '本轮中断';
-    const first = '❌ ' + phoneLine(notification.reason ? status + '：' + notification.reason : status);
-    return first + (!notification.reason && notification.summary?.text ? '\n' + compactSummary(notification.summary.text).split('\n').slice(0, 2).join('\n') : '');
-  }
+  if (notification.kind === 'manual') return compactSummary(body);
   return '👉 ' + phoneLine(notification.title + (notification.detail ? '：' + notification.detail : ''));
 }
 
 export class FeishuNotifyService {
-  constructor({ profile, store = new ConfigStore(profile.dir), client = new FeishuClient(), now = Date.now, llm, summaryTimeoutMs = 8000 }) {
+  constructor({ profile, store = new ConfigStore(profile.dir), client = new FeishuClient(), now = Date.now }) {
     this.profile = profile; this.store = store; this.client = client; this.now = now;
-    this.summaries = new SummaryGenerator({ llm, timeoutMs: summaryTimeoutMs });
     this.results = []; this.seen = new Map(); this.closed = false; this.pending = new Set();
     this.manualTurns = new WeakMap(); this.manualPending = new WeakMap(); this.controllers = new Set();
   }
@@ -234,41 +228,26 @@ export class FeishuNotifyService {
   }
   async deliver(notification, bypass, signal) {
     const base = { kind: notification.kind, sessionId: notification.sessionId, ...(notification.turn !== undefined ? { turn: notification.turn } : {}) };
-    let summaryInfo = {};
     try {
       const config = await this.config();
       if (this.closed) throw new NotifyError('插件已停止', 'DISPOSED', 503);
       if (signal?.aborted) throw new NotifyError('请求已取消', 'CANCELLED', 499);
       if (!bypass && isSubagent(notification.session)) return this.record({ ...base, status: 'skipped', code: 'SUBAGENT', message: '子代理不发送通知' });
       if (!bypass && (!config.enabled || inQuietHours(config, this.now()))) return this.record({ ...base, status: 'skipped', code: !config.enabled ? 'DISABLED' : 'QUIET_HOURS', message: !config.enabled ? '通知未启用' : '免打扰时段' });
-      const suppressed = () => notification.kind === 'completed' && (notification.summary?.manualSent || this.wasManualSent(notification.session, notification.turn));
-      if (suppressed()) return this.record({ ...base, status: 'skipped', code: 'MANUAL_SENT', message: '本轮已通过 notify_user 成功发送摘要' });
       if (!config.appId || !config.appSecret || !receiveIdType(config.receive_id)) throw new NotifyError('请先保存 appId、appSecret 和 receive_id', 'NOT_CONFIGURED');
-      let body = notification.body;
-      if (notification.kind === 'completed') {
-        const summary = notification.summary ? { ...notification.summary, text: this.client.redact(notification.summary.text, 6000) } : undefined;
-        const unavailable = this.summaries.unavailableReason(summary);
-        const result = unavailable ? summaryFallback(summary, unavailable) : await this.summaries.generateResult(summary, { signal, sessionId: notification.session?.id });
-        body = result.text;
-        summaryInfo = { summaryStatus: result.summaryStatus, summaryReason: result.summaryReason, ...(result.summaryFailureClass ? { summaryFailureClass: result.summaryFailureClass } : {}), ...(result.summaryHttpStatus !== undefined ? { summaryHttpStatus: result.summaryHttpStatus } : {}), ...(result.summaryFailureHint ? { summaryFailureHint: result.summaryFailureHint } : {}) };
-      } else if (notification.kind === 'error' || notification.kind === 'interrupted') {
-        body = [notification.reason ? '原因：' + notification.reason : '', notification.summary?.text ? excerpt(notification.summary.text) : ''].filter(Boolean).join('\n');
-      }
-      if (this.closed || signal?.aborted) throw new NotifyError('请求已取消', 'CANCELLED', 499);
-      if (suppressed()) return this.record({ ...base, status: 'skipped', code: 'MANUAL_SENT', message: '本轮已通过 notify_user 成功发送摘要' });
       // Redact before the phone-length cut, so a cut cannot expose a secret prefix.
-      const safeNotification = { ...notification, title: this.client.redact(notification.title, 2400), reason: this.client.redact(notification.reason, 2400), detail: this.client.redact(notification.detail, 2400), ...(notification.summary ? { summary: { text: this.client.redact(notification.summary.text, 6000) } } : {}) };
-      const text = notificationText(safeNotification, this.client.redact(body, 6000));
+      const safeNotification = { ...notification, title: this.client.redact(notification.title, 2400), detail: this.client.redact(notification.detail, 2400) };
+      const text = notificationText(safeNotification, this.client.redact(notification.body, 6000));
       const safeText = this.client.redact(text, 2400);
       const messageId = await this.client.send(config, safeText, randomUUID(), signal);
-      return this.record({ ...base, ...summaryInfo, status: 'success', message: notification.kind === 'test' ? '测试消息已发送' : this.client.redact(safeText, 1200), preview: this.client.redact(safeText, 1600), ...(typeof messageId === 'string' && messageId ? { messageId: this.client.redact(messageId) } : {}) });
+      return this.record({ ...base, status: 'success', message: notification.kind === 'test' ? '测试消息已发送' : this.client.redact(safeText, 1200), preview: this.client.redact(safeText, 1600), ...(typeof messageId === 'string' && messageId ? { messageId: this.client.redact(messageId) } : {}) });
     } catch (error) {
       const safe = error instanceof NotifyError ? error : new NotifyError('通知发送失败', 'INTERNAL', 500);
-      const result = this.record({ ...base, ...summaryInfo, status: 'failed', code: safe.code, message: this.client.redact(safe.message) });
+      const result = this.record({ ...base, status: 'failed', code: safe.code, message: this.client.redact(safe.message) });
       if (bypass) { safe.result = result; throw safe; }
       return result;
     }
   }
   async test(signal) { const result = await this.notify({ kind: 'test', key: 'test:' + randomUUID(), title: '通知测试' }, { bypass: true, signal }); return { ...await this.status(), result }; }
-  async dispose() { this.closed = true; this.summaries.dispose(); for (const controller of this.controllers) controller.abort(); this.client.dispose(); await Promise.allSettled([...this.pending]); this.seen.clear(); this.controllers.clear(); this.manualTurns = new WeakMap(); this.manualPending = new WeakMap(); }
+  async dispose() { this.closed = true; for (const controller of this.controllers) controller.abort(); this.client.dispose(); await Promise.allSettled([...this.pending]); this.seen.clear(); this.controllers.clear(); this.manualTurns = new WeakMap(); this.manualPending = new WeakMap(); }
 }

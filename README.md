@@ -13,7 +13,7 @@
 | :--- | :--- |
 | [`feishu-notify`](./packages/feishu-notify/README.md) | 飞书通知与任务完成提醒 |
 | [`agent-roles`](./packages/agent-roles/README.md) | 基于原生 Agent Team 的可复用子代理角色管理 |
-| [`fast`](./packages/fast/README.md) | 会话 Standard / Fast 档位切换 |
+| [`fast`](./packages/fast/README.md) | Standard / Fast 档位与模型推理强度切换 |
 | [`tool-wrap`](./packages/tool-wrap/README.md) | 按需折叠插件工具与提示词，精简常驻上下文 |
 | [`global-pins`](./packages/global-pins/README.md) | 全局置顶对话 |
 | [`cardex`](./packages/cardex/README.md) | 用 `/cardex` 把会话整理成知识卡片、知识树和图谱 |
@@ -33,7 +33,7 @@ npm install @delthin/dsh-global-pins
 npm install @delthin/dsh-cardex
 ```
 
-加载和配置入口见各插件说明。首次安装或升级后建议重启 DSH 服务。市场入口：[tool-wrap](https://dshmarket.com/zh/p/Delthin/dsh-plugins--packages-tool-wrap/)、[agent-roles](https://dshmarket.com/zh/p/Delthin/dsh-plugins--packages-agent-roles/)。
+加载和配置入口见各插件说明。首次安装或升级后建议重启 DSH 服务。
 
 ## 使用注意
 
@@ -56,4 +56,4 @@ npm run check:pack     # 打包与隔离安装验证
 
 ## 许可证
 
-本仓库及各子包采用 [`Apache-2.0`](./LICENSE)，允许个人与商业使用、修改和分发；分发时保留许可证与声明并标明修改。历史以 MIT 发布的旧版本（`agent-roles <= 0.4.0`、`fast <= 0.1.2`）的既有授权不撤回。
+本仓库及各子包当前版本采用 [`Apache-2.0`](./LICENSE)，允许个人与商业使用、修改和分发；分发时保留许可证与声明并标明修改。历史许可见 [agent-roles](./packages/agent-roles/LICENSE-MIT-legacy) 和 [Fast](./packages/fast/LICENSE-MIT-legacy)。

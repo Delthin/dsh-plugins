@@ -42,10 +42,10 @@ const HELP = [
 export const name = 'cardex';
 export const inject = ['commands', 'storageDomain', 'sessionQuery', 'llm'];
 export const Config = Schema.object({
-  directory: Schema.string().default('').description('归档目录；留空则用 ~/journal/cardex'),
+  directory: Schema.string().default('').description('归档目录；留空则用 ~/journal/cardex').volatile(),
   configPath: Schema.string().default('').description('设置文件；留空则用 $DSH_HOME/cardex.json'),
-  model: Schema.string().default('').description('整理模型 provider/model-id；留空跟随当前会话'),
-  timeoutMs: Schema.number().default(120_000).description('单次整理模型调用超时（毫秒）'),
+  model: Schema.string().default('').description('整理模型 provider/model-id；留空跟随当前会话').volatile(),
+  timeoutMs: Schema.number().default(120_000).description('单次整理模型调用超时（毫秒）').volatile(),
 });
 
 const ok = (text) => ({ kind: 'success', text });
@@ -57,11 +57,6 @@ function errorText(error) {
 
 export async function apply(ctx, config = {}) {
   const settingsPath = config.configPath?.trim() ? resolveDirectory(config.configPath.replace(/^~/, homedir())) : defaultSettingsPath();
-  const defaults = {
-    directory: config.directory?.trim() ? resolveDirectory(config.directory) : undefined,
-    model: config.model?.trim() ? parseModelChoice(config.model) : undefined,
-    timeoutMs: config.timeoutMs,
-  };
   const domain = await ctx.storageDomain.open({
     name: 'dsh_cardex',
     version: 1,
@@ -120,7 +115,7 @@ export async function apply(ctx, config = {}) {
     if (existing.length) return finish(agent, draft, `已恢复归档，本次问答落盘为 ${existing.length} 张卡片：\n${existing.map((node) => node.title).join('\n')}`);
     const route = await resolveRoute(agent, settings, events ?? frozen?.events);
     const caller = createModelCaller({ ctx, route, timeoutMs: settings.timeoutMs, signal });
-    const notes = await organize(messages, caller.organizationCall);
+    const notes = await organize(messages, caller.call);
     signal?.throwIfAborted();
     // Freeze before any archive write: a retry re-uses this exact transcript and record id.
     await state.setPrepared(agent.id, { draftId: draft.id, recordId: id, messages });
@@ -135,6 +130,13 @@ export async function apply(ctx, config = {}) {
     if (busy.has(agent.id)) return fail('上一个 /cardex 操作还在处理中，请等它结束。');
     busy.add(agent.id);
     try {
+      const directory = config.directory?.get?.() ?? config.directory;
+      const model = config.model?.get?.() ?? config.model;
+      const defaults = {
+        directory: directory?.trim() ? resolveDirectory(directory) : undefined,
+        model: model?.trim() ? parseModelChoice(model) : undefined,
+        timeoutMs: config.timeoutMs?.get?.() ?? config.timeoutMs,
+      };
       const settings = await loadConfig(settingsPath, defaults);
       const session = state.get(agent.id);
       const head = args.split(/\s+/, 1)[0];

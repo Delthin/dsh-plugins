@@ -31,6 +31,33 @@ test('启动快照在目录编辑、删除与重新加载后保持原文和模�
  const dir=await mkdtemp(join(tmpdir(),'agent-roles-test-'));
  try {const s=new RoleStore(dir);await s.load(seed);const role=structuredClone(seed[0]);await s.saveRun({sessionId:'test',role,roleRevision:1});await s.change(1,rs=>rs.map(r=>({...r,prompt:'changed'})));await s.change(2,rs=>rs.filter(r=>r.id!==role.id));const restored=new RoleStore(dir);await restored.load(seed);assert.deepEqual(restored.run('test').role,role);assert.equal(restored.run('test').roleRevision,1);assert.ok(!restored.catalog.roles.some(r=>r.id===role.id));}finally{await rm(dir,{recursive:true,force:true});}
 });
+test('观察写入合并且在途队列有界；关键落盘失败保留最新记录并可恢复',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'agent-roles-writes-'));
+ try {
+  const store=new RoleStore(dir);await store.load(seed);
+  const history={sessionId:'history',role:seed[0],output:'preserved history'};
+  await store.saveRun(history);
+  const atomic=store.atomic.bind(store);let writes=0;
+  store.atomic=async(name,value)=>{if(name==='runs.json')writes++;await atomic(name,value);};
+  let record={sessionId:'active',role:seed[0],output:'0',error:'obsolete',audit:{requestSeq:1}};
+  for(let n=0;n<100;n++){record={...record,output:String(n)};store.observeRun(record,assert.fail);}
+  assert.equal(writes,0);await store.flushRuns();assert.equal(writes,1);
+  assert.equal(JSON.parse(await readFile(join(dir,'runs.json'),'utf8')).items[1].output,'99');
+  const entered=Promise.withResolvers(),release=Promise.withResolvers();let block=true;
+  store.atomic=async(name,value)=>{writes++;if(block){block=false;entered.resolve();await release.promise;}await atomic(name,value);};
+  const saving=store.saveRun(record);await entered.promise;
+  for(let n=100;n<200;n++){record={...record,output:String(n)};store.observeRun(record,assert.fail);}
+  assert.equal(writes,2);assert.equal(store.runTimer,undefined);
+  release.resolve();await saving;assert.equal(writes,3);
+  store.atomic=async()=>{throw new Error('synthetic disk failure');};
+  record={...record,selection:{provider:'backup',model:'second',fast:true},output:'latest'};delete record.error;
+  await assert.rejects(store.saveRun(record),/synthetic disk failure/);
+  assert.equal(store.run('active').output,'latest');assert.equal(store.savedRunRevision<store.runRevision,true);
+  store.atomic=atomic;await store.flushRuns();
+  const disk=JSON.parse(await readFile(join(dir,'runs.json'),'utf8'));
+  assert.deepEqual(disk.items,[history,record]);assert.equal(disk.items[1].error,undefined);
+ } finally {assert.ok(dir.startsWith(join(tmpdir(),'agent-roles-writes-')));await rm(dir,{recursive:true,force:true});}
+});
 test('模型和推理档位精确校验，无隐式供应商替换',async()=>{
  const llm={listProviders:()=>[{id:'cpa'},{id:'gemini-web'}],listModels:async p=>[{id:p==='cpa'?'model':'gemini'}],resolveModelInfo:async p=>p==='cpa'?{reasoning:{efforts:[{id:'high'}]}}:{}};
  const role={...seed[0],provider:'cpa',model:'model',reasoningEffort:'high'};assert.deepEqual(selectionFor(role,await validateModel(llm,role)),{provider:'cpa',model:'model',reasoningEffort:'high',fast:false});await assert.rejects(validateModel(llm,{...role,model:'absent'}),/清单/);await assert.rejects(validateModel(llm,{...role,reasoningEffort:'off'}),/不支持/);const gemini={...role,provider:'gemini-web',model:'gemini',reasoningEffort:'off'};assert.deepEqual(selectionFor(gemini,await validateModel(llm,gemini)),{provider:'gemini-web',model:'gemini',fast:false});

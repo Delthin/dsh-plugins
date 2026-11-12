@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+### Patch Changes
+
+- Apply directory, model, and timeout configuration updates to new operations while preserving each active operation's starting configuration and archive directory. Add real Loader update coverage and remove unused helpers.
+
 ## 0.1.0
 
 - 首次移植 Pi 扩展 `pi-cardex`：`/cardex` 记录问答，`/cardex end` 由模型拆成知识卡片、维护三级知识树并生成离线 HTML 图谱。

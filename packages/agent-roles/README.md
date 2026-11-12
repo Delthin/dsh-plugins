@@ -80,6 +80,7 @@ npm install @delthin/dsh-agent-roles
 
 - **Fast**：默认 `fastProviders: []`，模型旁的 Fast 按钮不可用。本插件只记录 Fast/标准选择，不内置 priority 传输实现；只有环境中已装好对应传输适配时才把供应商 ID 加入，启用 priority 传输可能改变供应商计费。
 - **委派限制**：`delegationRules` 按主代理当前模型拦截被禁止的子代理模型（精确匹配、不区分供应商），保存后立即生效；也可在「多智能体 → 设置」界面配置，宿主缺少 `configEditor` 服务时界面只读。
+- **配置热更新**：修改 `fastProviders` 或 `delegationRules` 保留正在执行的成员与重试，新启动和模型切换读取新策略；修改 `dataDir` 会重新加载插件。运行列表与持久化记录使用同一原生状态投影，Fast 插件可直接查询当前活动模型档位。
 
 ## 运行限制
 

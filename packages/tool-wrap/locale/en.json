@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Tools and prompts",
+    "description": "Package and order plugin tools and prompts to reduce first-turn token usage and keep fixed content more stable for cache reuse. In supported PTC sessions, selected plugins initially show only a description and tool directory; the model retrieves full tool definitions when needed, with related prompts loaded according to your settings. You can also reorder prompts by source, remove content you do not need, and separate fixed content from changing state. Install the plugins you want and load infrequently used tools on demand instead of filling the context on every request."
+  }
+}

@@ -47,6 +47,7 @@ test('exact plugin returns its complete hidden SDK and original usage, without k
   const result = discover(schemas, config, tsRuntime, { plugin: 'dsh-ego-browser' });
   assert.equal(result.plugin, 'dsh-ego-browser');
   assert.deepEqual([...result.tools].sort(), ['ego_secret', 'ego_visit']);
+  assert.deepEqual(discover(schemas, config, tsRuntime, { plugin: 'dsh-ego-browser', tool: '' }), result);
   const originals = schemas.filter(tool => ['ego_visit', 'ego_secret'].includes(tool.name));
   assert.equal(result.sdk, renderToolsSdk(originals, 'function-body'));
   assert.match(result.sdk, /Original usage: preserve login and approval rules/);
@@ -140,6 +141,12 @@ test('unowned tools use exact single-tool packages and cannot select a plugin-ow
   const config = enabledConfig({ tools: ['virtual_echo'] });
   const result = discover(schemas, config, tsRuntime, { tool: 'virtual_echo' });
   assert.deepEqual(result.tools, ['virtual_echo']);
+  assert.deepEqual(discover(schemas, config, tsRuntime, { plugin: '', tool: 'virtual_echo' }), result);
+  const missing = discover(schemas, config, tsRuntime, { plugin: '', tool: 'compress' });
+  assert.deepEqual(missing.unavailable, ['compress']);
+  assert.equal(missing.sdk, '');
+  assert.deepEqual(missing.schemas, []);
+  assert.match(missing.usage, /Do not retry/);
   assert.equal(result.sdk, renderToolsSdk(schemas.filter(tool => tool.name === 'virtual_echo'), 'function-body'));
   for (const tool of ['ego_visit', 'always_visible', 'missing']) {
     const unavailable = discover(schemas, config, tsRuntime, { tool });
@@ -149,35 +156,14 @@ test('unowned tools use exact single-tool packages and cannot select a plugin-ow
   }
 });
 
-test('pure core retains exact legacy names and module-id query aliases without keyword search', async t => {
-  const { tools } = await hostFixture(t);
-  const schemas = sdkSchemas(tools);
-  const config = enabledConfig();
-  const exact = discover(schemas, config, tsRuntime, { names: ['ego_visit', 'ego_visit', 'always_visible', 'missing', 'run_code'] });
-  assert.deepEqual(exact.tools, ['ego_visit']);
-  assert.deepEqual(exact.unavailable, ['always_visible', 'missing', 'run_code']);
-  assert.equal(exact.sdk, renderToolsSdk(schemas.filter(tool => tool.name === 'ego_visit'), 'function-body'));
-  assert.deepEqual(discover(schemas, config, tsRuntime, { query: 'dsh-ego-browser' }).tools.sort(), ['ego_capture', 'ego_secret', 'ego_visit']);
-  for (const args of [{ query: 'dsh-ego-browser' }, { names: ['ego_visit', 'missing'] }, { tool: 'virtual_echo' }, { plugin: 'missing' }]) {
-    const { sdk: duplicate, ...expected } = discover(schemas, config, tsRuntime, args);
-    assert.equal(typeof duplicate, 'string');
-    const compact = discover(schemas, config, tsRuntime, { ...args, format: 'schema' });
-    assert.deepEqual({ ...compact, usage: expected.usage }, expected);
-  }
-  const keyword = discover(schemas, config, tsRuntime, { query: 'browser' });
-  assert.deepEqual(keyword.tools, []);
-  assert.equal(keyword.sdk, '');
-  assert.ok(keyword.unavailable);
-});
-
 test('discovery rejects malformed exact selectors rather than widening selection', async t => {
   const { tools } = await hostFixture(t);
   const schemas = sdkSchemas(tools);
-  for (const args of [{ plugin: null }, { plugin: 1 }, { plugin: [] }, { plugin: '' }, { plugin: 'x'.repeat(513) }, { tool: null }, { tool: ['virtual_echo'] }, { tool: '' }, { tool: 'has space' }, { plugin: 'dsh-ego-browser', tool: 'virtual_echo' }, { names: 'ego_visit' }, { names: [null] }, { names: Array(13).fill('ego_visit') }]) {
+  for (const args of [{ plugin: null }, { plugin: 1 }, { plugin: [] }, { plugin: '' }, { plugin: 'x'.repeat(513) }, { tool: null }, { tool: ['virtual_echo'] }, { tool: '' }, { tool: 'has space' }, { plugin: 'dsh-ego-browser', tool: 'virtual_echo' }, { unexpected: true }, { query: 'dsh-ego-browser' }, { names: ['ego_visit'] }]) {
     assert.throws(() => discover(schemas, enabledConfig(), tsRuntime, args), DiscoveryError, JSON.stringify(args));
   }
   for (const format of ['', 'sdk', 'SCHEMA', 'json', null, 1, {}, []]) {
-    for (const args of [{}, { plugin: 'dsh-ego-browser' }, { tool: 'virtual_echo' }, { query: 'dsh-ego-browser' }, { names: ['ego_visit'] }]) {
+    for (const args of [{}, { plugin: 'dsh-ego-browser' }, { tool: 'virtual_echo' }]) {
       assert.throws(() => discover(schemas, enabledConfig(), tsRuntime, { ...args, format }), DiscoveryError);
     }
   }

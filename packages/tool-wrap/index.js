@@ -11,13 +11,24 @@ export const name = 'tool-discovery';
 export const inject = ['profileContext', 'tools', 'systemPrompt'];
 const API = '/api/tool-discovery';
 
+async function readJson(req) {
+  if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers['content-type'] ?? ''))) throw new DiscoveryError('请求必须使用 application/json', 415);
+  const chunks = []; let bytes = 0;
+  for await (const chunk of req) {
+    bytes += Buffer.byteLength(chunk);
+    if (bytes > 65536) throw new DiscoveryError('请求最多 64 KiB', 413);
+    chunks.push(Buffer.from(chunk));
+  }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new DiscoveryError('无效 JSON'); }
+}
+
 export async function apply(ctx) {
   const store = new ConfigStore(ctx.get('profileContext').dir);
   await store.load();
   const compositionStore = new CompositionStore(ctx.get('profileContext').dir);
   await compositionStore.load();
   const tools = ctx.get('tools');
-  const composition = new CompositionRuntime(ctx, compositionStore, store, () => ctx.get('ptcRuntime'));
+  const composition = new CompositionRuntime(ctx, compositionStore, store);
   ctx.provide('toolWrapPromptComposition', composition);
   ctx.on('session/event', (_session, event) => { if (event.type === 'user/message') composition.observeInstructions(event.data); });
   ctx.systemPrompt.section({ name: DIRECTORY_NAME, order: ctx.systemPrompt.getSectionOrder('TOOLS_SDK') + 1, text: '', interpolate: false });
@@ -51,7 +62,7 @@ export async function apply(ctx) {
   // Keep the old binding callable for existing sessions, never advertise it in projected SDKs.
   for (const toolName of [DISCOVER, LEGACY_DISCOVER]) tools.register(defineTool({
     name: toolName,
-    description: 'Load an on-demand plugin tool pack by its exact plugin id. Returns all deferred tools in that plugin visible to the caller, with original full parameters, return types and usage instructions. No arguments lists plugin briefs, deferred tool names and counts. Use proactively when a task needs a listed tool; the user need not request unpacking. Use format:"schema" to retain complete parameter definitions, return constraints and annotations in schemas without duplicate SDK text. Return only one complete pack per run_code (prefer return await tools.unwrap({plugin: ..., format: "schema"})); if printing, serialize the whole pack as JSON instead of console.log(object), which can truncate SDK strings. Then call the original tools in a later run_code. Does not execute business tools or grant permissions. With prompt composition enabled, successfully loaded pack guidance is admitted to subsequent requests in this session using configured message roles; other sessions are unchanged.',
+    description: 'Load an on-demand plugin tool pack by its exact plugin id. Returns all deferred tools in that plugin visible to the caller, with original full parameters, return types and usage instructions. Provide only one non-empty selector and omit the unused field. If no tools are returned and the requested name is unavailable, nothing was loaded; do not retry the same request or call a missing binding. No arguments lists plugin briefs, deferred tool names and counts. Use proactively when a task needs a listed tool; the user need not request unpacking. Use format:"schema" to retain complete parameter definitions, return constraints and annotations in schemas without duplicate SDK text. Return only one complete pack per run_code (prefer return await tools.unwrap({plugin: ..., format: "schema"})); if printing, serialize the whole pack as JSON instead of console.log(object), which can truncate SDK strings. Then call the original tools in a later run_code. Does not execute business tools or grant permissions. With prompt composition enabled, successfully loaded pack guidance is admitted to subsequent requests in this session using configured message roles; other sessions are unchanged.',
     parameters: {
       plugin: { type: 'string', description: 'Exact plugin id from the on-demand overview. Load the whole caller-visible deferred tool pack in one call; no keyword search.' },
       tool: { type: 'string', description: 'Exact name of a deferred standalone tool without an identified plugin, as listed in the overview.' },
@@ -62,10 +73,13 @@ export async function apply(ctx) {
       // Restriction, scoped shadowing and the resolved admission snapshot survive discovery.
       const accepted = composition.accepted(execution);
       const result = discover(sdkSchemas(tools, execution.agent, execution.toolSet), accepted?.toolsConfig ?? store.config, runtime(), args);
-      if (result.tools) {
+      if (result.tools?.length) {
         result.guidance = await composition.guidance(execution, result.plugin, result.tools);
-        if (result.tools.length) composition.recordPack(execution, result.plugin);
+        composition.recordPack(execution, result.plugin);
         result.guidanceStatus = composition.capabilities().admission && execution.toolSet && composition.stepAssemblies.get(execution.toolSet)?.agent === execution.agent ? 'admitted-step' : 'host-admission-unavailable';
+      } else if (result.tools) {
+        result.guidance = [];
+        result.guidanceStatus = 'not-loaded';
       }
       discoveryCalls++;
       return result;
@@ -130,15 +144,7 @@ export async function apply(ctx) {
       if (!['GET', 'PUT'].includes(req.method)) return respond(res, 405, { error: { message: '仅支持 GET 和 PUT' } });
       try {
         if (req.method === 'PUT') {
-          if (!String(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) throw new DiscoveryError('请求必须使用 application/json', 415);
-          const chunks = []; let bytes = 0;
-          for await (const chunk of req) {
-            bytes += Buffer.byteLength(chunk);
-            if (bytes > 65536) throw new DiscoveryError('请求最多 64 KiB', 413);
-            chunks.push(Buffer.from(chunk));
-          }
-          let value;
-          try { value = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new DiscoveryError('无效 JSON'); }
+          const value = await readJson(req);
           if (value?.version !== 3) throw new DiscoveryError('配置页面已更新，请刷新后重新保存', 409);
           await store.save(value);
           // Explicit settings changes can change the prefix. Discovery itself never emits this event.
@@ -156,15 +162,7 @@ export async function apply(ctx) {
       if (!['GET', 'PUT'].includes(req.method)) return respond(res, 405, { error: { message: '仅支持 GET 和 PUT' } });
       try {
         if (req.method === 'PUT') {
-          if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers['content-type'] ?? ''))) throw new DiscoveryError('请求必须使用 application/json', 415);
-          const chunks = []; let bytes = 0;
-          for await (const chunk of req) {
-            bytes += Buffer.byteLength(chunk);
-            if (bytes > 65536) throw new DiscoveryError('请求最多 64 KiB', 413);
-            chunks.push(Buffer.from(chunk));
-          }
-          let value;
-          try { value = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new DiscoveryError('无效 JSON'); }
+          const value = await readJson(req);
           const config = validateComposition(value);
           validateCapabilities(config, composition.sources(), composition.capabilities(), compositionStore.config);
           await compositionStore.save(config);
@@ -185,15 +183,7 @@ export async function apply(ctx) {
       let timer, controller;
       const disconnected = () => controller?.abort();
       try {
-        if (!String(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) throw new DiscoveryError('请求必须使用 application/json', 415);
-        const chunks = []; let bytes = 0;
-        for await (const chunk of req) {
-          bytes += Buffer.byteLength(chunk);
-          if (bytes > 65536) throw new DiscoveryError('请求最多 64 KiB', 413);
-          chunks.push(Buffer.from(chunk));
-        }
-        let value;
-        try { value = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new DiscoveryError('无效 JSON'); }
+        const value = await readJson(req);
         if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !['plugin', 'model'].includes(key))) throw new DiscoveryError('生成请求字段无效');
         if (generating) throw new DiscoveryError('正在生成简介，请稍后再试', 429);
         generating = true;

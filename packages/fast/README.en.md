@@ -8,12 +8,13 @@
 
 ## Features
 
-- **Session Tier Switching**: Switch the active session between `Standard` and `Fast` tiers while preserving existing model selector choices and reasoning effort levels.
+- **Session Tier and Reasoning Slider**: Switch between `Standard` and `Fast` in the model picker and drag through the reasoning levels advertised by the selected model. Releasing the slider saves the native model selection for the current session; role sessions remain locked.
 - **Slash Commands**: Control or inspect the current session tier with `/fast on`, `/fast off`, `/fast toggle`, and `/fast status`.
-- **Locked Role Snapshot Tier**: Role or subagent runs read their service tier from the startup snapshot and lock it for the duration of the run. The plugin accesses the role runs file (`roleRunsPath`) in read-only mode and never creates or migrates it; regular sessions work normally when this option is unset or the file is absent.
+- **Locked Role Snapshot Tier**: Role sessions use the tier of the active model in their launch snapshot, following the next entry after model fallback. Users cannot toggle this tier separately. The native role service is queried first, requiring no file path; `roleRunsPath` provides read-only compatibility for older or independent deployments.
 - **Conditional Request Forwarding**: When `provider`, `sourceURL`, and `targetURL` are all provided and valid, a local loopback proxy is created to inject `service_tier: "priority"` into matching Responses requests and forward them to `targetURL`.
 - **Safe Fallback & Pre-flight Rejection**: `provider`, `sourceURL`, and `targetURL` default to empty. If any of the three is missing, Fast forwarding is not activated and no local proxy is created, while `Standard` mode continues to work normally. Attempting a downstream request in `Fast` mode without all three fields configured will be rejected before transmission with a missing-configuration notice. If all three fields are populated but contain invalid URLs, initialization fails immediately.
 - **In-Memory Receipts**: Tracks forwarding receipts in memory for at most 1,000 sessions without persisting sensitive payloads to disk.
+- **Live Configuration**: New requests use updated routes or compatibility paths. In-flight requests finish on their original route before its proxy is released.
 
 ## Installation
 
@@ -62,7 +63,7 @@ Enable the plugin in your DSH configuration using a patch entry. The `REPLACE_WI
 | `provider` | `string` | `""` | Required for Fast forwarding | Must match an existing provider adapter ID configured in DSH. |
 | `sourceURL` | `string` | `""` | Required for Fast forwarding | Source Responses endpoint URL to match (must replace the `REPLACE_WITH_SOURCE_HTTP_ENDPOINT` placeholder with a real `HTTP(S)` URL; cannot be run as-is). |
 | `targetURL` | `string` | `""` | Required for Fast forwarding | Target endpoint URL where `Fast` requests are forwarded (must replace the `REPLACE_WITH_TRUSTED_TARGET_HTTP_ENDPOINT` placeholder with a real `HTTP(S)` URL trusted by the administrator; cannot be run as-is). |
-| `roleRunsPath` | `string` | None | Optional | Path to the role runs snapshot file. **Note: Relative paths are resolved against the DSH service process working directory (`cwd`), NOT the package directory.** Accessed read-only; regular sessions work normally when omitted or when the file does not exist. |
+| `roleRunsPath` | `string` | None | Optional | Compatibility snapshot path used when no native role service is available. **Relative paths resolve against the DSH service process working directory (`cwd`).** Read-only; regular sessions work normally when omitted or when the file does not exist. |
 
 ### Activation Rules
 
@@ -86,7 +87,7 @@ Enable the plugin in your DSH configuration using a patch entry. The `REPLACE_WI
 - **Peer / Framework Ranges**: `@deepseek-ai/schemastery >= 3.18.5`, `@deepseek-ai/cordis >= 4.0.5`
 - **Runtime Dependencies**: `undici` (`7.30.1`), `zod` (`4.6.7`)
 
-> **Verification Status**: Point verification has been completed on `Node.js 25.9.0`, `@deepseek-ai/cordis 4.1.0`, and `@deepseek-ai/schemastery 3.19.0` with all 29 automated tests passing. Clean installation testing on the minimum declared versions (such as Node 22.19.0), live browser UI testing, and end-to-end testing against a live upstream provider have **not** been performed in this verification pass. Dependency ranges allow compatible updates but do not guarantee future API compatibility across breaking upstream changes.
+> **Verification Status**: Point verification has been completed on `Node.js 25.9.0`, `@deepseek-ai/cordis 4.1.0`, and `@deepseek-ai/schemastery 3.19.0` with all 35 automated tests passing. Clean installation testing on the minimum declared versions (such as Node 22.19.0), live browser UI testing, and end-to-end testing against a live upstream provider have **not** been performed in this verification pass. Dependency ranges allow compatible updates but do not guarantee future API compatibility across breaking upstream changes.
 
 ### Upgrading from Unscoped `dsh-fast` to `@delthin/dsh-fast`
 

@@ -38,13 +38,18 @@ export function registrationMetadata(definition, kind, scope, registry) {
       break;
     }
   } else record = definitionOrigins.get(definition);
-  return record && record.kind === kind ? { id: sourceId(kind, record.owner, definition.name), owner: record.owner, kind, label: definition.name, name: definition.name, required: definition.required === true, complete: definition.complete === true } : undefined;
+  return record && record.kind === kind ? { id: sourceId(kind, record.owner, definition.name), owner: record.owner, kind, label: definition.name, name: definition.name, required: definition.required === true, complete: definition.complete === true, defaultPlacement: registrationPlacement(definition) } : undefined;
+}
+/** Classify only literal registration data; getters and providers stay unevaluated. */
+function registrationPlacement(definition) {
+  const descriptor = Object.getOwnPropertyDescriptor(definition, 'text');
+  return descriptor && Object.hasOwn(descriptor, 'value') && typeof descriptor.value === 'string' ? 'fixed' : 'state';
 }
 /** Providers use their actual registration context, never an owner string supplied by config. */
 export function attributePromptContribution(ctx, contribution, kind = 'section') {
   const owner = ownerOf(ctx);
   if (!owner || !['section', 'context'].includes(kind) || !contribution?.name) throw new TypeError('A real plugin registration context and named contribution are required');
-  explicitOrigins.set(contribution, { id: sourceId(kind, owner, contribution.name), owner, kind, label: contribution.name, name: contribution.name });
+  explicitOrigins.set(contribution, { id: sourceId(kind, owner, contribution.name), owner, kind, label: contribution.name, name: contribution.name, defaultPlacement: registrationPlacement(contribution) });
   return contribution;
 }
 export function contributionMetadata(contribution) { return explicitOrigins.get(contribution) ?? contribution.compositionSource; }
@@ -64,11 +69,15 @@ function registrationPreview(definition) {
 export function registeredPromptSources(registry) {
   try {
     const runtime = originalOf(registry);
-    return ['section', 'context'].flatMap(kind => [...runtime.layers.global[kind + 's'].values()].map(definition => ({
-      ...(registrationMetadata(definition, kind, undefined, registry) ?? { id: sourceId(kind, null, definition.name), owner: null, kind, label: definition.name, name: definition.name }),
-      required: definition.required === true, complete: definition.complete === true,
-      preview: registrationPreview(definition),
-    })));
+    return ['section', 'context'].flatMap(kind => [...runtime.layers.global[kind + 's'].values()].map(definition => {
+      const source = registrationMetadata(definition, kind, undefined, registry) ?? { id: sourceId(kind, null, definition.name), owner: null, kind, label: definition.name, name: definition.name };
+      const directory = kind === 'section' && source.owner === UNWRAP_OWNER && definition.name === DIRECTORY_NAME;
+      return { ...source, label: directory ? 'tool-wrap:directory' : source.label,
+        required: definition.required === true, complete: definition.complete === true, defaultPlacement: registrationPlacement(definition), catalogOrigin: 'registered',
+        // The empty registration is a placeholder; assembly supplies the caller-visible directory.
+        preview: directory ? { kind: 'dynamic', reason: 'tool-directory-assembly-required', message: '按当前会话可见工具与按需配置生成。' } : registrationPreview(definition),
+      };
+    }));
   } catch { return []; }
 }
 

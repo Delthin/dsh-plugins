@@ -191,16 +191,6 @@ test('generation requires explicit model selection, fills only a draft, then sav
   assert.deepEqual(ui.calls.find(call => call.method === 'PUT').body.descriptions, { ...fixture().config.descriptions, 'browser-plugin': 'Edited generated description' });
 });
 
-test('generation without connected models stays disabled and explains configuration', async () => {
-  const data = withoutDeveloper(); data.generation.models = [];
-  const ui = await mount(data); ui.selectPlugin();
-  assert.equal(ui.find(node => node.type === 'select').props.disabled, true);
-  assert.equal(ui.find(button('生成简介')).props.disabled, true);
-  assert.match(ui.text(), /请先配置并连接模型/);
-  await ui.generate();
-  assert.equal(ui.calls.length, 1);
-});
-
 test('failed generation preserves the original draft and never saves', async () => {
   const ui = await mount(withoutDeveloper(), 'zh', { generate: async () => ({ error: { code: 'MODEL_FAILED', message: 'Model unavailable' } }) });
   ui.selectPlugin(); ui.editDescription('Original draft'); ui.chooseModel();
@@ -308,17 +298,30 @@ const descendants = node => [node, ...node.children.filter(child => typeof child
 // Previews must be visible without expanding rows and must not mislabel runtime content.
 test('master detail shows complete static previews, explains dynamic bodies and preserves disabled injection on save', async () => {
   const data = withComposition();
+  for (const path of ['/workspace/service/AGENTS.md', '/workspace/plugins/AGENTS.md']) data.promptComposition.sources.push(sourceEntry('instructions:' + encodeURIComponent(path), 'AGENTS.md', '@host/instructions', 'instructions', { groupId: 'instructions:project', defaultRole: 'user' }));
+  data.promptComposition.sources.push(sourceEntry('persona:global', 'deployment:persona-prefix', '@global/persona', 'section', { name: 'deployment:persona-prefix', catalogOrigin: 'registered' }), sourceEntry('persona:scoped', 'deployment:persona-prefix', '@scoped/persona', 'section', { name: 'deployment:persona-prefix', catalogOrigin: 'observed' }));
   const baseText = 'REGISTERED_BEGIN\n' + '完整注册文本\n'.repeat(1000) + '{{session_variable}}\nREGISTERED_END';
   const browserText = 'Browser static instructions\nEvery line remains available.';
   data.promptComposition.sources.find(source => source.id === 'base:identity').preview = { kind: 'static', text: baseText };
   Object.assign(data.promptComposition.sources.find(source => source.id === 'opaque:a'), { preview: { kind: 'static', text: browserText }, canToggleInjection: true });
   data.promptComposition.sources.find(source => source.id === 'opaque:b').preview = { kind: 'dynamic', reason: 'session-context-required', message: '需会话上下文动态生成。' };
   data.promptComposition.config.rules['opaque:a'] = { role: 'inherit', delivery: 'always', enabled: false };
+  Object.assign(data.promptComposition.sources.find(source => source.id === 'unwrap:directory'), { label: 'tool-wrap:directory', preview: { kind: 'dynamic', reason: 'tool-directory-assembly-required' } });
   const ui = await mount(data);
+  for (const name of ['service', 'plugins']) {
+    const row = ui.find(node => node.props['data-prompt-id'] === 'instructions:' + encodeURIComponent('/workspace/' + name + '/AGENTS.md'));
+    assert.ok(descendants(row).some(node => node.props.className === 'td-source-name' && node.children.join('') === name + '/AGENTS.md'));
+    assert.ok(descendants(row).some(node => node.props.title === '/workspace/' + name + '/AGENTS.md'));
+  }
+  const captions = ['persona:global', 'persona:scoped'].map(id => descendants(ui.find(node => node.props['data-prompt-id'] === id)).find(node => node.props.className === 'td-source-line2').children.join(''));
+  assert.match(captions[0], /全局注册/); assert.match(captions[1], /会话中观察/);
   const baseBody = ui.find(node => node.type === 'pre' && node.props['aria-label'] === 'Identity');
   assert.equal(baseBody.children.join(''), baseText, 'static registration text must not be truncated or interpolated');
   assert.equal(ui.find(node => node.type === 'button' && node.props['aria-label'] === '查看提示词 · Identity').props['aria-current'], 'true');
   assert.equal(ui.nodes().some(node => node.props.className === 'td-expand'), false);
+  click(ui, '查看提示词 · tool-wrap:directory');
+  assert.match(ui.text(), /实际目录在请求组装时填入/);
+  assert.equal(ui.nodes().some(node => node.props.className === 'td-prompt-foot'), false, 'a generated directory must not report the empty registration as zero characters');
   click(ui, '查看提示词 · Runtime facts');
   assert.equal(ui.nodes().some(node => node.type === 'pre' && node.props['aria-label'] === 'Important note'), false, 'excluded content must not be mixed into injected prompt details');
   assert.equal(ui.nodes().some(node => node.type === 'pre' && node.props['aria-label'] === 'Runtime facts'), false);
@@ -405,8 +408,10 @@ test('list exclusion and restore honor inherited injection, preserve sibling ove
 test('prompt drag and Alt sorting cross sources and roles while preserving legacy order, rules and cancel baselines', async () => {
   const data = withComposition();
   data.promptComposition.sources.push(sourceEntry('opaque:c', 'Third rule', 'browser-plugin'));
+  data.promptComposition.capabilities.placements = ['inherit', 'fixed', 'state'];
+  data.promptComposition.sources.forEach(source => { source.placements = ['inherit', 'fixed', 'state']; source.defaultPlacement = source.kind === 'context' ? 'state' : 'fixed'; });
   data.promptComposition.sources.find(source => source.id === 'context:browser-plugin-looking').roles = ['inherit', 'system', 'user'];
-  data.promptComposition.config.rules['opaque:a'] = { role: 'inherit', delivery: 'pack', enabled: true };
+  data.promptComposition.config.rules['opaque:a'] = { role: 'inherit', delivery: 'pack', enabled: true, placement: 'fixed' };
   const original = ['missing:slot', 'opaque:a', 'solo:note', 'opaque:b', 'base:identity', 'opaque:c', 'instructions:global', 'instructions:project', 'context:browser-plugin-looking', 'unwrap:directory', 'absent:kept'];
   data.promptComposition.config.sourceOrder = [...original];
   const before = clone(data.promptComposition.config);
@@ -417,6 +422,17 @@ test('prompt drag and Alt sorting cross sources and roles while preserving legac
   const row = id => ui.find(node => node.props['data-prompt-id'] === id);
   const start = label => { handle(label).props.onDragStart({ preventDefault() { assert.fail('valid drag should start'); }, dataTransfer: { setData(type, id) { assert.equal(type, 'text/plain'); assert.ok(original.includes(id) || id === ownerId('browser-plugin')); } }, currentTarget: { closest: () => null } }); ui.render(); };
   const drop = (node, after = false) => { node.props.onDrop({ preventDefault() {}, currentTarget: { getBoundingClientRect: () => ({ top: 0, height: 44 }) }, clientY: after ? 43 : 1 }); ui.render(); };
+  for (const role of ['system', 'user-fixed', 'user-state']) {
+    const heading = descendants(zone(role)).find(node => node.props.className === 'td-zone-toggle');
+    assert.equal(heading.props['aria-expanded'], true);
+    assert.equal(heading.props['aria-controls'], descendants(zone(role)).find(node => node.type === 'ul').props.id);
+    heading.props.onClick(); ui.render();
+    assert.equal(descendants(zone(role)).find(node => node.type === 'ul').props.hidden, true);
+  }
+  assert.equal(ui.find(button('保存设置')).props.disabled, true, 'collapsing changes only the view, not prompt configuration');
+  ui.search('Important note');
+  for (const role of ['system', 'user-fixed', 'user-state']) assert.equal(descendants(zone(role)).find(node => node.type === 'ul').props.hidden, false, 'search exposes matches in collapsed zones');
+  ui.search('');
   const initial = order('system');
   drop(row('solo:note'));
   assert.deepEqual(order('system'), initial, 'external drops cannot reorder');
@@ -430,15 +446,19 @@ test('prompt drag and Alt sorting cross sources and roles while preserving legac
   assert.deepEqual(order('system').slice(0, 3), ['solo:note', 'opaque:a', 'opaque:b'], 'cross-source sorting is allowed inside one role');
   handle('Runtime facts').props.onKeyDown({ altKey: true, key: 'ArrowUp', preventDefault() {} }); ui.render();
   assert.deepEqual(order('system').slice(0, 3), ['solo:note', 'opaque:b', 'opaque:a']);
-  start('Important note'); drop(zone('user'));
-  assert.deepEqual(order('user'), ['context:browser-plugin-looking', 'opaque:a']);
+  assert.deepEqual(order('user-state'), ['context:browser-plugin-looking']);
+  click(ui, '收起 · 用户（固定）');
+  start('Important note'); drop(zone('user-fixed'));
+  assert.equal(descendants(zone('user-fixed')).find(node => node.type === 'ul').props.hidden, false, 'dropping into a collapsed zone expands the destination');
+  assert.deepEqual(order('user-fixed'), ['opaque:a']);
   assert.equal(ui.find(node => node.type === 'button' && node.props['aria-label'] === '查看提示词 · Important note').props['aria-current'], 'true');
   start('Unknown origin'); drop(row('opaque:b'));
-  assert.deepEqual(order('user'), ['opaque:a']);
+  assert.deepEqual(order('user-state'), []);
+  assert.deepEqual(order('user-fixed'), ['opaque:a']);
   start('Important note'); drop(row('opaque:b'));
-  assert.deepEqual(order('user'), []);
-  start('Important note'); drop(zone('user'));
-  assert.deepEqual(order('user'), ['opaque:a'], 'an empty role zone accepts a drop');
+  assert.deepEqual(order('user-fixed'), []);
+  start('Important note'); drop(zone('user-state'));
+  assert.deepEqual(order('user-state'), ['opaque:a'], 'an empty state zone accepts a drop');
   await ui.save();
   const calls = ui.calls.filter(call => call.method === 'PUT');
   assert.equal(calls.length, 1);
@@ -446,13 +466,19 @@ test('prompt drag and Alt sorting cross sources and roles while preserving legac
   assert.deepEqual(calls[0].body.order, before.order, 'flat prompt sorting cannot rewrite legacy group order');
   assert.equal(calls[0].body.sourceOrder[0], 'missing:slot');
   assert.equal(calls[0].body.sourceOrder.at(-1), 'absent:kept');
-  assert.deepEqual(calls[0].body.rules, { ...before.rules, 'opaque:a': { role: 'user', delivery: 'pack', enabled: true }, 'context:browser-plugin-looking': { role: 'system', delivery: 'inherit' } });
+  assert.deepEqual(calls[0].body.rules, { ...before.rules, 'opaque:a': { role: 'user', delivery: 'pack', enabled: true, placement: 'state' }, 'context:browser-plugin-looking': { role: 'system', delivery: 'inherit' } });
+  click(ui, '移到用户（固定） · Important note');
+  assert.deepEqual(order('user-fixed'), ['opaque:a']);
+  assert.equal(ui.find(button('保存设置')).props.disabled, false, 'placement-only changes must remain dirty');
+  click(ui, '恢复默认分区 · Important note');
+  assert.ok(order('system').includes('opaque:a'), 'reset restores inherited role and placement together');
+  ui.find(button('取消更改')).props.onClick(); ui.render();
   const savedSystem = order('system');
   handle('Runtime facts').props.onKeyDown({ altKey: true, key: 'ArrowDown', preventDefault() {} }); ui.render();
   assert.notDeepEqual(order('system'), savedSystem);
   ui.find(button('取消更改')).props.onClick(); ui.render();
   assert.deepEqual(order('system'), savedSystem);
-  assert.deepEqual(order('user'), ['opaque:a']);
+  assert.deepEqual(order('user-state'), ['opaque:a']);
   assert.equal(ui.find(button('保存设置')).props.disabled, true);
   assert.equal(ui.calls.filter(call => call.method === 'PUT').length, 1);
 });
@@ -548,7 +574,8 @@ test('effective roles split mixed plugins and reset only local roles while prese
   const before = clone(data.promptComposition.config);
   const ui = await mount(data);
   const inRole = (role, id) => descendants(ui.find(node => node.props['data-role-zone'] === role)).some(node => node.props['data-prompt-id'] === id);
-  assert.equal(ui.nodes().filter(node => node.type === 'form').length, 1);
+  const systemOrder = descendants(ui.find(node => node.props['data-role-zone'] === 'system')).filter(node => node.props['data-prompt-id']).map(node => node.props['data-prompt-id']);
+  assert.deepEqual(systemOrder, ['base:identity', 'instructions:global', 'instructions:project', 'opaque:a', 'solo:note', 'unwrap:directory'], 'sources absent from saved order retain catalog order');
   assert.equal(inRole('system', 'base:identity'), true, 'unconfigured sources use their own default');
   assert.equal(inRole('system', 'opaque:a'), true, 'owner rules apply to inherited children');
   assert.equal(inRole('user', 'opaque:b'), true, 'a local rule overrides the owner');

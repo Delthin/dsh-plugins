@@ -72,8 +72,5 @@ export function createModelCaller({ ctx, route, timeoutMs, signal }) {
   return {
     name,
     call: request,
-    // The Pi plugin reused the live conversation prefix to save tokens; here the
-    // JSON transcript is always sent explicitly, so both entry points are one call.
-    organizationCall: request,
   };
 }

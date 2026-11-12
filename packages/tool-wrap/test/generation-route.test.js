@@ -84,7 +84,9 @@ test('generation HTTP route authenticates before reading, and rejects methods, c
   responseStatus(await host.generate({ headers: { 'x-fixture-reject': 'yes' }, chunks: unread() }), 403);
   assert.equal(reads, 0, 'rejected caller body must remain unread');
   for (const method of ['GET', 'PUT', 'DELETE']) responseStatus(await host.generate({ method }), 405);
-  responseStatus(await host.generate({ headers: { 'content-type': 'text/plain' } }), 415);
+  for (const contentType of ['text/plain', 'application/jsonp', 'application/json-extra']) {
+    responseStatus(await host.generate({ headers: { 'content-type': contentType } }), 415);
+  }
   responseStatus(await host.generate({ value: '中'.repeat(21846) }), 413);
   responseStatus(await host.generate({ value: '{' }), 400);
   for (const value of [null, [], { ...valid, unexpected: true }, { plugin }, { ...valid, model: { ...model, model: 'not-the-default' } }, { ...valid, model: { ...model, provider: 'not-the-provider' } }]) {

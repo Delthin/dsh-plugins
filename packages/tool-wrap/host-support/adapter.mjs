@@ -84,7 +84,11 @@ if (options.mode === '--restore') {
   const helper = await readRegular(join(here, 'admission.js'));
   const helperPath = 'node_modules/@deepseek-ai/dsh-agent-loop/lib/tool-wrap-admission.js';
   const helperTarget = targetOf(helperPath);
-  if (await exists(helperTarget) && digest(await readRegular(helperTarget)) !== digest(helper)) throw new Error('Admission helper target already exists with different content');
+  if (await exists(helperTarget)) {
+    const currentHash = digest(await readRegular(helperTarget));
+    const recordedHelper = prior?.root === root && prior.helper?.path === helperPath && prior.helper.sha256 === currentHash;
+    if (currentHash !== digest(helper) && !recordedHelper) throw new Error('Admission helper target already exists with different content');
+  }
   console.log(`Validated ${prepared.length} audited ${HOST_VERSION} packages and all patch anchors.`);
   if (options.mode === '--apply') {
     if (prior && prior.root !== root) throw new Error('Backup directory belongs to another installation');

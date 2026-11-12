@@ -2,7 +2,7 @@
  * Settings for the cardex plugin.
  *
  * Two layers exist on purpose:
- * - the plugin `Config` in the DSH profile (static defaults, edited by hand);
+ * - the plugin `Config` in the DSH profile (live defaults, read at command start);
  * - a JSON settings file (`$DSH_HOME/cardex.json`) written by `/cardex dir` and
  *   `/cardex model`, so everyday settings never require a profile edit.
  *

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+### Patch Changes
+
+- Publish a concise complete npm description for the existing pinned-conversation view.
+
 ## 0.2.0
 
 - First public npm release.

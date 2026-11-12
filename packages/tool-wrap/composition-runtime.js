@@ -3,9 +3,20 @@ import { hiddenTools, sdkSchemas, DISCOVER } from './core.js';
 import { sourceId, ownerId, instructionId, effectiveRule, orderContributions } from './prompt-composition.js';
 import { registeredPromptSources, registrationMetadata, contributionMetadata, DIRECTORY_NAME, UNWRAP_OWNER } from './prompt-origins.js';
 import { registeredPlugins } from './origins.js';
+import { appendPluginRecord } from '@deepseek-ai/dsh-session';
 import { promptMessageDescriptor } from './host-support/admission.js';
 
 const INSTRUCTIONS_OWNER = '@deepseek-ai/dsh-agent-instructions';
+// Admission state is durable plugin state: it must be an ignorable plugin record, because a
+// session log holding an unmarked unknown event cannot be opened by a harness without this plugin.
+const PACK_ADMITTED = 'plugin:tool-wrap/pack-admitted';
+const LEGACY_PACK_ADMITTED = 'tool-wrap/pack-admitted';
+function recordAdmission(session, data) {
+  // An adapted Session class commits with its own private brand; the package export only
+  // reaches Sessions of the module instance it was imported from.
+  if (typeof session.toolWrapRecordPluginEvent === 'function') { session.toolWrapRecordPluginEvent(PACK_ADMITTED, data); return true; }
+  try { appendPluginRecord(session, PACK_ADMITTED, data); return true; } catch { return false; }
+}
 const parentOf = block => block.scope === 'global' ? 'instructions:global' : 'instructions:project';
 export class CompositionRuntime {
   constructor(ctx, store, toolsConfig) {
@@ -17,16 +28,16 @@ export class CompositionRuntime {
   capabilities() {
     const admission = this.ctx.systemPrompt.promptCompositionVersion === 1;
     return { available: admission, admission, version: admission ? 1 : 0, roles: admission ? ['inherit', 'system', 'user'] : ['inherit'], developer: false,
-      injection: admission, delivery: admission, structuredInstructions: admission, reason: admission ? null : 'host-adapter-required' };
+      injection: admission, delivery: admission, placements: admission ? ['inherit', 'fixed', 'state'] : ['inherit'], structuredInstructions: admission, reason: admission ? null : 'host-adapter-required' };
   }
   observe(source) {
     if (!source?.id) return;
     // Global UI state holds identities only, never another caller's prompt body or toolSet.
-    const { id, owner, kind, label, name, parent, groupId, groupLabel, required, complete, opaque, form } = source;
-    this.observed.set(id, { id, owner, kind, label, name, parent, groupId, groupLabel, required, complete, opaque, form });
+    const { id, owner, kind, label, name, parent, groupId, groupLabel, required, complete, opaque, form, defaultPlacement } = source;
+    this.observed.set(id, { id, owner, kind, label, name, parent, groupId, groupLabel, required, complete, opaque, form, defaultPlacement, catalogOrigin: 'observed' });
   }
   observeInstructions(message) {
-    for (const block of message?.source?.compositionSections ?? []) this.observe({ id: instructionId(block.key), owner: INSTRUCTIONS_OWNER, kind: 'instructions', label: block.path, parent: parentOf(block), groupId: parentOf(block), groupLabel: block.scope === 'global' ? 'Global AGENTS' : 'Project AGENTS' });
+    for (const block of message?.source?.compositionSections ?? []) this.observe({ id: instructionId(block.key), owner: INSTRUCTIONS_OWNER, kind: 'instructions', label: block.path, parent: parentOf(block), groupId: parentOf(block), groupLabel: block.scope === 'global' ? 'Global AGENTS' : 'Project AGENTS', defaultPlacement: 'fixed' });
   }
   sources() {
     const caps = this.capabilities();
@@ -40,18 +51,20 @@ export class CompositionRuntime {
       const pack = caps.admission && attributed && knownPlugins.has(source.owner) && !directory && !source.complete && source.kind !== 'instructions' && !source.opaque;
       return { ...source, groupId, groupLabel: source.groupLabel ?? source.owner ?? 'Unattributed host contributions',
         defaultRole: source.kind === 'section' ? 'system' : 'user',
+        defaultPlacement: source.defaultPlacement ?? (source.kind === 'instructions' || source.kind === 'message' && ['instructions', 'catalog'].includes(source.form) ? 'fixed' : 'state'),
+        placements: source.opaque ? ['inherit'] : caps.placements,
         canToggleInjection: caps.admission && !source.opaque && !directory,
         roles: source.opaque ? ['inherit'] : caps.roles,
         deliveryModes: caps.admission && !source.opaque ? ['inherit', 'always', ...(pack ? ['pack'] : [])] : ['inherit'],
         reason: !caps.admission ? 'host-adapter-required' : !attributed ? 'owner-unattributed-pack-unavailable' : directory ? 'entrypoint-always' : source.complete ? 'complete-persona-always' : null };
     });
-    for (const group of [{ id: 'instructions:global', label: 'Global AGENTS' }, { id: 'instructions:project', label: 'Project AGENTS' }]) sources.push({ ...group, owner: INSTRUCTIONS_OWNER, kind: 'group', groupId: group.id, groupLabel: group.label, defaultRole: 'user', canToggleInjection: caps.admission, roles: caps.roles, deliveryModes: caps.admission ? ['inherit', 'always'] : ['inherit'], reason: caps.reason });
+    for (const group of [{ id: 'instructions:global', label: 'Global AGENTS' }, { id: 'instructions:project', label: 'Project AGENTS' }]) sources.push({ ...group, owner: INSTRUCTIONS_OWNER, kind: 'group', groupId: group.id, groupLabel: group.label, defaultRole: 'user', defaultPlacement: 'fixed', placements: caps.placements, canToggleInjection: caps.admission, roles: caps.roles, deliveryModes: caps.admission ? ['inherit', 'always'] : ['inherit'], reason: caps.reason });
     for (const groupId of new Set(sources.filter(source => source.kind !== 'group').map(source => source.groupId))) {
       if (sources.some(source => source.id === groupId)) continue;
       const children = sources.filter(source => source.groupId === groupId && source.kind !== 'group');
       const { owner, groupLabel } = children[0];
       const pack = children.every(source => source.deliveryModes.includes('pack'));
-      sources.push({ id: groupId, label: groupLabel, owner, kind: 'group', groupId, groupLabel, defaultRole: 'inherit', roles: caps.roles,
+      sources.push({ id: groupId, label: groupLabel, owner, kind: 'group', groupId, groupLabel, defaultRole: 'inherit', defaultPlacement: children.every(source => source.defaultPlacement === 'fixed') ? 'fixed' : 'state', placements: children.every(source => !source.opaque) ? caps.placements : ['inherit'], roles: caps.roles,
         canToggleInjection: caps.admission && children.every(source => source.canToggleInjection),
         deliveryModes: caps.admission ? ['inherit', 'always', ...(pack ? ['pack'] : [])] : ['inherit'], reason: caps.reason ?? (!owner ? 'owner-unattributed-pack-unavailable' : null), children: children.map(source => source.id) });
     }
@@ -64,10 +77,10 @@ export class CompositionRuntime {
       if (groupedOwners.has(plugin.id) || present.has(id)) continue;
       const label = plugin.label ?? plugin.id;
       sources.push({ id, label, owner: plugin.id, kind: 'group', groupId: id, groupLabel: label, defaultRole: 'inherit',
-        canToggleInjection: false, roles: ['inherit'], deliveryModes: ['inherit'], reason: caps.reason, children: [] });
+        defaultPlacement: 'state', placements: ['inherit'], canToggleInjection: false, roles: ['inherit'], deliveryModes: ['inherit'], reason: caps.reason, children: [] });
       present.add(id);
     }
-    for (const id of new Set([...this.store.config.order, ...(this.store.config.sourceOrder ?? []), ...Object.keys(this.store.config.rules)])) if (!present.has(id)) sources.push({ id, label: id, owner: null, kind: 'unavailable', groupId: id, groupLabel: id, defaultRole: 'inherit', canToggleInjection: false, roles: ['inherit'], deliveryModes: ['inherit'], reason: 'source-unavailable' });
+    for (const id of new Set([...this.store.config.order, ...(this.store.config.sourceOrder ?? []), ...Object.keys(this.store.config.rules)])) if (!present.has(id)) sources.push({ id, label: id, owner: null, kind: 'unavailable', groupId: id, groupLabel: id, defaultRole: 'inherit', defaultPlacement: 'state', placements: ['inherit'], canToggleInjection: false, roles: ['inherit'], deliveryModes: ['inherit'], reason: 'source-unavailable' });
     return sources;
   }
   status() { return { config: structuredClone(this.store.config), sources: this.sources(), capabilities: this.capabilities() }; }
@@ -75,7 +88,7 @@ export class CompositionRuntime {
     const renderedContexts = new Map(renderContextSections(assembly).map(section => [section.name, section.text]));
     const collect = (item, kind) => {
       const metadata = contributionMetadata(item);
-      const source = metadata ?? { id: sourceId(kind, null, item.name), owner: null, kind, name: item.name, label: item.name };
+      const source = { ...(metadata ?? { id: sourceId(kind, null, item.name), owner: null, kind, name: item.name, label: item.name }), defaultPlacement: metadata?.defaultPlacement ?? 'state' };
       this.observe(source);
       const text = kind === 'section' ? renderPrompt({ ...assembly, sections: [item] }) : renderedContexts.get(item.name) ?? '';
       return { ...source, groupId: source.groupId ?? ownerId(source.owner ?? '@host/unknown'), defaultRole: kind === 'section' ? 'system' : 'user', text, attributed: Boolean(metadata?.owner) };
@@ -94,7 +107,7 @@ export class CompositionRuntime {
       for (const block of source.compositionSections ?? []) {
         if (typeof block.key !== 'string') continue;
         if (block.action === 'remove') { files.delete(block.key); continue; }
-        files.set(block.key, { id: instructionId(block.key), owner: INSTRUCTIONS_OWNER, kind: 'instructions', label: block.path, parent: parentOf(block), groupId: parentOf(block), defaultRole: 'user', attributed: true, text: block.text });
+        files.set(block.key, { id: instructionId(block.key), owner: INSTRUCTIONS_OWNER, kind: 'instructions', label: block.path, parent: parentOf(block), groupId: parentOf(block), defaultRole: 'user', defaultPlacement: 'fixed', attributed: true, text: block.text });
       }
     };
     for (const seq of agent.session.surface.nodes) {
@@ -129,8 +142,7 @@ export class CompositionRuntime {
     const accepted = this.accepted(execution);
     if (!plugin || !accepted?.config.enabled || !accepted.canDefer || !execution.agent?.session) return false;
     execution.signal.throwIfAborted();
-    execution.agent.session.append('tool-wrap/pack-admitted', { version: 1, plugin, rootCallId: String(execution.rootCallId ?? execution.callId) });
-    return true;
+    return recordAdmission(execution.agent.session, { version: 1, plugin, rootCallId: String(execution.rootCallId ?? execution.callId) });
   }
   loadedPlugins(agent) {
     const session = agent?.session;
@@ -140,7 +152,7 @@ export class CompositionRuntime {
       const event = session.eventAt(seq);
       if (event?.type === 'tool/result' && event.data.message.isError === false) visible.add(String(event.data.message.source.callId));
     }
-    return new Set(session.snapshotEvents().filter(event => event.type === 'tool-wrap/pack-admitted' && event.data.version === 1 && visible.has(event.data.rootCallId)).map(event => event.data.plugin));
+    return new Set(session.snapshotEvents().filter(event => (event.type === PACK_ADMITTED || event.type === LEGACY_PACK_ADMITTED) && event.data.version === 1 && visible.has(event.data.rootCallId)).map(event => event.data.plugin));
   }
   delivery(source, schemas, config, toolsConfig, canDefer) {
     if (!canDefer || !source.attributed || source.owner === UNWRAP_OWNER || source.kind === 'instructions' || source.complete) return 'always';
@@ -165,18 +177,34 @@ export class CompositionRuntime {
     if (!config.enabled) return undefined;
     const loaded = this.loadedPlugins(agent);
     const ordered = orderContributions(contributions, config);
-    const system = [], projected = [];
+    const system = [], systemSourceIds = [], projected = [], excludedIds = [];
     for (const source of ordered) {
       const rule = effectiveRule(config, source);
       // The unwrap directory remains resident even if a stored parent draft predates it.
       const entrypoint = source.owner === UNWRAP_OWNER && source.name === DIRECTORY_NAME;
-      if (!source.text || !rule.enabled && !entrypoint || this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack' && !loaded.has(source.owner)) continue;
+      if (!rule.enabled && !entrypoint || this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack' && !loaded.has(source.owner)) { excludedIds.push(source.id); continue; }
       const role = rule.role === 'inherit' ? source.defaultRole : rule.role;
       if (!['system', 'user'].includes(role)) throw new Error('Unsupported trusted prompt-composition role');
-      if (role === 'system') system.push(source.text);
-      else projected.push({ id: source.id, role, text: source.text });
+      if (role === 'system') { excludedIds.push(source.id); if (source.text) { system.push(source.text); systemSourceIds.push(source.id); } }
+      else if (source.text) projected.push({ id: source.id, role, placement: rule.placement === 'inherit' ? source.defaultPlacement ?? 'state' : rule.placement, text: source.text });
     }
-    return { version: 1, systemText: system.join('\n\n'), contributions: projected };
+    // An unavailable source can still have an explicit off/system/pack rule. Its observed
+    // identity is sufficient to revoke old user projections without retaining prompt bodies.
+    const present = new Set(ordered.map(source => source.id));
+    for (const observed of this.observed.values()) {
+      if (present.has(observed.id) || observed.owner === UNWRAP_OWNER && observed.name === DIRECTORY_NAME) continue;
+      const source = { ...observed, attributed: Boolean(observed.owner) }, rule = effectiveRule(config, source);
+      const role = rule.role === 'inherit' ? source.kind === 'section' ? 'system' : 'user' : rule.role;
+      if (!rule.enabled || role === 'system' || this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack' && !loaded.has(source.owner)) excludedIds.push(source.id);
+    }
+    // Direct source rules also revoke unavailable legacy sources after process restart,
+    // before their producer has supplied identity metadata to this runtime instance.
+    for (const [id, rule] of Object.entries(config.rules)) if (rule.enabled === false || rule.role === 'system') excludedIds.push(id);
+    const projectedIds = new Set(projected.map(source => source.id));
+    // Only sorting identity permits fixed-slot reprojection. Off/role/loading changes
+    // revoke their own source and later restore it by append, preserving unrelated fixed slots.
+    return { version: 1, systemText: system.join('\n\n'), systemSourceIds, contributions: projected, excludedIds: [...new Set(excludedIds)].filter(id => !projectedIds.has(id)),
+      configKey: JSON.stringify({ order: config.order, sourceOrder: config.sourceOrder ?? [] }) };
   }
   accepted(execution) {
     const accepted = execution.toolSet && this.stepAssemblies.get(execution.toolSet);
@@ -190,8 +218,8 @@ export class CompositionRuntime {
     const schemas = sdkSchemas(this.ctx.tools, execution.agent, execution.toolSet);
     const { config, toolsConfig, canDefer } = accepted;
     return orderContributions(accepted.contributions, config).filter(source => source.owner === plugin && source.text && (!config.enabled || effectiveRule(config, source).enabled && this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack')).map(source => {
-      const role = config.enabled ? effectiveRule(config, source).role : 'inherit';
-      return { id: source.id, kind: source.kind, role: role === 'inherit' ? source.defaultRole : role, text: source.text };
+      const rule = config.enabled ? effectiveRule(config, source) : { role: 'inherit', placement: 'inherit' };
+      return { id: source.id, kind: source.kind, role: rule.role === 'inherit' ? source.defaultRole : rule.role, placement: rule.placement === 'inherit' ? source.defaultPlacement ?? 'state' : rule.placement, text: source.text };
     });
   }
 }

@@ -80,6 +80,7 @@ Customize via the profile's `cordis.patch.yml` (model IDs below are example plac
 
 - **Fast**: `fastProviders` defaults to `[]`, so the Fast toggle is unavailable. The plugin only records the choice and ships no priority transport; add a provider ID only when the matching transport adapter is installed — priority transport may change provider billing.
 - **Delegation rules**: `delegationRules` blocks denied member models based on the lead's current model (exact match, provider-agnostic), effective immediately on save; configurable in "Agents → Settings", which is read-only when the host lacks the `configEditor` service.
+- **Live configuration**: Updating `fastProviders` or `delegationRules` preserves active members and retries; new launches and model switches read the updated policy. Changing `dataDir` reloads the plugin. The run list and persisted records share the native status projection, and Fast can query the active model tier directly.
 
 ## Limits
 

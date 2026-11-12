@@ -63,7 +63,7 @@ npm install @delthin/dsh-cardex
 }
 ```
 
-设置文件未提供 `directory` 时使用 `~/journal/cardex`；`model` 为 `null` 表示跟随当前会话。插件配置项（`directory` / `configPath` / `model` / `timeoutMs`）作为默认值，设置文件优先。
+设置文件未提供 `directory` 时使用插件默认目录，未配置时为 `~/journal/cardex`；`model` 为 `null` 表示跟随当前会话。插件配置项 `directory` / `model` / `timeoutMs` 提供默认值，设置文件优先。修改这三个默认值会热更新：进行中的操作沿用开始时的配置，后续命令读取新值；已经开始记录的讨论仍写入原目录。`configPath` 指定设置文件位置，修改后插件重新加载。
 
 ## 数据
 

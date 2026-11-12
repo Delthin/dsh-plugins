@@ -225,9 +225,8 @@ test('host routes are dependency-injected, reject unauthorized requests and matc
   const s = session(); const agent = { session: s };
   assert.equal(events.has('agent/error'), false, 'internal driver errors must have no notification subscriber');
   service.results = [];
-  let automaticSends = 0, automaticSummaries = 0;
+  let automaticSends = 0;
   service.client.send = async () => { automaticSends++; return 'unexpected-automatic'; };
-  service.summaries.generateResult = async () => { automaticSummaries++; throw new Error('cannot create effect on inactive context'); };
   await service.configure({ enabled: true });
   for (let turn = 1; turn <= 20; turn++) for (const kind of ['completed', 'error', 'aborted', 'interrupted']) {
     const event = end(kind, turn);
@@ -235,7 +234,7 @@ test('host routes are dependency-injected, reject unauthorized requests and matc
     events.get('session/event').fn(s, event);
   }
   await Promise.resolve(); await Promise.allSettled([...service.pending]);
-  assert.equal(automaticSends, 0); assert.equal(automaticSummaries, 0);
+  assert.equal(automaticSends, 0);
   assert.equal(service.results.length, 0, 'silent events must not fill recent results either');
 
   // Exercise the installed legacy tool, not a copy of its argument mapping.

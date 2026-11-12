@@ -27,6 +27,11 @@ test('only unwrap is advertised in ordinary PTC prompts, with complete JSON outp
   const empty = success(await execute('unwrap', {}, { agent: a, nested: true }));
   assert.doesNotMatch(JSON.stringify(empty), /discover_tools/);
   assert.ok(empty.groups.every(group => !group.tools.some(name => names.includes(name))));
+  const missing = success(await execute('unwrap', { plugin: '', tool: 'compress' }, { agent: a, nested: true }));
+  assert.deepEqual(missing.unavailable, ['compress']);
+  assert.equal(missing.sdk, '');
+  assert.deepEqual(missing.guidance, []);
+  assert.equal(missing.guidanceStatus, 'not-loaded');
   const status = (await request()).body;
   assert.ok(!status.otherTools.some(tool => names.includes(tool.name)));
   assert.ok(status.groups.every(group => !group.tools.some(tool => names.includes(tool.name))));

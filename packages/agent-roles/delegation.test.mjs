@@ -24,7 +24,7 @@ async function setup(fn,config={delegationRules:rules}) {
       agentTeams:{tryMembership:()=>({role:'lead'}),membership:()=>({role:'lead'}),listMembers:()=>members,async spawnTeammate(_parent,request){spawns++;return {member:{id:'new',name:request.name}};}},
       subagents:{registerProvider(p){providers.set(p.name,p);return noop;}},
       llm:{listProviders:()=>[{id:'test'}],async listModels(){modelChecks++;return roles.map(r=>({id:r.model}));},resolveModelInfo:async()=>({})},
-      on:()=>noop,effect:fn=>fn(),webServer:{register:()=>noop},connection:{requestRejection:()=>undefined},
+      provide(name,value){this[name]=value;},on:()=>noop,effect:fn=>fn(),webServer:{register:()=>noop},connection:{requestRejection:()=>undefined},
       skills:{snapshot:async()=>({complete:true,skills:[]})},workingDirectory:{defaultDirectory:dir}};
     await apply(ctx,{dataDir:dir,...config});
     await fn({dir,roles,parent,tools,providers,guards,listeners,setModel:value=>{model=value;},get spawns(){return spawns;},get modelChecks(){return modelChecks;}});

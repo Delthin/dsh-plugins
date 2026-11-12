@@ -1,0 +1,67 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join, basename } from 'node:path';
+import { Context } from '@deepseek-ai/cordis';
+import { Loader } from '@deepseek-ai/cordis-plugin-loader';
+import * as cardex from '../index.js';
+import { loadIndex } from '../lib/store.js';
+
+test('native volatile defaults keep the active archive and busy guard; later commands read new defaults',async t=>{
+  const root=await mkdtemp(join(tmpdir(),'cardex-live-config-'));
+  t.after(async()=>{assert.equal(dirname(root),tmpdir());assert.ok(basename(root).startsWith('cardex-live-config-'));await rm(root,{recursive:true,force:true});});
+  const ctx=new Context();t.after(()=>ctx.fiber.dispose());
+  const sessions=new Map(),calls=[],timeouts=[];
+  let handler,registrations=0,closes=0,release,started;
+  const gate=new Promise(resolve=>{release=resolve;});
+  const waiting=new Promise(resolve=>{started=resolve;});
+  const setTimeout=globalThis.setTimeout;
+  t.mock.method(globalThis,'setTimeout',(fn,ms,...args)=>{timeouts.push(ms);return setTimeout(fn,ms,...args);});
+  ctx.provide('storageDomain',{open:async()=>({table:()=>({get:id=>sessions.get(id),put:(id,value)=>sessions.set(id,value)}),close(){closes++;}})});
+  ctx.provide('commands',{register(command){handler=command.handler;registrations++;return()=>{};}});
+  ctx.provide('sessionQuery',{readSession:async()=>({events:[]})});
+  ctx.provide('llm',{prepareCall:async(request,signal)=>{
+    calls.push({request,signal});const number=calls.length;
+    return {config:{},async *stream(){
+      if(number===1){started();await gate;}
+      signal.throwIfAborted();
+      const body=number%2?{notes:[{id:'n1',title:'Topic',summary:'Summary',background:'',content:'Content',messageIndices:[0,1]}]}:{targets:[{key:'t1',noteIds:['n1'],matchId:null,title:'Topic',summary:'Summary',parent:null}],groups:[],relations:[]};
+      yield {type:'text-delta',index:0,text:JSON.stringify(body)};
+      yield {type:'finish',reason:{kind:'stop'}};
+    }};
+  }});
+  const loader=new Loader(ctx);await ctx.fiber.await();
+  loader.import=async()=>cardex;
+  const config={configPath:join(root,'settings.json'),directory:join(root,'old'),model:'old/model',timeoutMs:20_000};
+  await loader.create({id:'cardex',name:'@fixture/cardex',config});await loader.await();
+  const agent={id:'session',status:'idle',followup(){},model:{current:()=>({provider:'live',model:'session'})}};
+  const command=rawInput=>handler({agent,rawInput,signal:new AbortController().signal});
+  const draft={id:'draft',directory:config.directory,question:'Question',startedAt:new Date().toISOString(),startSeq:0};
+  const messages=[{role:'user',text:'Question',timestamp:1},{role:'assistant',text:'Answer',timestamp:2}];
+  sessions.set(agent.id,{draft,prepared:{draftId:draft.id,recordId:'record',messages}});
+  const active=command('end');await waiting;
+  const originalHandler=handler;
+  const next={...config,directory:join(root,'new'),model:'new/model',timeoutMs:30_000};
+  await loader.update('cardex',{config:next});await loader.await();
+  assert.equal(handler,originalHandler);assert.equal(registrations,1);assert.equal(closes,0);
+  assert.equal(calls[0].signal.aborted,false);
+  assert.match((await command('end')).text,/上一个.*处理中/);
+  release();assert.equal((await active).kind,'success');
+  assert.deepEqual(calls.map(({request})=>request.provider),['old','old']);
+  assert.equal(timeouts.filter(ms=>ms===20_000).length,2);
+  assert.equal((await loadIndex(config.directory)).nodes.length,1);
+  assert.match((await command('status')).text,/new\/model/);
+  assert.equal((await command('Next question')).kind,'success');
+  assert.equal(sessions.get(agent.id).draft.directory,next.directory);
+  const newDraft=sessions.get(agent.id).draft;
+  sessions.set(agent.id,{draft:newDraft,prepared:{draftId:newDraft.id,recordId:'next-record',messages}});
+  assert.equal((await command('end')).kind,'success');
+  assert.deepEqual(calls.slice(2).map(({request})=>request.provider),['new','new']);
+  assert.equal(timeouts.filter(ms=>ms===30_000).length,2);
+  assert.equal((await command('model saved/model')).kind,'success');
+  await loader.update('cardex',{config:{...next,model:'later/model'}});await loader.await();
+  assert.match((await command('status')).text,/saved\/model/,'the command settings file still overrides profile defaults');
+  await loader.update('cardex',{config:{...next,configPath:join(root,'other-settings.json')}});await loader.await();
+  assert.equal(registrations,2);assert.equal(closes,1,'changing the settings file keeps the structural restart');
+});

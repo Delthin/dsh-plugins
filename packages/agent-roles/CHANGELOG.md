@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1
+
+### Patch Changes
+
+- Keep delegation settings live without interrupting current members or fallback retries. Consolidate run-state persistence, expose live role-tier state, preserve published fallback APIs, and add bilingual locale metadata.
+
 ## 0.5.0
 
 ### Minor Changes

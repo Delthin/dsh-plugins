@@ -8,7 +8,7 @@ const read=file=>readFile(new URL(file,root),'utf8');
 const pkg=JSON.parse(await read('package.json'));
 const expected=[
   'CHANGELOG.md','LICENSE','LICENSE-MIT-legacy','NOTICE','README.en.md','README.md','client.js',
-  'cordis.patch.yml','fallback.js','index.js','package.json','runtime.js','skills.js','store.js',
+  'cordis.patch.yml','fallback.js','index.js','locale/en.json','locale/zh.json','package.json','runtime.js','skills.js','store.js',
 ].sort();
 assert.equal(pkg.name,'@delthin/dsh-agent-roles');
 assert.notEqual(pkg.private,true);
@@ -19,9 +19,12 @@ assert.deepEqual(pkg.repository,{
 });
 assert.equal(pkg.homepage,'https://github.com/Delthin/dsh-plugins/tree/main/packages/agent-roles#readme');
 assert.equal(pkg.bugs.url,'https://github.com/Delthin/dsh-plugins/issues');
-assert.deepEqual([...pkg.files,'package.json'].sort(),expected,'Unexpected public file allowlist');
+assert.deepEqual([...pkg.files,'package.json'].sort(),[
+  ...expected.filter(file=>!file.startsWith('locale/')),'locale/*.json',
+].sort(),'Unexpected public file allowlist');
 assert.deepEqual(pkg.exports,{
-  '.':'./index.js','./client':'./client.js','./package.json':'./package.json','./cordis.patch.yml':'./cordis.patch.yml',
+  '.':'./index.js','./client':'./client.js','./locale/*.json':'./locale/*.json',
+  './package.json':'./package.json','./cordis.patch.yml':'./cordis.patch.yml',
 });
 assert.equal(pkg.main,'index.js');
 assert.equal(pkg.dsh.bundle.patch,'./cordis.patch.yml');
@@ -32,6 +35,8 @@ assert.deepEqual(pkg.dsh.client.inject,[
 ]);
 assert.equal(pkg.engines.dsh,'>=0.2.2-rc.1');
 assert.equal(pkg.engines.node,'>=22.18.0');
+assert.equal(pkg.peerDependencies['@deepseek-ai/cordis'],'>=4.1.0');
+assert.equal(pkg.peerDependencies['@deepseek-ai/schemastery'],'>=3.19.0');
 for(const [name,range] of Object.entries({...pkg.dependencies,...pkg.peerDependencies})){
   if(name.startsWith('@deepseek-ai/dsh-'))assert.equal(range,'>=0.2.2-rc.1','DSH dependency must support the verified native model/inbox API: '+name);
 }
