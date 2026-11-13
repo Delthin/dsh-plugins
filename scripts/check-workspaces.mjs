@@ -45,7 +45,8 @@ for (const [slug, name] of expected) {
   assert(semver.valid(pkg.version), name + ' needs a valid independent version');
   assert(semver.validRange(pkg.engines?.node), name + ' needs Node compatibility');
   assert.match(pkg.engines?.dsh ?? '', /^>=/, name + ' must declare a tested minimum, not an exact host pin');
-  assert(semver.satisfies('0.2.2-rc.1', pkg.engines.dsh), name + ' rejects current host');
+  const host = pkg.devDependencies?.['@deepseek-ai/dsh-agent'] ?? '0.2.2-rc.1';
+  assert(semver.satisfies(host, pkg.engines.dsh), name + ' rejects its verified host');
   for (const [dep, range] of Object.entries({...pkg.dependencies, ...pkg.peerDependencies})) {
     if (dep.startsWith('@deepseek-ai/dsh-')) assert.match(range, /^>=/, dep + ' must not pin the host');
   }

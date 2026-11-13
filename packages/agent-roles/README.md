@@ -2,13 +2,13 @@
 
 [![npm](https://img.shields.io/npm/v/%40delthin%2Fdsh-agent-roles?style=flat-square)](https://www.npmjs.com/package/@delthin/dsh-agent-roles)
 [![Node](https://img.shields.io/node/v/%40delthin%2Fdsh-agent-roles?style=flat-square)](https://www.npmjs.com/package/@delthin/dsh-agent-roles)
-[![DSH](https://img.shields.io/badge/DSH-%E2%89%A50.2.2--rc.1-6366F1?style=flat-square)](https://dshmarket.com/)
+[![DSH](https://img.shields.io/badge/DSH-%E2%89%A50.2.2--rc.2-6366F1?style=flat-square)](https://dshmarket.com/)
 [![license](https://img.shields.io/badge/license-Apache--2.0-8A2BE2?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
 [![LINUX DO](https://img.shields.io/badge/LINUX%20DO-%E7%A4%BE%E5%8C%BA-FFB000?style=flat-square)](https://linux.do/)
 
 [English](README.en.md) · [发布记录](CHANGELOG.md) · [市场页](https://dshmarket.com/zh/p/Delthin/dsh-plugins--packages-agent-roles/)
 
-基于 DSH `>= 0.2.2-rc.1` 原生 Agent Team 的角色管理插件。**角色（Role）**是可复用的配置模板，保存职责提示词、模型与思考强度、工具白名单和 Skills；**成员（Member）**是主代理按角色启动的运行实例。主代理能看到所有已启用角色的信息，按任务自行决定何时创建成员。
+基于 DSH `>= 0.2.2-rc.2` 原生 Agent Team 的角色管理插件。**角色（Role）**是可复用的配置模板，保存职责提示词、模型与思考强度、工具白名单和 Skills；**成员（Member）**是主代理按角色启动的运行实例。主代理能看到所有已启用角色的信息，按任务自行决定何时创建成员。
 
 首次安装是**空角色目录**，不含任何作者预设；升级已有安装则保留本地数据。原独立仓库与历史发布保留在[旧仓库](https://github.com/Delthin/dsh-agent-roles)与[旧发布](https://github.com/Delthin/dsh-agent-roles/releases)。
 
@@ -18,7 +18,9 @@
 npm install @delthin/dsh-agent-roles
 ```
 
-安装无脚本、无编译。按宿主方式导入（如 `cordis.patch.yml`）并启用后，刷新 Web 页面即可在左侧导航看到「多智能体」入口；未自动加载时重启对应 Web profile。插件会启用 DSH 原生团队服务与工具，并按官方实验团队 profile 的方式停用旧的 `tool-subagent` 系列条目；已有自定义团队 bundle 时请检查相同 ID 的覆盖。
+安装无脚本、无编译。按宿主方式导入（如 `cordis.patch.yml`）并启用后，刷新 Web 页面即可在左侧导航看到「多智能体」入口；未自动加载时重启对应 Web profile。插件复用 DSH base / Web profile 自带的原生团队服务、工具与界面。主代理通过 `spawn_role` 按角色分发；配置委派限制时，通用 `subagent` / `subagent_fork` 调用受执行守卫约束。原生发现、消息与等待工具沿用当前 preset；自定义 profile 需先启用宿主的原生 Agent Team。
+
+从 `0.6.0` 起要求 DSH `>= 0.2.2-rc.2`。仍使用 DSH `0.2.2-rc.1` 时，请安装兼容旧版：`npm install @delthin/dsh-agent-roles@0.5.1`。
 
 ## 配置角色
 
@@ -45,7 +47,7 @@ npm install @delthin/dsh-agent-roles
 - 启动时冻结整条调用链，后续编辑角色只影响新成员；未配置备用项的角色保持单模型行为。「子智能体」列表展示当前模型与切换记录。
 - 取消或中断成员会停止等待和后续切换，按取消处理，不计为模型错误切换。
 
-回退依赖 DSH `>= 0.2.2-rc.1` 的公开模型选择与 inbox API，作用于宿主规范化后的模型请求失败；准备阶段和工具执行等直接抛出的异常会终止当前执行。
+回退依赖 DSH `>= 0.2.2-rc.2` 的公开模型选择与 inbox API，作用于宿主规范化后的模型请求失败；准备阶段和工具执行等直接抛出的异常会终止当前执行。
 
 ## Skills 与工具边界
 
@@ -84,7 +86,7 @@ npm install @delthin/dsh-agent-roles
 
 ## 运行限制
 
-单个团队最多 32 个成员、256 个共享任务；并发与委派深度受 DSH 原生 subagent 配置约束。角色管理 API 复用 DSH Web 身份验证，请求体上限 1 MiB。请勿把已登录的 DSH Web 会话暴露给不可信用户。
+成员数量与共享任务上限跟随宿主原生 `agent-team` 配置；并发与委派深度受 DSH 原生 subagent 配置约束。角色管理 API 复用 DSH Web 身份验证，请求体上限 1 MiB。请勿把已登录的 DSH Web 会话暴露给不可信用户。
 
 ## 常见问题
 

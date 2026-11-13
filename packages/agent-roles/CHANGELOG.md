@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+### Minor Changes
+
+- Use the native Agent Team supplied by DSH 0.2.2-rc.2 and later instead of installing the retired experimental packages. Migrate role dispatch, continuation and frozen-policy restoration to the native subagent lifecycle while preserving ordered model fallback. This fixes rc.2 plugin-manager compatibility rejection; DSH 0.2.2-rc.1 users can keep agent-roles 0.5.1.
+
 ## 0.5.1
 
 ### Patch Changes

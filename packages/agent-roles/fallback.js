@@ -41,7 +41,7 @@ export function installRoleFallback(agent,record,{persist,observe,assertCandidat
   let index=snapshot.index,pending,disposed=false;
   const lifetime=new AbortController(),disposers=[];
   // Ordered chains require the public rc.1 model/inbox continuation API.
-  if(typeof agent.model?.select!=='function'||typeof agent.inbox?.append!=='function'||typeof agent.inbox?.remove!=='function'||typeof agent.followup!=='function')throw new Error('角色模型回退需要 DSH >=0.2.2-rc.1 的模型选择与原生 inbox API');
+  if(typeof agent.model?.select!=='function'||typeof agent.inbox?.append!=='function'||typeof agent.inbox?.remove!=='function'||typeof agent.followup!=='function')throw new Error('角色模型回退需要 DSH >=0.2.2-rc.2 的模型选择与原生 inbox API');
   const save=()=>persist(record);
   const changed=()=>observe(record);
   function removePending() {

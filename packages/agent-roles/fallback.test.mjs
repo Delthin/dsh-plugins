@@ -7,11 +7,12 @@ import { join, dirname, basename } from 'node:path';
 import { Context } from '@deepseek-ai/cordis';
 import Sessions from '@deepseek-ai/dsh-session';
 import Projections from '@deepseek-ai/dsh-session-projection';
+import SessionQuery from '@deepseek-ai/dsh-session-query';
 import * as JsonlPersistence from '@deepseek-ai/dsh-session-persistence-jsonl';
 import Agents from '@deepseek-ai/dsh-agent';
 import AgentLoop from '@deepseek-ai/dsh-agent-loop';
 import Subagents from '@deepseek-ai/dsh-subagent';
-import Teams from '@deepseek-ai/dsh-experimental-agent-team';
+import Teams from '@deepseek-ai/dsh-agent-team';
 import LlmRuntime, { LlmAdapter, LlmError } from '@deepseek-ai/dsh-llm';
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
 import Tools, { defineTool } from '@deepseek-ai/dsh-tools';
@@ -103,6 +104,7 @@ async function nativeHost(t,stream,{role,prepare,delegationRules=[]}={}) {
   ctx.provide('skills',{snapshot:async()=>({complete:true,skills:[]}),get:async()=>undefined});
   await ctx.plugin(Sessions);await ctx.plugin(Projections);
   await ctx.plugin(JsonlPersistence,{root:join(directory,'sessions'),compression:'none'});
+  await ctx.plugin(SessionQuery);
   await ctx.plugin(Agents);
   new SystemPrompt(ctx,{includeHarnessIdentity:true});new Tools(ctx);ctx.tools.setExecutor(new NativeToolExecutor(ctx));new LlmRuntime(ctx);
   class SyntheticAdapter extends LlmAdapter {
@@ -124,7 +126,7 @@ async function nativeHost(t,stream,{role,prepare,delegationRules=[]}={}) {
   const rootHandle=await ctx.agents.create({sessionId:'fallback-lead',agentOptions:{provider:'lead',model:'lead'},meta:{cwd:directory}});
   t.after(()=>rootHandle.dispose());
   return {ctx,directory,calls,events,settlements,logs,roleMount,root:rootHandle.agent,
-    async spawn(name='worker'){return ctx.agentTeams.spawnTeammate(rootHandle.agent,{name,description:'Synthetic role',prompt:[{type:'text',text:'ORIGINAL_TASK'}],context:'fresh',provider:'agent-role-synthetic',signal:new AbortController().signal});},
+    async spawn(name='worker'){return ctx.tools.get('spawn_role',rootHandle.agent).execute({role:configured.name,name,prompt:'ORIGINAL_TASK'},{agent:rootHandle.agent,signal:new AbortController().signal});},
     async runs(){return JSON.parse(await readFile(join(directory,'runs.json'),'utf8')).items;},
     async api(action,body={}) {
       const req=Readable.from([JSON.stringify({action,...body})]);req.method='POST';req.headers={'content-type':'application/json'};
@@ -143,7 +145,7 @@ async function nativeHost(t,stream,{role,prepare,delegationRules=[]}={}) {
   };
 }
 
-test('native Team activation: committed tool executes once; same member continues, remounts on its active route, and settles once',async t=>{
+test('native activation: committed tool executes once; frozen role survives fallback, remount and cold resume with one settlement per activation',async t=>{
   let toolExecutions=0;
   const done=Promise.withResolvers(),backupEntered=Promise.withResolvers(),releaseBackup=Promise.withResolvers();
   const h=await nativeHost(t,async function*(request,calls){
@@ -178,7 +180,7 @@ test('native Team activation: committed tool executes once; same member continue
   const terminal=await settled.promise;
   await h.root.whenIdle();
   assert.equal(toolExecutions,1);assert.equal(terminal.id,member.id);
-  assert.equal(h.settlements.length,1);assert.equal(h.ctx.agentTeams.listMembers(h.root).find(m=>m.id===member.id).status,'inactive');
+  assert.equal(h.settlements.length,1);assert.equal((await h.ctx.subagents.listDescendants(h.root.id)).find(m=>m.id===member.id).activity,'inactive');
   const own=h.calls.filter(call=>call.sessionId===member.id);
   assert.deepEqual(own.map(call=>call.provider),['primary','primary','backup']);
   assert.equal(new Set(own.map(call=>call.sessionId)).size,1);
@@ -188,6 +190,19 @@ test('native Team activation: committed tool executes once; same member continue
   assert.equal(h.events.filter(event=>event.sessionId===member.id&&event.type==='llm/retry').length,0,'native always retry must be bypassed');
   const parentNotices=h.events.filter(event=>event.sessionId===h.root.id&&event.type==='user/message'&&event.data.source?.kind==='subagent-settled');
   assert.equal(parentNotices.length,1);assert.match(JSON.stringify(parentNotices[0]),/BACKUP_SUCCESS/);
+  assert.equal(h.ctx.agents.get(member.id),undefined,'settlement releases the native child before cold continuation');
+  await h.roleMount.update({dataDir:h.directory,fastProviders:['backup'],delegationRules:[{leaderModel:'lead',denyModels:['second']}]});
+  let deliveries=0;
+  for(const reference of [member.name,member.id])await assert.rejects(h.root.ctx.waterfall('tools/execute',{name:'send_message',arguments:{agent:reference,message:'blocked'},agent:h.root,signal:new AbortController().signal},async()=>{deliveries++;}),/不允许调用/);
+  assert.equal(deliveries,0,'native names and session-id aliases obey the same cold-model restriction');
+  await h.roleMount.update({dataDir:h.directory,fastProviders:['backup'],delegationRules:[]});
+  const continued=Promise.withResolvers();h.ctx.on('subagent/end',event=>continued.resolve(event));
+  await h.ctx.subagents.sendMessage(h.root,member.id,[{type:'text',text:'COLD_FOLLOWUP'}],{signal:new AbortController().signal});
+  await continued.promise;await h.root.whenIdle();
+  assert.equal(h.settlements.length,2,'one settlement for each accepted activation');
+  const resumed=h.calls.filter(call=>call.sessionId===member.id).at(-1);
+  assert.equal(resumed.provider,'backup');assert.match(JSON.stringify(resumed.messages),/COLD_FOLLOWUP/);
+  assert.deepEqual(resumed.tools.map(tool=>tool.name),['read']);assert.equal(toolExecutions,1);
   // Disposing the plugin drains asynchronous observation saves before checking
   // its durable terminal record (the live native lifecycle already settled).
   await h.roleMount.dispose();
@@ -196,6 +211,11 @@ test('native Team activation: committed tool executes once; same member continue
   assert.equal(record.status,'inactive');assert.equal(record.error,undefined);
   assert.deepEqual(record.audit.provider,'backup');assert.equal(record.audit.fast,true);assert.equal(record.audit.rolePromptPresent,true);
   assert.equal(record.fallbackHistory.length,1);
+  await writeFile(join(h.directory,'runs.json'),JSON.stringify({version:1,items:[]}));
+  await h.ctx.plugin(Roles,{dataDir:h.directory,fastProviders:['backup']});
+  const beforeMissing=h.calls.length;
+  await assert.rejects(h.ctx.subagents.sendMessage(h.root,member.id,[{type:'text',text:'MISSING_SNAPSHOT'}],{signal:new AbortController().signal}),error=>error.code==='NOT_RESUMABLE'&&/角色启动快照缺失/.test(error.cause?.message));
+  assert.equal(h.calls.length,beforeMissing,'a known role provider without its launch snapshot cannot run');
 });
 
 test('native live config preserves an owned retry; disposal drains its final native idle state',async t=>{
@@ -314,10 +334,10 @@ test('native thrown preparation and prompt-plugin errors remain terminal even wh
         return next();
       },{prepend:true});
       const settled=Promise.withResolvers();h.ctx.on('subagent/end',event=>settled.resolve(event));
-      // Preparation failed before the initial task could enter model history;
-      // native Team provisioning therefore rejects its acceptance checkpoint.
-      await assert.rejects(h.spawn(),error=>error.code==='TEAM_PROVISIONING_CONFLICT');
-      const member=h.ctx.agentTeams.listMembers(h.root).find(member=>member.name==='worker');
+      // Native activation confirms inbox acceptance; preparation and prompt
+      // failures are reported by its terminal lifecycle, not a Team checkpoint.
+      const {member}=await h.spawn();
+      assert.ok(member.id);
       await settled.promise;await h.root.whenIdle();
       assert.equal(h.calls.filter(call=>call.sessionId===member.id).length,0);
       await h.roleMount.dispose();

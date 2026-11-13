@@ -33,7 +33,7 @@ async function boot(dir,agents=[],config={fastProviders:['test']}) {
   const ctx={
     llm:{listProviders:()=>[{id:'test'}],listModels:async()=>[{id:'same-model'}],resolveModelInfo:async()=>info},
     agents:{list:()=>agents,get:id=>agents.find(a=>a.id===id)},
-    subagents:{registerProvider(provider){providers.set(provider.name,provider);return noop;}},
+    subagents:{listDescendants:async()=>[],registerProvider(provider){providers.set(provider.name,provider);return noop;}},
     provide(name,value){this[name]=value;},
     on(name,fn){events.set(name,fn);return noop;},effect:fn=>fn(),
     webServer:{register(route){handler=route.handler;return noop;}},
@@ -129,6 +129,10 @@ test('新成员在准备时持久化 Fast，后续编辑、删除、重载保持
   assert.deepEqual(member.model.current(),{provider:'test',model:'same-model',reasoningEffort:'high'});
   disk=JSON.parse(await readFile(join(dir,'runs.json'),'utf8'));
   assert.equal(disk.items.find(r=>r.sessionId==='fast').selection.fast,true);
+  restored.ctx.subagents.listDescendants=async()=>{throw Object.assign(new Error('synthetic missing parent'),{code:'SESSION_QUERY_SESSION_NOT_FOUND'});};
+  const history=await restored.api('runs');assert.equal(history.status,200);assert.equal(history.value.runs.length,2);
+  restored.ctx.subagents.listDescendants=async()=>{throw new Error('synthetic catalog failure');};
+  assert.equal((await restored.api('runs')).status,400,'unreadable catalogs remain explicit failures');
 }));
 
 test('没有选择快照的旧成员恢复为标准，持久化后仍不继承角色或主会话 Fast',()=>temporary(async dir=>{

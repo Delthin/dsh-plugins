@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { dshHomePath, expandHomePath } from '@deepseek-ai/dsh-home-paths';
 import Schema from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
@@ -9,7 +10,7 @@ import { RoleStore, validateRole, hash, TOOLS } from './store.js';
 export { roleTierForRun } from './store.js';
 
 export const name='agent-roles';
-export const inject=['agents','agentTeams','subagents','systemPrompt','tools','llm','webServer','connection','sessions','skills','workingDirectory'];
+export const inject=['agents','subagents','sessionQuery','systemPrompt','tools','llm','webServer','connection','sessions','skills','workingDirectory'];
 const DEFAULT_FAST_PROVIDERS=[];
 export const Config=Schema.object({
   dataDir:Schema.string().description("Role data directory; defaults to $DSH_HOME/agent-roles"),
@@ -58,7 +59,7 @@ export function selectionFor(role,info,fastProviders=DEFAULT_FAST_PROVIDERS) {
 export function roleModelChain(role) {return [role,...role.fallbacks??[]];}
 export function assertFallbackHost(agent,role) {
   if(!role.fallbacks?.length)return;
-  if(typeof agent?.model?.select!=='function'||typeof agent?.inbox?.append!=='function'||typeof agent?.inbox?.remove!=='function'||typeof agent?.followup!=='function')throw new Error('角色模型回退需要 DSH >=0.2.2-rc.1 的模型选择与原生 inbox API');
+  if(typeof agent?.model?.select!=='function'||typeof agent?.inbox?.append!=='function'||typeof agent?.inbox?.remove!=='function'||typeof agent?.followup!=='function')throw new Error('角色模型回退需要 DSH >=0.2.2-rc.2 的模型选择与原生 inbox API');
 }
 export async function validateModelChain(llm,role,signal,fastProviders=DEFAULT_FAST_PROVIDERS) {
   const selections=[];
@@ -129,14 +130,13 @@ export async function apply(ctx,config) {
   const providers=new Map(), installed=new Map(), liveRecords=new Map();
   let persistenceError;
   const reportPersistence=e=>{persistenceError=String(e.message??e);};
-  function project(record) {
-    const agent=ctx.agents.get(record.sessionId),parent=ctx.agents.get(record.parentSessionId);
-    const member=parent&&ctx.agentTeams?.tryMembership(parent)?ctx.agentTeams.listMembers(parent).find(m=>m.id===record.sessionId):undefined;
-    const nativeStatus=member?.status??agent?.status??'inactive';
+  function project(record,member) {
+    const agent=ctx.agents.get(record.sessionId);
+    const nativeStatus=agent?(agent.status==='running'?'running':'inactive'):record.status==='provisioning'?'provisioning':member?.activity??'inactive';
     const continuing=!!agent&&isFallbackContinuing(record);
     const failed=record.retry?.status!=='cancelled'&&(record.turnEndReason?.kind==='error'||record.status==='failed');
     const status=nativeStatus==='running'||agent?.status==='running'||continuing?'running':nativeStatus==='failed'||failed?'failed':nativeStatus==='provisioning'?'provisioning':'inactive';
-    return {...record,nativeStatus,status,memberName:member?.name??record.memberName,...!record.error&&status==='failed'&&member?.diagnostics?.length?{error:member.diagnostics.join('\n')}:{}};
+    return {...record,nativeStatus,status,memberName:member?.path??member?.name??record.memberName};
   }
   const persist=record=>{ liveRecords.set(record.sessionId,record);Object.assign(record,project(record));return store.saveRun(record); };
   const observed=record=>{ liveRecords.set(record.sessionId,record);Object.assign(record,project(record));store.observeRun(record,reportPersistence); };
@@ -220,29 +220,31 @@ export async function apply(ctx,config) {
       add(scoped.systemPrompt.section({name:'agent-roles:role',order:10300,text:roleSystem(role),interpolate:false}));
       return;
     }
-    const membership=ctx.agentTeams.tryMembership(agent);
-    if(membership?.role==='teammate') {
-      const member=ctx.agentTeams.listMembers(agent).find(m=>m.id===agent.id);
-      if(member?.provider && [PREFIX,LEGACY_PREFIX].some(prefix=>member.provider.startsWith(prefix))) throw new Error('角色启动快照缺失，拒绝以主代理配置恢复成员');
-      return;
-    }
-    if(membership?.role!=='lead') return;
+    // A cold child is mounted before its activation becomes resident. Its own
+    // durable descriptor, not live tree membership, identifies a missing role snapshot.
+    const descriptor=agent.session?.snapshotEvents?.().find(event=>event.type==='subagent/descriptor'&&agent.session.isOwnSeq(event.seq))?.data;
+    if(descriptor&&[PREFIX,LEGACY_PREFIX].some(prefix=>descriptor.provider?.startsWith(prefix)))throw new Error('角色启动快照缺失，拒绝以主代理配置恢复成员');
+    if(agent.session?.header?.origin==='subagent'||descriptor||ctx.subagents.rootOf(agent)!==agent)return;
     add(agent.ctx.tools.guard(exec=>{
-      if(!isRestricted(agent)) return;
-      if(['spawn_teammate','subagent','subagent_fork'].includes(exec.name)) return '当前主代理有模型委派限制，请使用 spawn_role，由角色配置校验目标模型。';
-      if(exec.name!=='send_message') return;
-      const member=ctx.agentTeams.listMembers(agent).find(m=>m.name===exec.arguments?.target);
-      if(!member || member.role==='lead') return;
-      const record=liveRecords.get(member.id)??store.run(member.id);
-      const model=record?.selection?.model??record?.role.model??currentModel(ctx.agents.get(member.id))??member.model;
-      return model?delegationDenial(currentModel(agent),model,delegationRules()):'无法确认成员模型，当前委派策略禁止唤醒该成员。';
+      if(isRestricted(agent)&&['spawn_teammate','subagent','subagent_fork'].includes(exec.name))return '当前主代理有模型委派限制，请使用 spawn_role，由角色配置校验目标模型。';
     }));
+    add(agent.ctx.on('tools/execute',async(exec,next)=>{
+      if(exec.name!=='send_message'||!isRestricted(agent))return next();
+      const id=await ctx.subagents.resolveName(agent,exec.arguments.agent,exec.signal);
+      if(id===agent.id)return next();
+      const member=(await ctx.subagents.listDescendants(agent.id,exec.signal)).find(member=>member.id===id);
+      const record=member&&(liveRecords.get(id)??store.run(id));
+      const model=member&&(record?.selection?.model??record?.role.model??currentModel(ctx.agents.get(id)));
+      if(!model)throw new Error('无法确认成员模型，当前委派策略禁止唤醒该成员。');
+      assertDelegation(agent,model);
+      return next();
+    },{prepend:true}));
     const directoryText=(model=currentModel(agent))=>{
       const rules=delegationRules();
       const roles=store.catalog.roles.filter(r=>r.enabled && roleModelChain(r).every(candidate=>!delegationDenial(model,candidate.model,rules)));
       return '可用角色（DSH 原生 Agent Team）\n'+roles.map(r=>r.name+' — '+r.description+' ['+r.provider+'/'+r.model+'; '+(r.reasoningEffort||'模型默认')+']'+(r.skills?.length?' 技能：'+r.skills.join(', '):'')).join('\n')+
         rules.filter(rule=>rule.leaderModel===model).map(rule=>'\n委派限制：当前主代理 '+model+'，禁止创建或唤醒 '+rule.denyModels.join('、')+' 成员。不得改用通用委派工具绕过；如需升级模型，请交由用户切换主代理。').join('')+
-        '\n按任务需要自主选择角色，用 spawn_role 创建有明确任务边界的后台成员；不要用通用 spawn_teammate 代替角色分发。独立任务可并行，写文件范围避免重叠。成员没有你的历史，必须提供目标、材料、路径、授权和验收条件。小任务直接完成。使用原生 list_agents 查看成员，send_message({target:成员名称,message:反馈}) 继续沟通，interrupt_agent 中断。结果由原生后台通知回到本会话；仍需要结果时用 wait_agent 等待，不忙轮询。writer/designer 没有工具，应提供完整材料。';
+        '\n按任务需要自主选择角色，用 spawn_role 创建有明确任务边界的后台成员；不要用通用 subagent 或 subagent_fork 代替角色分发。独立任务可并行，写文件范围避免重叠。成员没有你的历史，必须提供目标、材料、路径、授权和验收条件。小任务直接完成。使用原生 list_agents 查看成员，send_message({agent:成员名称,message:反馈}) 继续沟通，interrupt_agent 中断。结果由原生后台通知回到本会话；仍需要结果时用 wait_agent 等待，不忙轮询。writer/designer 没有工具，应提供完整材料。';
     };
     add(agent.ctx.systemPrompt.context({name:'agent-roles:directory',order:130,required:true,interpolate:false,text:()=>directoryText()}));
     // Use the just-assembled model when a session switches routes before its next request.
@@ -254,20 +256,20 @@ export async function apply(ctx,config) {
       async execute(args,exec) {
         const role=store.catalog.roles.find(r=>r.name===args.role && r.enabled);
         if(!role) throw new Error('未找到启用角色：'+args.role);
-        if(!exec.agent || ctx.agentTeams.membership(exec.agent).role!=='lead') throw new Error('仅主代理可分发角色');
+        if(!exec.agent || ctx.subagents.rootOf(exec.agent)!==exec.agent) throw new Error('仅主代理可分发角色');
         assertFallbackHost(exec.agent,role);
         for(const candidate of roleModelChain(role))assertDelegation(exec.agent,candidate.model);
-        let result;
-        try { result=await ctx.agentTeams.spawnTeammate(exec.agent,{name:args.name,description:role.description,prompt:[{type:'text',text:args.prompt}],context:'fresh',provider:PREFIX+role.id,signal:exec.signal}); }
+        const sessionId=randomUUID();
+        let activation;
+        try { activation=await ctx.subagents.startActivation({childId:sessionId,parent:exec.agent,name:args.name,label:role.description,prompt:[{type:'text',text:args.prompt}],provider:PREFIX+role.id,maxDepth:ctx.subagents.resolveMaxDepth(),delivery:'parent',signal:exec.signal}); }
         catch(error) {
-          const member=ctx.agentTeams.listMembers(exec.agent).find(m=>m.name===args.name);
-          const record=member && liveRecords.get(member.id);
-          if(record && member.status==='failed'){record.status='failed';record.error??=String(error.message??error);observed(record);}
+          const record=liveRecords.get(sessionId);
+          if(record){record.status='failed';record.error??=String(error.message??error);observed(record);}
           throw error;
         }
-        const record=liveRecords.get(result.member.id)??store.run(result.member.id);
-        if(record){record.memberName=args.name;await persist(record);}
-        return {member:result.member,role:role.name,selection:record?.selection??null};
+        const record=liveRecords.get(activation.childId)??store.run(activation.childId);
+        if(record){record.memberName=activation.name;await persist(record);}
+        return {member:{id:activation.childId,name:activation.name,status:record?project(record).status:'inactive'},role:role.name,selection:record?.selection??null};
       }})));
     } catch(error) {
       const errors=release(disposers);
@@ -288,9 +290,13 @@ export async function apply(ctx,config) {
     const record=liveRecords.get(agent.id);
     if(record){if(status==='running'){delete record.error;delete record.turnEndReason;}observed(record);}
   });
+  for(const name of ['subagent/start','subagent/end'])ctx.on(name,event=>{
+    const record=liveRecords.get(event.id)??store.run(event.id);
+    if(record)observed(record);
+  });
   ctx.on('session/event',(session,event)=>{
-    if(event.type==='team/member') {
-      const record=liveRecords.get(event.data.member.id)??store.run(event.data.member.id);
+    if(event.type==='subagent/catalog') {
+      const record=liveRecords.get(event.data.childId)??store.run(event.data.childId);
       if(record)observed(record);
       return;
     }
@@ -311,7 +317,7 @@ export async function apply(ctx,config) {
   });
   for(const snapshot of store.runs.items) {
     const record=liveRecords.get(snapshot.sessionId)??snapshot;
-    if(['running','provisioning'].includes(record.status)&&project(record).status!==record.status)observed(record);
+    if(['running','provisioning'].includes(record.status)&&!ctx.agents.get(record.sessionId)){record.status='inactive';observed(record);}
   }
   async function dispatch(body) {
     if(body.action==='list') return {catalog:store.catalog,tools:TOOLS,...delegationSettings(configContext,delegationRules()),persistenceError};
@@ -320,8 +326,14 @@ export async function apply(ctx,config) {
     if(body.action==='skills') return {skills:await skillDirectory(ctx.skills,{cwd:ctx.workingDirectory.defaultDirectory})};
     if(body.action==='modelInfo') return ctx.llm.resolveModelInfo(body.provider,body.model);
     if(body.action==='runs') {
+      const members=new Map();
+      for(const record of store.runs.items.slice(-200))if(record.parentSessionId&&!members.has(record.parentSessionId)){
+        try{members.set(record.parentSessionId,await ctx.subagents.listDescendants(record.parentSessionId));}
+        catch(error){if(error.code!=='SESSION_QUERY_SESSION_NOT_FOUND')throw error;members.set(record.parentSessionId,[]);}
+      }
       return {runs:store.runs.items.slice(-200).reverse().map(r=>{
-        const {skillSnapshot,...summary}=project(liveRecords.get(r.sessionId)??r);
+        const member=members.get(r.parentSessionId)?.find(member=>member.id===r.sessionId);
+        const {skillSnapshot,...summary}=project(liveRecords.get(r.sessionId)??r,member);
         return summary;
       }),persistenceError};
     }

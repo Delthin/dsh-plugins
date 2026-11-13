@@ -19,10 +19,14 @@ async function setup(fn,config={delegationRules:rules}) {
       tools:{guard(fn){guards.push(fn);return noop;},register(tool){tools.set(tool.name,tool);return noop;}},
       systemPrompt:{context:()=>noop},on(name,fn){listeners.set(name,fn);return noop;}
     }};
-    const members=[{id:'old-large',name:'old-large',role:'teammate',model:'lead-small'},{id:'unknown',name:'unknown',role:'teammate'},{id:'other',name:'other',role:'teammate',model:'target-other'}];
-    const ctx={agents:{list:()=>[parent],get:()=>undefined},
-      agentTeams:{tryMembership:()=>({role:'lead'}),membership:()=>({role:'lead'}),listMembers:()=>members,async spawnTeammate(_parent,request){spawns++;return {member:{id:'new',name:request.name}};}},
-      subagents:{registerProvider(p){providers.set(p.name,p);return noop;}},
+    const members=[{id:'old-large',name:'expensive',mode:'continuable',activity:'inactive'},{id:'unknown',name:'unknown',role:'teammate'},{id:'other',name:'other',role:'teammate',model:'target-other'}];
+    const ctx={agents:{list:()=>[parent],get:id=>id==='other'?{options:{model:'target-other'}}:undefined},
+      subagents:{
+        rootOf:()=>parent,resolveMaxDepth:()=>1,listDescendants:async()=>members,
+        async resolveName(_caller,reference){return members.find(member=>member.name===reference)?.id??reference;},
+        async startActivation(request){spawns++;return {childId:request.childId,name:request.name};},
+        registerProvider(p){providers.set(p.name,p);return noop;}
+      },
       llm:{listProviders:()=>[{id:'test'}],async listModels(){modelChecks++;return roles.map(r=>({id:r.model}));},resolveModelInfo:async()=>({})},
       provide(name,value){this[name]=value;},on:()=>noop,effect:fn=>fn(),webServer:{register:()=>noop},connection:{requestRejection:()=>undefined},
       skills:{snapshot:async()=>({complete:true,skills:[]})},workingDirectory:{defaultDirectory:dir}};
@@ -43,17 +47,17 @@ test('禁止目标在 native spawn 前拒绝，provider 入口也拒绝且不写
   await spawn.execute({role:app.roles[1].name,name:'allowed-mid',prompt:'test'},{agent:app.parent,signal});assert.equal(app.spawns,1);
   await app.providers.get('agent-role-'+app.roles[1].id).prepareContinuable({sessionId:'allowed-mid',parent:app.parent,signal});assert.equal(app.modelChecks,1);
 }));
-test('守卫阻止通用委派和唤醒历史昂贵成员；按实际请求模型动态切换',()=>setup(async app=>{
-  const guard=app.guards[0];
-  for(const name of ['spawn_teammate','subagent','subagent_fork']) assert.match(guard({name}),/请使用 spawn_role/);
-  assert.match(guard({name:'send_message',arguments:{target:'old-large'}}),/target-large/);
-  assert.match(guard({name:'send_message',arguments:{target:'unknown'}}),/无法确认/);
-  for(const name of ['read','list_agents','interrupt_agent']) assert.equal(guard({name}),undefined);
-  assert.equal(guard({name:'send_message',arguments:{target:'other'}}),undefined);
+test('守卫阻止通用委派与按名称或 session id 唤醒禁用模型；未知模型 fail closed',()=>setup(async app=>{
+  const guard=app.guards[0],send=app.listeners.get('tools/execute');
+  const message=reference=>send({name:'send_message',arguments:{agent:reference},signal:new AbortController().signal},async()=> 'accepted');
+  for(const name of ['spawn_teammate','subagent','subagent_fork'])assert.match(guard({name}),/请使用 spawn_role/);
+  for(const reference of ['expensive','old-large','unknown'])await assert.rejects(message(reference),reference!=='unknown'?/target-large/:/无法确认/);
+  for(const name of ['read','list_agents','interrupt_agent'])assert.equal(guard({name}),undefined);
+  assert.equal(await message('other'),'accepted');
   app.setModel('target-mid');assert.equal(guard({name:'spawn_teammate'}),undefined);
-  assert.equal(guard({name:'send_message',arguments:{target:'old-large'}}),undefined);
+  assert.equal(await message('old-large'),'accepted');
   await app.tools.get('spawn_role').execute({role:app.roles[2].name,name:'now-allowed',prompt:'test'},{agent:app.parent});assert.equal(app.spawns,1);
-  app.setModel('lead-small');assert.match(guard({name:'send_message',arguments:{target:'old-large'}}),/不允许调用/);
+  app.setModel('lead-small');await assert.rejects(message('old-large'),/不允许调用/);
 }));
 test('当轮提示目录用新选模型过滤，而非旧 header 或冻结 options',()=>setup(async app=>{
   const assemble=app.listeners.get('system-prompt/assemble');

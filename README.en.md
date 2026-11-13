@@ -33,6 +33,8 @@ npm install @delthin/dsh-global-pins
 npm install @delthin/dsh-cardex
 ```
 
+`agent-roles` 0.6.0 and later use the native Agent Team in DSH 0.2.2-rc.2. On DSH 0.2.2-rc.1, install `@delthin/dsh-agent-roles@0.5.1`.
+
 See each plugin's README for loading and configuration entry points. Restart DSH after first install or upgrades.
 
 ## Notes

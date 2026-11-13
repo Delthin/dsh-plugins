@@ -52,9 +52,10 @@ for (const slug of slugs) {
   }
   const fixture = await realpath(await mkdtemp(path.join(tmpdir(), 'dsh-plugin-pack-')));
   console.log('\nIsolated fixture: ' + pkg.name + ' -> ' + fixture);
+  const host = pkg.devDependencies?.['@deepseek-ai/dsh-agent'] ?? '0.2.2-rc.1';
   const dependencies = {...pkg.devDependencies};
   for (const name of Object.keys(pkg.peerDependencies ?? {})) {
-    if (name.startsWith('@deepseek-ai/dsh-')) dependencies[name] = '0.2.2-rc.1';
+    if (name.startsWith('@deepseek-ai/dsh-')) dependencies[name] = host;
     else if (name === '@deepseek-ai/cordis') dependencies[name] = '4.1.0';
     else if (name === '@deepseek-ai/schemastery') dependencies[name] = '3.19.0';
     else dependencies[name] ??= pkg.peerDependencies[name];
@@ -102,7 +103,7 @@ for (const slug of slugs) {
     if (entry.isDirectory() && ['test', 'fixtures'].includes(entry.name)) await cp(path.join(source, entry.name), path.join(installed, entry.name), {recursive:true});
   }
   run(npm, ['test'], installed, env);
-  results.push({name:pkg.name,version:pkg.version,tarball:packed.filename,files:files.size,integrity:packed.integrity,fixture});
+  results.push({name:pkg.name,version:pkg.version,tarball:packed.filename,files:files.size,integrity:packed.integrity,host,fixture});
 }
-await writeFile(path.join(output, 'validation.json'), JSON.stringify({node:process.version,host:'0.2.2-rc.1',packages:results}, null, 2) + '\n');
+await writeFile(path.join(output, 'validation.json'), JSON.stringify({node:process.version,hosts:[...new Set(results.map(result => result.host))],packages:results}, null, 2) + '\n');
 console.log(selected ? `\n${selected} tarball passed isolated imports and copied tests.` : '\nAll tarballs installed independently and passed runtime imports plus copied tests.');

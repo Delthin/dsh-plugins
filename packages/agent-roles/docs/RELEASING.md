@@ -35,7 +35,7 @@ This document describes pre-release verification, Changesets versioning, manual 
 
 The monorepo uses **Changesets** for independent package versioning rather than running `npm version` and manually editing lockfiles.
 
-1. Record user-facing changes with Changesets and update `packages/agent-roles/CHANGELOG.md`. Ensure compatibility notes accurately distinguish between minimum declared ranges (`Node.js >= 22.18.0` for this package, `Node.js >= 22.19.0` for the monorepo root, `engines.dsh >= 0.2.2-rc.1`) and actual tested environments.
+1. Record user-facing changes with Changesets and update `packages/agent-roles/CHANGELOG.md`. Ensure compatibility notes accurately distinguish between minimum declared ranges (`Node.js >= 22.18.0` for this package, `Node.js >= 22.19.0` for the monorepo root, `engines.dsh >= 0.2.2-rc.2`) and actual tested environments.
 2. Verify package metadata and workspace boundaries:
    - Keep `"private": true` in the monorepo root `package.json`.
    - Ensure `packages/agent-roles/package.json` has no `private` field, sets `"publishConfig": { "access": "public" }`, and includes both `LICENSE` and `LICENSE-MIT-legacy` in the packed files.
