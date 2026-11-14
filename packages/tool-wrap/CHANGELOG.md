@@ -1,5 +1,13 @@
 # Changelog / 变更日志
 
+## 1.3.3
+
+### Patch Changes
+
+- **CN**: 同一批动态会话状态合并为一条可展开记录，展开后按来源查看内容；历史会话沿用相同显示。
+
+  **EN**: Combine each batch of changing session context into one expandable record, with its sources and content available inside, including conversation history.
+
 ## 1.3.2
 
 ### Patch Changes

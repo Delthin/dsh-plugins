@@ -292,6 +292,23 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
               return value ? decodeURIComponent(value).trim() || null : null;
             } catch { return null; }
           };
+          const snapshotKey = message => {
+            const source = message.source;
+            return source.kind === 'prompt-composition' && source.version === 1 && source.placement === 'state' && source.operation === 'set'
+              && typeof source.snapshotKey === 'string' && source.snapshotKey.length > 0 && typeof source.contributionId === 'string' && source.contributionId.length > 0
+              && message.content.length > 0 && message.content.every(block => block.type === 'text' && typeof block.text === 'string') ? source.snapshotKey : null;
+          };
+          const mergeSnapshot = (state, message, sections = []) => {
+            let text = message.content.map(block => block.text).join('\n');
+            const body = text.indexOf('\n\n');
+            if (message.source.slot === 0 && text.startsWith('Updated prompt-composition state snapshot.') && body >= 0) text = text.slice(body + 2);
+            return {
+              ...state, form: 'snapshot',
+              content: sections.length ? [...state.content, ...message.content] : message.content,
+              producer: { ...state.producer, label: 'runtime-context' },
+              source: { ...state.source, form: 'snapshot', sections: [...sections, { name: label(message.source) || message.source.contributionId, text }] },
+            };
+          };
           let current, dispose;
           const update = () => {
             const native = events.entries().find(definition => definition.kind === 'input-message' && definition.target === 'chat');
@@ -304,11 +321,16 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
               match(event) {
                 if (event.type !== 'user/message' || event.data.source.kind !== 'prompt-composition' && !hidden(event.data)) return null;
                 const match = native.match(event);
-                return match ? { ...match, exclusive: true } : null;
+                const key = snapshotKey(event.data);
+                return match ? { ...match, id: key ? 'state:' + key : match.id, exclusive: true } : null;
               },
               start(context, match, reader) {
                 const state = native.start(context, match, reader), name = label(match.event.data.source);
+                if (snapshotKey(match.event.data)) return mergeSnapshot(state, match.event.data);
                 return state?.producer && name ? { ...state, producer: { ...state.producer, label: name } } : state;
+              },
+              update(context, match) {
+                return snapshotKey(match.event.data) ? mergeSnapshot(context.state, match.event.data, context.state.source.sections) : native.update(context, match);
               },
               buildViewNode(context) {
                 return hidden(context.start?.event.data) ? null : native.buildViewNode(context);

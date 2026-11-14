@@ -60,6 +60,37 @@ test('composition chat presentation hides bookkeeping, keeps native messages and
   const image = event({ kind: 'agent-instructions', compositionAuthority: true }, [{ type: 'image', url: 'image:test' }]);
   assert.equal(adapted().match(image), null, 'nonempty opaque content is retained');
   assert.equal(adapted().match({ ...projected('message:skill-catalog:catalog:'), surfaceOp: { op: 'replace', startSeq: 1, endSeq: 1 } }), null, 'respect native replacement visibility');
+  const snapshot = (key, slot, body) => {
+    const item = event({ kind: 'prompt-composition', version: 1, placement: 'state', operation: 'set', snapshotKey: key, slot, contributionId: 'context:host:source-' + slot }, [{ type: 'text', text: body }]);
+    return { ...item, seq: slot, data: { ...item.data, id: key + ':' + slot } };
+  };
+  const assemble = items => {
+    const contexts = new Map(), definition = adapted();
+    for (const item of items) {
+      const match = definition.match(item);
+      if (!match) continue;
+      let context = contexts.get(match.id);
+      if (!context) { context = { start: { event: item } }; context.state = definition.start(context, { ...match, event: item }, {}); contexts.set(match.id, context); }
+      else context.state = definition.update(context, { ...match, event: item });
+    }
+    return [...contexts.values()].map(context => definition.buildViewNode(context)).filter(Boolean);
+  };
+  const batch = Array.from({ length: 6 }, (_, slot) => snapshot('snapshot:100', slot, (slot === 0 ? 'Updated prompt-composition state snapshot. Latest generation.\nActive state sources: []\n\n' : '') + 'Body ' + slot));
+  const original = JSON.stringify(batch), merged = assemble(batch);
+  assert.equal(merged.length, 1, 'six state sources appear as one native snapshot row');
+  assert.equal(merged[0].data.form, 'snapshot');
+  assert.equal(merged[0].data.producer.label, 'runtime-context');
+  assert.deepEqual(JSON.parse(JSON.stringify(merged[0].data.source.sections)), batch.map((_, slot) => ({ name: 'source-' + slot, text: 'Body ' + slot })));
+  assert.equal(JSON.stringify(batch), original, 'aggregation cannot change model or persisted messages');
+  assert.deepEqual(JSON.parse(JSON.stringify(assemble(JSON.parse(original)))), JSON.parse(JSON.stringify(merged)), 'live arrival and serialized replay agree');
+  assert.equal(assemble(batch.slice(2))[0].data.source.sections.length, 4, 'a page beginning mid-snapshot still renders available sections');
+  assert.equal(assemble(batch)[0].data.source.sections.length, 6, 'backfilling the first page restores all sections');
+  const next = batch.map((_, slot) => snapshot('snapshot:200', slot, 'Next ' + slot));
+  assert.equal(assemble([...batch, ...next]).length, 2, 'different generations never merge');
+  const fixed = projected('message:skill-catalog:catalog:'); fixed.data.id = 'fixed-message';
+  assert.equal(assemble([...batch, fixed, ...next]).length, 3, 'fixed instructions retain a separate native row');
+  const opaque = snapshot('snapshot:300', 0, ''); opaque.data.content = [{ type: 'image', url: 'image:test' }];
+  assert.equal(render(opaque).data.content, opaque.data.content, 'opaque content is preserved without text-only aggregation');
   removeNative(); assert.equal(adapted(), undefined);
   events.register({ ...native }); assert.ok(adapted(), 'recover after native plugin reload');
   cleanups.reverse().forEach(dispose => dispose?.());
