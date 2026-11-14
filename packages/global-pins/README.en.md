@@ -40,7 +40,7 @@ The archive is written to `.cache/packs/`. Install the generated `.tgz` in the t
 
 ## Compatibility and privacy
 
-The declared minimum is `DSH >=0.2.2-rc.1`, with `Node.js >=22.19.0`. The current adapter targets DSH Web `0.2.2-rc.1` and is checked against Claude Style’s date view.
+The declared minimum is `DSH >=0.2.2-rc.1`, with `Node.js >=22.19.0`. The current adapter targets DSH Web `0.2.2-rc.1` and `0.2.2-rc.3` and is checked against Claude Style’s date view.
 
 That version has no public native-row rendering API. Through `shell.overlay`, this plugin places its section before `[data-slot="sidebar.workspaces"]` or inside the native scroll area. CSS layout lifts existing `[data-row-key="session:…"]` rows while preserving their React-owned parents: conversation nodes are neither reparented nor cloned. Recheck these DOM integration points after host upgrades or sidebar replacements.
 

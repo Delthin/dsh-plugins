@@ -193,7 +193,14 @@ test('native activation: committed tool executes once; frozen role survives fall
   assert.equal(h.ctx.agents.get(member.id),undefined,'settlement releases the native child before cold continuation');
   await h.roleMount.update({dataDir:h.directory,fastProviders:['backup'],delegationRules:[{leaderModel:'lead',denyModels:['second']}]});
   let deliveries=0;
-  for(const reference of [member.name,member.id])await assert.rejects(h.root.ctx.waterfall('tools/execute',{name:'send_message',arguments:{agent:reference,message:'blocked'},agent:h.root,signal:new AbortController().signal},async()=>{deliveries++;}),/不允许调用/);
+  h.ctx.tools.register(defineTool({name:'send_message',description:'Synthetic message delivery',parameters:{agent:{type:'string',required:true},message:{type:'string',required:true}},output:{schema:{type:'object',additionalProperties:true},render:()=>[]},execute:async()=>{deliveries++;return {};}}));
+  const allow=h.root.ctx.on('tools/pre-execute',async()=>({kind:'allow'}));
+  for(const reference of [member.name,member.id]) {
+    const batch=await h.ctx.tools.execute({calls:[{type:'tool-call',id:'blocked-message',name:'send_message',arguments:JSON.stringify({agent:reference,message:'blocked'})}],agent:h.root,signal:new AbortController().signal});
+    assert.equal(batch.results[0].result.isError,true);
+    assert.match(batch.results[0].result.error.message,/不允许调用/);
+  }
+  allow();
   assert.equal(deliveries,0,'native names and session-id aliases obey the same cold-model restriction');
   await h.roleMount.update({dataDir:h.directory,fastProviders:['backup'],delegationRules:[]});
   const continued=Promise.withResolvers();h.ctx.on('subagent/end',event=>continued.resolve(event));

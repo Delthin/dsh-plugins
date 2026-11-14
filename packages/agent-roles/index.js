@@ -225,20 +225,29 @@ export async function apply(ctx,config) {
     const descriptor=agent.session?.snapshotEvents?.().find(event=>event.type==='subagent/descriptor'&&agent.session.isOwnSeq(event.seq))?.data;
     if(descriptor&&[PREFIX,LEGACY_PREFIX].some(prefix=>descriptor.provider?.startsWith(prefix)))throw new Error('角色启动快照缺失，拒绝以主代理配置恢复成员');
     if(agent.session?.header?.origin==='subagent'||descriptor||ctx.subagents.rootOf(agent)!==agent)return;
-    add(agent.ctx.tools.guard(exec=>{
-      if(isRestricted(agent)&&['spawn_teammate','subagent','subagent_fork'].includes(exec.name))return '当前主代理有模型委派限制，请使用 spawn_role，由角色配置校验目标模型。';
-    }));
-    add(agent.ctx.on('tools/execute',async(exec,next)=>{
-      if(exec.name!=='send_message'||!isRestricted(agent))return next();
-      const id=await ctx.subagents.resolveName(agent,exec.arguments.agent,exec.signal);
-      if(id===agent.id)return next();
-      const member=(await ctx.subagents.listDescendants(agent.id,exec.signal)).find(member=>member.id===id);
-      const record=member&&(liveRecords.get(id)??store.run(id));
-      const model=member&&(record?.selection?.model??record?.role.model??currentModel(ctx.agents.get(id)));
-      if(!model)throw new Error('无法确认成员模型，当前委派策略禁止唤醒该成员。');
-      assertDelegation(agent,model);
+    const messageTargets=new WeakMap();
+    add(agent.ctx.on('tools/pre-execute',async(exec,next)=>{
+      if(exec.name==='send_message'&&isRestricted(agent)) {
+        const id=await ctx.subagents.resolveName(agent,exec.arguments.agent,exec.signal);
+        if(id===agent.id)messageTargets.set(exec,{id});
+        else {
+          const member=(await ctx.subagents.listDescendants(agent.id,exec.signal)).find(member=>member.id===id&&member.kind==='child');
+          if(!member)throw new Error('无法确认成员归属，当前委派策略禁止唤醒该成员。');
+          messageTargets.set(exec,member);
+        }
+      }
       return next();
     },{prepend:true}));
+    add(agent.ctx.tools.guard(exec=>{
+      if(!isRestricted(agent))return;
+      if(['spawn_teammate','subagent','subagent_fork'].includes(exec.name))return '当前主代理有模型委派限制，请使用 spawn_role，由角色配置校验目标模型。';
+      if(exec.name!=='send_message')return;
+      const member=messageTargets.get(exec);
+      if(member?.id===agent.id)return;
+      const record=member&&(liveRecords.get(member.id)??store.run(member.id));
+      const model=member&&(record?.selection?.model??record?.role.model??currentModel(ctx.agents.get(member.id)));
+      return model?delegationDenial(currentModel(agent),model,delegationRules()):'无法确认成员模型，当前委派策略禁止唤醒该成员。';
+    }));
     const directoryText=(model=currentModel(agent))=>{
       const rules=delegationRules();
       const roles=store.catalog.roles.filter(r=>r.enabled && roleModelChain(r).every(candidate=>!delegationDenial(model,candidate.model,rules)));
@@ -261,7 +270,11 @@ export async function apply(ctx,config) {
         for(const candidate of roleModelChain(role))assertDelegation(exec.agent,candidate.model);
         const sessionId=randomUUID();
         let activation;
-        try { activation=await ctx.subagents.startActivation({childId:sessionId,parent:exec.agent,name:args.name,label:role.description,prompt:[{type:'text',text:args.prompt}],provider:PREFIX+role.id,maxDepth:ctx.subagents.resolveMaxDepth(),delivery:'parent',signal:exec.signal}); }
+        try {
+          activation=await ctx.subagents.startActivation({childId:sessionId,parent:exec.agent,name:args.name,label:role.description,prompt:[{type:'text',text:args.prompt}],provider:PREFIX+role.id,maxDepth:ctx.subagents.resolveMaxDepth(),delivery:'parent',signal:exec.signal});
+          // Native delivery owns the outcome; observe infrastructure rejection.
+          void activation.result.catch(()=>undefined);
+        }
         catch(error) {
           const record=liveRecords.get(sessionId);
           if(record){record.status='failed';record.error??=String(error.message??error);observed(record);}

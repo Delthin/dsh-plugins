@@ -47,7 +47,7 @@ html body [data-dgp-native-pin][data-row-key]{position:fixed!important;left:var(
         const style = environment.getComputedStyle(current);
         if (['transform', 'perspective', 'filter', 'backdropFilter'].some(key => style[key] && style[key] !== 'none') ||
           /(?:paint|layout|strict|content)/.test(style.contain || '') || /(?:transform|perspective|filter)/.test(style.willChange || '') ||
-          style.contentVisibility === 'auto' || style.containerType && style.containerType !== 'normal') return false;
+          style.contentVisibility === 'auto') return false;
       }
       return true;
     };
@@ -70,7 +70,8 @@ html body [data-dgp-native-pin][data-row-key]{position:fixed!important;left:var(
       anchor = doc.querySelector('[data-slot="sidebar.workspaces"]');
       root = anchor?.parentElement ?? null;
       const tree = anchor?.querySelector('[role="tree"]');
-      scroller = tree && /^(auto|scroll)$/.test(environment.getComputedStyle(tree).overflowY) ? tree : null;
+      scroller = tree && (anchor.querySelector('[data-sidebar-list-area]') ??
+        (/^(auto|scroll)$/.test(environment.getComputedStyle(tree).overflowY) ? tree : null));
       parent = inside ? scroller : root;
       const previous = new Map(rows.map(entry => [entry.row, entry]));
       const available = new Map();
@@ -126,6 +127,11 @@ html body [data-dgp-native-pin][data-row-key]{position:fixed!important;left:var(
         write(entry.row.style, '--dgp-width', `${width / zoom}px`);
         write(entry.row.style, '--dgp-clip', `inset(${insets})`);
         if (!entry.row.hasAttribute(flag)) entry.row.setAttribute(flag, '');
+        // Container queries can establish a local fixed-position origin. Calibrate
+        // against the painted row so nested sidebar scrolling keeps viewport alignment.
+        const placed = entry.row.getBoundingClientRect();
+        write(entry.row.style, '--dgp-x', `${(2 * left - margin[3] - placed.left) / zoom}px`);
+        write(entry.row.style, '--dgp-y', `${(2 * top - margin[0] - placed.top) / zoom}px`);
       }
     };
     function schedule(rescan = false) {

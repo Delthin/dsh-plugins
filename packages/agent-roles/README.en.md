@@ -2,13 +2,13 @@
 
 [![npm](https://img.shields.io/npm/v/%40delthin%2Fdsh-agent-roles?style=flat-square)](https://www.npmjs.com/package/@delthin/dsh-agent-roles)
 [![Node](https://img.shields.io/node/v/%40delthin%2Fdsh-agent-roles?style=flat-square)](https://www.npmjs.com/package/@delthin/dsh-agent-roles)
-[![DSH](https://img.shields.io/badge/DSH-%E2%89%A50.2.2--rc.2-6366F1?style=flat-square)](https://dshmarket.com/)
+[![DSH](https://img.shields.io/badge/DSH-%E2%89%A50.2.2--rc.3-6366F1?style=flat-square)](https://dshmarket.com/)
 [![license](https://img.shields.io/badge/license-Apache--2.0-8A2BE2?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
 [![LINUX DO](https://img.shields.io/badge/LINUX%20DO-%E7%A4%BE%E5%8C%BA-FFB000?style=flat-square)](https://linux.do/)
 
 [中文](README.md) · [Changelog](CHANGELOG.md) · [Marketplace](https://dshmarket.com/zh/p/Delthin/dsh-plugins--packages-agent-roles/)
 
-Role management on top of the native DSH `>= 0.2.2-rc.2` Agent Team. A **role** is a reusable template holding a responsibility prompt, model and reasoning effort, tool whitelist, and skills; a **member** is a running instance the lead agent starts from a role. The lead sees all enabled roles and decides when to spawn members based on the task.
+Role management on top of the native DSH `>= 0.2.2-rc.3` Agent Team. A **role** is a reusable template holding a responsibility prompt, model and reasoning effort, tool whitelist, and skills; a **member** is a running instance the lead agent starts from a role. The lead sees all enabled roles and decides when to spawn members based on the task.
 
 First install ships an **empty role catalog** — no author presets. Upgrades keep your local data. The original standalone repo and its releases remain at [the old repository](https://github.com/Delthin/dsh-agent-roles) and [old releases](https://github.com/Delthin/dsh-agent-roles/releases).
 
@@ -20,7 +20,7 @@ npm install @delthin/dsh-agent-roles
 
 No scripts, no build step. Import and enable it via your host (e.g. `cordis.patch.yml`), refresh the web page, and an "Agents" entry appears in the left navigation; restart the web profile if it does not load. The plugin reuses the native team services, tools, and UI provided by the DSH base / Web profile. The lead delegates roles through `spawn_role`. When delegation restrictions apply, execution guards block generic `subagent` / `subagent_fork` calls. Native discovery, messaging, and waiting tools follow the active preset. Custom profiles must enable the host's native Agent Team first.
 
-Version `0.6.0` and later require DSH `>= 0.2.2-rc.2`. For DSH `0.2.2-rc.1`, install the compatible release: `npm install @delthin/dsh-agent-roles@0.5.1`.
+Version `0.6.1` and later require DSH `>= 0.2.2-rc.3`. For DSH `0.2.2-rc.1`, install the compatible release: `npm install @delthin/dsh-agent-roles@0.5.1`.
 
 ## Configuring roles
 
@@ -47,7 +47,7 @@ Each fallback entry picks its own provider, model, reasoning effort, and standar
 - The chain is frozen at startup; later role edits only affect new members. Roles without fallbacks keep single-model behavior. The member list shows the current model and switch history.
 - Cancelling or interrupting a member stops waiting and any further switching; it is treated as a cancellation, not a model-error switch.
 
-Fallback relies on the public model-selection and inbox APIs of DSH `>= 0.2.2-rc.2` and applies to host-normalized model request failures; exceptions thrown during preparation or tool execution end the run directly.
+Fallback relies on the public model-selection and inbox APIs of DSH `>= 0.2.2-rc.3` and applies to host-normalized model request failures; exceptions thrown during preparation or tool execution end the run directly.
 
 ## Skills and tool boundaries
 
@@ -86,7 +86,7 @@ Customize via the profile's `cordis.patch.yml` (model IDs below are example plac
 
 ## Limits
 
-Member and shared-task limits follow the host's native `agent-team` configuration; concurrency and delegation depth follow native subagent configuration. Role APIs reuse DSH web authentication with a 1 MiB body limit. Do not expose a logged-in DSH web session to untrusted users.
+Shared-task limits follow the host's native `agent-team` configuration; member execution, concurrency, and delegation depth follow native subagent configuration. Role APIs reuse DSH web authentication with a 1 MiB body limit. Do not expose a logged-in DSH web session to untrusted users.
 
 ## FAQ
 

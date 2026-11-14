@@ -11,8 +11,12 @@ import { createUserMessage, createAssistantMessage, createSystemMessage, createT
 import { CompositionStore, ownerId, instructionId, sourceId, effectiveRule, validateComposition, validateCapabilities } from '../prompt-composition.js';
 import * as discoveryPlugin from '../index.js';
 import { promptMessageDescriptor, commitPromptComposition, restorePromptComposition, hasPromptComposition, canAppendPromptCompositionSystem } from '../host-support/admission.js';
-import { PATCHES, patchSource } from '../host-support/patches.js';
+import { PATCHES_BY_VERSION, patchSource } from '../host-support/patches.js';
 import { hostFixture, fixturePlugin, temporaryDirectory, success, pluginIds, enabledConfig } from './fixture.js';
+
+const HOST_VERSION = JSON.parse(await readFile(fileURLToPath(import.meta.resolve('@deepseek-ai/dsh-system-prompt/package.json')), 'utf8')).version;
+const PATCHES = PATCHES_BY_VERSION[HOST_VERSION];
+assert.ok(PATCHES, `No audited patches for test host ${HOST_VERSION}`);
 
 const config = overrides => ({ version: 1, enabled: false, order: [], rules: {}, ...overrides });
 async function request(host, method = 'GET', value, headers = {}) {
@@ -731,7 +735,10 @@ test('composition bookkeeping preserves native incremental tool history while re
 });
 
 test('only one-to-one unprojected composition bookkeeping skips native content invalidation', async () => {
-  const { SurfaceManager } = await adaptedModule('@deepseek-ai/dsh-session', '', 'lib/types/surface.js');
+  const [{ Session }, { SurfaceManager }] = await Promise.all([
+    adaptedModule('@deepseek-ai/dsh-session'),
+    adaptedModule('@deepseek-ai/dsh-session', '', 'lib/types/surface.js'),
+  ]);
   const hidden = () => createUserMessage({ content: [], source: { kind: 'prompt-composition-state' } });
   const visible = () => createUserMessage({ content: [{ type: 'text', text: 'VISIBLE' }], source: { kind: 'user' } });
   for (const kind of ['hidden', 'visible-to-hidden', 'hidden-to-visible', 'generic-empty', 'range', 'projected']) {
@@ -748,6 +755,24 @@ test('only one-to-one unprojected composition bookkeeping skips native content i
     assert.equal(surface.contentGeneration, before + (kind === 'hidden' ? 0 : 1), kind);
     assert.equal(surface.replaceGeneration, replaced + 1, kind);
   }
+  if (HOST_VERSION === '0.2.2-rc.3') for (const kind of ['hidden', 'visible-to-hidden', 'hidden-to-visible']) {
+    const session = new Session('bookkeeping-batch-' + kind);
+    session.append('user/message', visible(), { surfaceOp: 'append' });
+    const log = [...session.snapshotEvents()], surface = new SurfaceManager(log);
+    const startSeq = session.seq;
+    session.append([
+      ['user/message', kind === 'visible-to-hidden' ? visible() : hidden(), { surfaceOp: 'append' }],
+      ['user/message', kind === 'hidden-to-visible' ? visible() : hidden(), { surfaceOp: { op: 'replace', startSeq, endSeq: startSeq }, sourceEventSeqs: [startSeq] }],
+    ]);
+    const candidates = session.snapshotEvents().slice(startSeq), accept = surface.prepareBatch(candidates);
+    log.push(...candidates); accept();
+    const generation = kind === 'hidden' ? 0 : 1;
+    assert.equal(session.surface.contentGeneration, generation, 'server batch: ' + kind);
+    assert.equal(surface.contentGeneration, generation, 'browser batch: ' + kind);
+    assert.equal(new SurfaceManager(log).contentGeneration, generation, 'batch replay: ' + kind);
+    assert.deepEqual(surface.nodes, session.surface.nodes);
+    assert.deepEqual(Session.create('batch-replay', log).deriveMessages(), session.deriveMessages());
+  }
 });
 
 // Real risks: host file corruption/partial restore and losing budgeted AGENTS boundaries.
@@ -757,8 +782,10 @@ test('audited host assets preserve budgeted file identities and apply/restore on
   for (const patch of PATCHES) {
     const dir = join(root, 'node_modules', patch.name);
     await mkdir(dirname(join(dir, patch.file ?? 'lib/index.js')), { recursive: true });
-    await writeFile(join(dir, 'package.json'), JSON.stringify({ name: patch.name, version: '0.2.2-rc.1', type: 'module' }));
-    await writeFile(join(dir, patch.file ?? 'lib/index.js'), await originalSource(patch));
+    await writeFile(join(dir, 'package.json'), JSON.stringify({ name: patch.name, version: HOST_VERSION, type: 'module' }));
+    const source = await originalSource(patch);
+    assert.equal(createHash('sha256').update(source).digest('hex'), patch.sha256, `${patch.name}/${patch.file ?? 'lib/index.js'} audited source`);
+    await writeFile(join(dir, patch.file ?? 'lib/index.js'), source);
   }
   const cli = fileURLToPath(new URL('../host-support/adapter.mjs', import.meta.url));
   const run = mode => spawnSync(process.execPath, [cli, mode, '--root', root, '--backup', backup], { encoding: 'utf8' });
@@ -830,6 +857,13 @@ test('audited host assets preserve budgeted file identities and apply/restore on
   assert.ok(rendered.truncated.length);
   assert.equal(rendered.compositionSections[0].key, file.absolutePath);
   assert.ok(rendered.compositionSections[0].text.length < file.content.length);
+  for (const maxBytes of [1, 150, 250, 400, 650]) {
+    const result = patchedInstructions.renderAgentInstructions([file], { maxBytes });
+    assert.equal(result.compositionSections[0].text, result.text, 'preserve the native compact/budget fallback at ' + maxBytes + ' bytes');
+    assert.ok(Buffer.byteLength(result.compositionSections[0].text) <= maxBytes);
+  }
+  const multiple = patchedInstructions.renderAgentInstructions([file, { ...file, absolutePath: '/fixture/project-a/src/AGENTS.md', displayPath: 'src/AGENTS.md' }], { maxBytes: 20000 });
+  assert.equal(multiple.compositionSections.filter(section => section.text.includes('The following workspace instructions')).length, 1, 'render the selected intro once across file blocks');
   const other = patchedInstructions.renderAgentInstructions([{ ...file, absolutePath: '/fixture/project-b/AGENTS.md' }], { maxBytes: 650 });
   assert.notEqual(other.compositionSections[0].key, rendered.compositionSections[0].key);
 });

@@ -1,5 +1,11 @@
 # Changelog / 变更日志
 
+## 1.3.1
+
+### Patch Changes
+
+- Add a version-isolated DSH 0.2.2-rc.3 prompt-composition adapter while retaining rc.1 support. Preserve native instruction budgets, render workspace introductions once, and keep incremental session history stable during batched bookkeeping updates.
+
 ## 1.3.0
 
 ### Minor Changes

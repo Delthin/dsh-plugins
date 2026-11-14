@@ -19,12 +19,12 @@ async function setup(fn,config={delegationRules:rules}) {
       tools:{guard(fn){guards.push(fn);return noop;},register(tool){tools.set(tool.name,tool);return noop;}},
       systemPrompt:{context:()=>noop},on(name,fn){listeners.set(name,fn);return noop;}
     }};
-    const members=[{id:'old-large',name:'expensive',mode:'continuable',activity:'inactive'},{id:'unknown',name:'unknown',role:'teammate'},{id:'other',name:'other',role:'teammate',model:'target-other'}];
+    const members=[{id:'old-large',name:'expensive',kind:'child',mode:'continuable',activity:'inactive'},{id:'unknown',name:'unknown',kind:'child'},{id:'other',name:'other',kind:'child',model:'target-other'},{id:'diagnostic',name:'diagnostic',kind:'unavailable'}];
     const ctx={agents:{list:()=>[parent],get:id=>id==='other'?{options:{model:'target-other'}}:undefined},
       subagents:{
         rootOf:()=>parent,resolveMaxDepth:()=>1,listDescendants:async()=>members,
         async resolveName(_caller,reference){return members.find(member=>member.name===reference)?.id??reference;},
-        async startActivation(request){spawns++;return {childId:request.childId,name:request.name};},
+        async startActivation(request){spawns++;return {childId:request.childId,name:request.name,result:Promise.resolve({stopReason:'completed'})};},
         registerProvider(p){providers.set(p.name,p);return noop;}
       },
       llm:{listProviders:()=>[{id:'test'}],async listModels(){modelChecks++;return roles.map(r=>({id:r.model}));},resolveModelInfo:async()=>({})},
@@ -48,12 +48,20 @@ test('禁止目标在 native spawn 前拒绝，provider 入口也拒绝且不写
   await app.providers.get('agent-role-'+app.roles[1].id).prepareContinuable({sessionId:'allowed-mid',parent:app.parent,signal});assert.equal(app.modelChecks,1);
 }));
 test('守卫阻止通用委派与按名称或 session id 唤醒禁用模型；未知模型 fail closed',()=>setup(async app=>{
-  const guard=app.guards[0],send=app.listeners.get('tools/execute');
-  const message=reference=>send({name:'send_message',arguments:{agent:reference},signal:new AbortController().signal},async()=> 'accepted');
+  const guard=app.guards[0],before=app.listeners.get('tools/pre-execute');
+  const message=async(reference,next=async()=>({kind:'allow'}))=>{
+    const exec={name:'send_message',arguments:{agent:reference},signal:new AbortController().signal};
+    await before(exec,next);
+    const reason=guard(exec);if(reason)throw new Error(reason);
+    return 'accepted';
+  };
   for(const name of ['spawn_teammate','subagent','subagent_fork'])assert.match(guard({name}),/请使用 spawn_role/);
   for(const reference of ['expensive','old-large','unknown'])await assert.rejects(message(reference),reference!=='unknown'?/target-large/:/无法确认/);
   for(const name of ['read','list_agents','interrupt_agent'])assert.equal(guard({name}),undefined);
-  assert.equal(await message('other'),'accepted');
+  assert.equal(await message('other'),'accepted');assert.equal(await message(app.parent.id),'accepted');
+  for(const reference of ['outside-tree','diagnostic'])await assert.rejects(message(reference),/无法确认成员归属/);
+  app.setModel('target-mid');
+  await assert.rejects(message('old-large',async()=>{app.setModel('lead-small');return {kind:'allow'};}),/无法确认成员模型/);
   app.setModel('target-mid');assert.equal(guard({name:'spawn_teammate'}),undefined);
   assert.equal(await message('old-large'),'accepted');
   await app.tools.get('spawn_role').execute({role:app.roles[2].name,name:'now-allowed',prompt:'test'},{agent:app.parent});assert.equal(app.spawns,1);

@@ -1,6 +1,6 @@
 {
   "name": "@delthin/dsh-global-pins",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "Show pinned DSH conversations from multiple workspaces together in the sidebar.",
   "license": "Apache-2.0",

@@ -1,6 +1,6 @@
 # Prompt composition host adapter
 
-This directory is an explicit, reversible local host adaptation, not a public DSH API and not an npm lifecycle action. The plugin supports hosts at or above its declared minimum; this adapter only accepts the exact audited 0.2.2-rc.1 file shape. The Lead must review and explicitly apply it. It never restarts a process.
+This directory is an explicit, reversible local host adaptation, not a public DSH API and not an npm lifecycle action. The plugin supports hosts at or above its declared minimum; this adapter only accepts the exact audited 0.2.2-rc.1 and 0.2.2-rc.3 file shapes. The Lead must review and explicitly apply it. It never restarts a process.
 
 ## UI/backend contract
 
@@ -39,7 +39,7 @@ node host-support/adapter.mjs --check --root <installation-root> --backup <exist
 node host-support/adapter.mjs --apply --root <installation-root> --backup <existing-backup-directory>
 ```
 
-Review the check before applying. The existing manifest authenticates an upgrade from the previously installed helper and preserves original host backups. After application, the user restarts DSH and refreshes the browser. A DSH package upgrade may replace patched host files; check against the newly installed host before reapplying.
+Review the check before applying. The existing manifest authenticates an upgrade from the previously installed helper and preserves original host backups. After application, the user restarts DSH and refreshes the browser. A DSH package upgrade may replace patched host files; check against the newly installed host before reapplying. The adapter selects its audited profile from the installed package version and rejects mixed versions or unknown hashes. Keep the same backup directory for updates within one host version. When changing host versions, omit `--backup` to use the version-specific default (the legacy `.tool-wrap-host-adapter-v1` for rc1 and `.tool-wrap-host-adapter-v1-0.2.2-rc.3` for rc3), or choose a fresh directory; never reuse another host version's originals. The rc3 profile uses `runtimeContext.project(sections)` and reads pending batch candidates during bookkeeping checks. AGENTS contributions preserve native compact/budget fallbacks and include the introduction only once.
 
 The prefix-preservation rules and the repaired history rewrites are summarized in the [English README](<../README.en.md#automatic-updates-and-cache-prefixes>) and [Chinese README](<../README.md#自动更新与缓存前缀>).
 

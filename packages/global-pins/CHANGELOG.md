@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+### Patch Changes
+
+- Fix pinned-conversation visibility and positioning in the DSH 0.2.2-rc.3 sidebar, including container-query layouts and scrolling inside the workspace list. Retain rc.1 layout compatibility.
+
 ## 0.2.1
 
 ### Patch Changes

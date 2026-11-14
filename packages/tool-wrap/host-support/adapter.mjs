@@ -3,7 +3,7 @@ import { readFile, writeFile, rename, mkdir, realpath, lstat, unlink } from 'nod
 import { resolve, join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
-import { PATCHES, HOST_VERSION, patchSource } from './patches.js';
+import { PATCHES_BY_VERSION, HOST_VERSION, patchSource } from './patches.js';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 const here = dirname(fileURLToPath(import.meta.url));
@@ -28,14 +28,17 @@ for (let index = 0; index < args.length; index++) {
 }
 if (!options.mode || !options.root) throw new Error('Usage: adapter.mjs --check|--apply|--restore --root <installation-root> [--backup <backup-directory>]');
 const root = await realpath(resolve(options.root));
-const backup = resolve(options.backup ?? join(root, '.tool-wrap-host-adapter-v1'));
-if (backup === root || backup.startsWith(join(root, 'node_modules') + sep)) throw new Error('Backup must be outside node_modules and not the installation root');
-const manifestPath = join(backup, 'manifest.json');
 const targetOf = path => {
   const target = resolve(root, path);
   if (!target.startsWith(join(root, 'node_modules', '@deepseek-ai') + sep)) throw new Error('Invalid target outside audited host packages');
   return target;
 };
+const hostVersion = JSON.parse(await readRegular(targetOf('node_modules/@deepseek-ai/dsh-system-prompt/package.json'))).version;
+const PATCHES = PATCHES_BY_VERSION[hostVersion];
+if (!PATCHES) throw new Error(`Unsupported host version ${hostVersion}; this local adapter only audits ${Object.keys(PATCHES_BY_VERSION).join(', ')}`);
+const backup = resolve(options.backup ?? join(root, '.tool-wrap-host-adapter-v1' + (hostVersion === HOST_VERSION ? '' : '-' + hostVersion)));
+if (backup === root || backup.startsWith(join(root, 'node_modules') + sep)) throw new Error('Backup must be outside node_modules and not the installation root');
+const manifestPath = join(backup, 'manifest.json');
 
 async function restore(manifest) {
   if (manifest.version !== 1 || manifest.root !== root || !Array.isArray(manifest.files) || manifest.files.length !== PATCHES.length) throw new Error('Invalid restoration manifest');
@@ -68,7 +71,7 @@ if (options.mode === '--restore') {
   for (const [index, patch] of PATCHES.entries()) {
     const packageDir = targetOf(`node_modules/${patch.name}`);
     const info = JSON.parse(await readRegular(join(packageDir, 'package.json')));
-    if (info.name !== patch.name || info.version !== HOST_VERSION) throw new Error(`Unsupported ${patch.name} version; this local adapter only audits ${HOST_VERSION}`);
+    if (info.name !== patch.name || info.version !== hostVersion) throw new Error(`Unsupported ${patch.name} version; expected audited host ${hostVersion}`);
     if (await realpath(packageDir) !== packageDir) throw new Error('Refusing a linked host package outside this installation');
     const path = `node_modules/${patch.name}/${patch.file ?? 'lib/index.js'}`, target = targetOf(path);
     const current = await readRegular(target);
@@ -89,7 +92,7 @@ if (options.mode === '--restore') {
     const recordedHelper = prior?.root === root && prior.helper?.path === helperPath && prior.helper.sha256 === currentHash;
     if (currentHash !== digest(helper) && !recordedHelper) throw new Error('Admission helper target already exists with different content');
   }
-  console.log(`Validated ${prepared.length} audited ${HOST_VERSION} packages and all patch anchors.`);
+  console.log(`Validated ${prepared.length} audited ${hostVersion} host files and all patch anchors.`);
   if (options.mode === '--apply') {
     if (prior && prior.root !== root) throw new Error('Backup directory belongs to another installation');
     await mkdir(backup, { recursive: true, mode: 0o700 });

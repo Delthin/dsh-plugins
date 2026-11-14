@@ -46,6 +46,7 @@ function fixture({ zoom = 1.15, currentZoom = true, resizeObserver = true } = {}
     matches(selector) {
       if (selector === '[data-slot="sidebar.workspaces"]') return this.getAttribute('data-slot') === 'sidebar.workspaces';
       if (selector === '[role="tree"]') return this.getAttribute('role') === 'tree';
+      if (selector === '[data-sidebar-list-area]') return this.hasAttribute('data-sidebar-list-area');
       if (selector === '[data-row-key^="session:"]') return this.getAttribute('data-row-key')?.startsWith('session:') ?? false;
       if (selector === `[${flag}]`) return this.hasAttribute(flag);
       throw new Error(`Unexpected selector: ${selector}`);
@@ -64,6 +65,9 @@ function fixture({ zoom = 1.15, currentZoom = true, resizeObserver = true } = {}
       } else if (this.hasAttribute(flag)) {
         left = Number.parseFloat(this.style.getPropertyValue('--dgp-x'));
         top = Number.parseFloat(this.style.getPropertyValue('--dgp-y'));
+        for (let node = this.parentElement; node; node = node.parentElement) {
+          left += node.fixedOriginX ?? 0; top += node.fixedOriginY ?? 0;
+        }
         width = Number.parseFloat(this.style.getPropertyValue('--dgp-width'));
       }
       return { left: left * zoom, top: top * zoom, right: (left + width) * zoom, bottom: (top + height) * zoom, width: width * zoom, height: height * zoom };
@@ -94,7 +98,7 @@ function fixture({ zoom = 1.15, currentZoom = true, resizeObserver = true } = {}
   const window = {
     innerWidth: 1200, innerHeight: 900,
     __ModuleLoader__: { load(value) { window.module = value; } },
-    getComputedStyle(node) { return { zoom: node === body ? String(zoom) : '1', overflowY: node.overflowY ?? 'visible', transform: node.transform ?? 'none', perspective: 'none', filter: 'none', backdropFilter: 'none', contain: 'none', willChange: 'auto', containerType: 'normal', contentVisibility: 'visible', marginTop: '0px', marginRight: '0px', marginBottom: '0px', marginLeft: '0px' }; },
+    getComputedStyle(node) { return { zoom: node === body ? String(zoom) : '1', overflowY: node.overflowY ?? 'visible', transform: node.transform ?? 'none', perspective: 'none', filter: 'none', backdropFilter: 'none', contain: 'none', willChange: 'auto', containerType: node.containerType ?? 'normal', contentVisibility: 'visible', marginTop: '0px', marginRight: '0px', marginBottom: '0px', marginLeft: '0px' }; },
     requestAnimationFrame(callback) { const id = ++nextFrame; frames.set(id, callback); return id; },
     cancelAnimationFrame(id) { frames.delete(id); },
     addEventListener(type, listener) { windowListeners.set(type, listener); },
@@ -292,6 +296,31 @@ test('placement switches only owned spacers, inside scrolling clips native rows,
   assert.equal(f.observers.filter(observer => observer.active).length, 1);
   f.dispose();
   assert.equal(f.documentListeners.size, 0); assert.equal(f.windowListeners.size, 0);
+});
+
+test('rc3 list-area scrolling and container-query origins keep native pins aligned in both placements', () => {
+  const f = fixture(), a = f.nativeRows.get('a');
+  const listArea = new f.Element('rc3-list-area');
+  listArea.setAttribute('data-sidebar-list-area', '');
+  listArea.overflowY = 'hidden'; listArea.height = 400;
+  f.anchor.append(listArea); listArea.append(f.tree); f.tree.overflowY = 'visible';
+  f.root.containerType = 'size'; listArea.containerType = 'scroll-state';
+  f.root.fixedOriginX = 12; f.root.fixedOriginY = 73;
+  f.render(); f.flush();
+  assert.equal(f.host.hidden, false);
+  close(a.row.getBoundingClientRect().left, f.viewport.getBoundingClientRect().left);
+  close(a.row.getBoundingClientRect().top, f.viewport.getBoundingClientRect().top);
+  f.root.fixedOriginY -= 40; f.scroll(f.root);
+  close(a.row.getBoundingClientRect().top, f.viewport.getBoundingClientRect().top);
+  f.updateConfig({ value: { placement: 'inside' } }); f.render(); f.flush();
+  assert.equal(listArea.firstChild, f.host);
+  assert.equal(a.row.parentNode, a.wrapper);
+  const before = a.row.getBoundingClientRect().top;
+  listArea.scrollTop = 70; f.scroll(listArea);
+  close(before - a.row.getBoundingClientRect().top, 70 * 1.15);
+  assert.notEqual(a.row.style.getPropertyValue('--dgp-clip'), 'inset(0px 0px 0px 0px)');
+  f.dispose();
+  assert.equal(a.row.hasAttribute(flag), false);
 });
 
 test('exposes only placement, preserves receiver-bound official config writes and legacy density, and retains rejected edits for retry', async () => {

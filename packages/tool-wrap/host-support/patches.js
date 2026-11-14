@@ -43,7 +43,7 @@ export const PATCHES = [
     path: file.displayPath,
     action: file.compositionAction ?? "set",
     scope: isUserGlobalInstruction(file) ? "global" : "project",
-    text: buildInstructionText([file], maxBytes, index === 0 ? rendered.omitted : [], rendered.truncated.filter(item => item.displayPath === file.displayPath), style)
+    text: rendered.sections.length === 1 ? rendered.text : buildInstructionText([file], maxBytes, index === 0 ? rendered.omitted : [], rendered.truncated.filter(item => item.displayPath === file.displayPath), { ...style, intro: index === 0 ? rendered.intro ?? "" : "" })
   }));
   if (!blocks.length && rendered.text) blocks.push({ key: "budget:" + instructionContentSha1(JSON.stringify(rendered.omitted.map(file => file.absolutePath))), path: "@instruction-budget", action: "set", scope: "project", text: rendered.text });
   return blocks;
@@ -88,6 +88,24 @@ function renderAgentInstructionSet(files, options) {`],
     ],
   },
 ];
+
+// rc3 retains the audited admission/session boundaries and takes context sections directly.
+const rc3Hashes = [
+  '619c2f5d6291377e85eb2a682476ab5fa96a2c5e03230fbf0ed6c4d06fa704ac',
+  'f09f60814d4e96a880f41b9fc3832f33c56a28f954f48810d8439ce83ad6ffa8',
+  'afbd526d1e3126a368774f24105140adc3ef532ca4aa93cfa0fb1318d5b9b75d',
+  'd9911b5e1585bcb142d03ce46eb2990b3fc7c254de5a76d3ffb124bd2469216c',
+  '1751d34a34f53106dcc8d5d8e816d04878bc4cc9365722c6c50c2be67571c352',
+];
+export const PATCHES_BY_VERSION = {
+  [HOST_VERSION]: PATCHES,
+  '0.2.2-rc.3': PATCHES.map((patch, index) => ({
+    ...patch, sha256: rc3Hashes[index],
+    edits: patch.edits.map(edit => edit.map(value => typeof value === 'string'
+      ? value.replaceAll('this.runtimeContext.project(joinContextSections(sections), sections)', 'this.runtimeContext.project(sections)')
+        .replaceAll('events[range.shadowedSeqs[0] - baseSeq]', 'read(range.shadowedSeqs[0])') : value)),
+  })),
+};
 
 export function patchSource(source, patch) {
   let output = source;

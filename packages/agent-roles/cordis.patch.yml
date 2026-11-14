@@ -1,10 +1,7 @@
-# Native Team lifecycle and tools; no custom model loop.
-- id: tool-subagent-list-agents
-  disabled: true
-- id: tool-subagent
-  disabled: true
-- id: tool-subagent-fork
-  disabled: true
+# Reuse native member tools and enable the shared task board.
+- id: agent-team
+  config:
+    defaultEnabled: true
 - insert:
     - id: agent-roles
       name: '@delthin/dsh-agent-roles'

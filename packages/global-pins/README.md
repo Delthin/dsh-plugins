@@ -40,7 +40,7 @@ npm run check:pack -- --package=global-pins
 
 ## 兼容与安全
 
-最低宿主声明为 `DSH >=0.2.2-rc.1`，Node.js 要求为 `>=22.19.0`。当前适配对象是 DSH Web `0.2.2-rc.1`，已对照 Claude Style 的日期视图验收。
+最低宿主声明为 `DSH >=0.2.2-rc.1`，Node.js 要求为 `>=22.19.0`。当前适配对象是 DSH Web `0.2.2-rc.1` 和 `0.2.2-rc.3`，已对照 Claude Style 的日期视图验收。
 
 该版本没有公开的原生行渲染接口。插件通过 `shell.overlay` 接入，在 `[data-slot="sidebar.workspaces"]` 前方或其原生滚动列表内设置置顶区，以 CSS 布局提升现有 `[data-row-key="session:…"]` 行，保留 React 管理的原父节点，不搬走或克隆会话节点。宿主升级或更换侧栏后需验证这些 DOM 适配点。
 

@@ -34,23 +34,23 @@ assert.deepEqual(pkg.dsh.client.inject,[
   '@deepseek-ai/dsh-client-ui-primitives','@deepseek-ai/dsh-client-ui-layout',
   '@deepseek-ai/dsh-client-ui-sidebar','@deepseek-ai/dsh-client-ui-workspace',
 ]);
-assert.equal(pkg.engines.dsh,'>=0.2.2-rc.2');
-assert.equal(evaluatePluginCompatibility(pkg,{},'0.2.2-rc.2'),undefined,'Native rc.2 host must accept the package');
-assert.deepEqual(evaluatePluginCompatibility(pkg,{},'0.2.2-rc.1')?.requirements,{'engines.dsh':pkg.engines.dsh},'Earlier hosts must reject the package before installation');
+assert.equal(pkg.engines.dsh,'>=0.2.2-rc.3');
+assert.equal(evaluatePluginCompatibility(pkg,{},'0.2.2-rc.3'),undefined,'Native rc.3 host must accept the package');
+assert.deepEqual(evaluatePluginCompatibility(pkg,{},'0.2.2-rc.2')?.requirements,{'engines.dsh':pkg.engines.dsh},'Earlier hosts must reject the package before installation');
 assert.equal(pkg.engines.node,'>=22.18.0');
 assert.equal(pkg.peerDependencies['@deepseek-ai/cordis'],'>=4.1.0');
 assert.equal(pkg.peerDependencies['@deepseek-ai/schemastery'],'>=3.19.0');
 for(const [name,range] of Object.entries({...pkg.dependencies,...pkg.peerDependencies,...pkg.optionalDependencies})){
   assert.ok(!name.includes('experimental-agent-team')&&!name.includes('experimental-tool-agent-team')&&!name.includes('experimental-client-ui-agent-team'),'Experimental Team must not be installed: '+name);
-  if(name.startsWith('@deepseek-ai/dsh-'))assert.equal(range,'>=0.2.2-rc.2','DSH dependency must support the verified native Team API: '+name);
+  if(name.startsWith('@deepseek-ai/dsh-'))assert.equal(range,'>=0.2.2-rc.3','DSH dependency must support the verified native Team API: '+name);
 }
 for(const [name,version] of Object.entries(pkg.devDependencies)){
-  if(name.startsWith('@deepseek-ai/dsh-'))assert.equal(version,'0.2.2-rc.2','Tests must run against the native rc.2 API: '+name);
+  if(name.startsWith('@deepseek-ai/dsh-'))assert.equal(version,'0.2.2-rc.3','Tests must run against the native rc.3 API: '+name);
 }
 const patch=await read('cordis.patch.yml');
 assert.match(patch,/- id: agent-roles\s+name: '@delthin\/dsh-agent-roles'/);
 assert.doesNotMatch(patch,/name:\s*['"]?@deepseek-ai\/dsh-(?:experimental-)?(?:agent-team|tool-agent-team|client-ui-agent-team)/,'The bundle must reuse the host Team, not mount a second instance');
-assert.doesNotMatch(patch,/id:\s*tool-subagent-control\s+disabled:\s*true/,'Native discovery, messaging and waiting tools must remain enabled');
+assert.doesNotMatch(patch,/disabled:\s*true/,'Preset-owned native subagent tools must remain enabled');
 const source=await read('index.js');
 assert.match(source,/store\.load\(\[\]\)/,'Fresh installs must have an empty catalog');
 assert.doesNotMatch(source,/seed-roles/,'Private seeds must not be loaded');

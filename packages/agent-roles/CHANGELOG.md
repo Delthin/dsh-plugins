@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1
+
+### Patch Changes
+
+- Adapt role dispatch and frozen launch policies to DSH 0.2.2-rc.3 while preserving model fallback, tool restrictions and member history. Require DSH 0.2.2-rc.3 or later.
+
 ## 0.6.0
 
 ### Minor Changes

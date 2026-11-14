@@ -65,7 +65,7 @@ The settings page shows before/after comparisons for PTC tool-description projec
 
 ## Prompt composition (advanced)
 
-With "prompt composition" enabled you can adjust roles, ordering, and load strategies per prompt section; changes apply to subsequent requests. Full composition (including pack descriptions entering real system/user messages) requires an explicit host adaptation: see [host-support](host-support/README.md). The adapter only accepts audited `0.2.2-rc.1` file shapes and must be reviewed and run manually with a backup; installing from npm does not perform the adaptation. Without it, all known sources and limitation reasons are still shown, but unified composition stays unavailable.
+With "prompt composition" enabled you can adjust roles, ordering, and load strategies per prompt section; changes apply to subsequent requests. Full composition (including pack descriptions entering real system/user messages) requires an explicit host adaptation: see [host-support](host-support/README.md). The adapter only accepts audited `0.2.2-rc.1` and `0.2.2-rc.3` file shapes and must be reviewed and run manually with a backup; installing from npm does not perform the adaptation. Without it, all known sources and limitation reasons are still shown, but unified composition stays unavailable.
 
 Composition config lives separately in `prompt-composition.json` and is off by default; existing `prompt-order.json` priorities are migrated and the original file kept.
 
