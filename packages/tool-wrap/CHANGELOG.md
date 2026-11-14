@@ -1,5 +1,12 @@
 # Changelog / 变更日志
 
+## 1.3.2
+
+### Patch Changes
+
+- **CN**: 对话隐藏提示词编排的空占位与内部控制记录，有效注入按真实来源名称显示；重新打开历史会话时沿用相同显示。
+- **EN**: Hide empty prompt-composition placeholders and internal control records in chat, and show the actual source names for visible injections, including reopened conversations.
+
 ## 1.3.1
 
 ### Patch Changes
@@ -24,9 +31,6 @@ All notable verified changes to `@delthin/dsh-tool-wrap` are documented in this 
 本文件记录 `@delthin/dsh-tool-wrap` 已核实的主要变更。
 
 ## Unreleased / 未发布
-
-- **CN**: 对话隐藏提示词编排的空占位与内部控制记录，有效注入按真实来源名称显示；重新打开历史会话时沿用相同显示。
-- **EN**: Hide empty prompt-composition placeholders and internal control records in chat, and show the actual source names for visible injections, including reopened conversations.
 
 - **CN**: 新增兼容的 `unwrap({ format: "schema" })` 精简结果，保留完整原始 Schema 并省略重复 SDK；独立工具目录按名称稳定排序。
 - **EN**: Add opt-in schema-only unwrap results without losing original constraints; retain the legacy full result by default and sort standalone directory entries deterministically.
