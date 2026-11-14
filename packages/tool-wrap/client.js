@@ -278,6 +278,49 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
+        ctx.inject?.(['uiConversation'], scope => {
+          const events = scope.uiConversation.events;
+          if (!events?.entries || !events.subscribe || !events.register) return;
+          const hidden = message => message && (message.content.length === 0 && message.source.kind !== 'user'
+            && (['prompt-composition', 'prompt-composition-cleared', 'prompt-composition-state'].includes(message.source.kind) || message.source.compositionAuthority === true)
+            || message.source.kind === 'prompt-composition' && message.source.placement === 'state' && message.source.operation === 'remove' && message.source.contributionId === '');
+          const label = source => {
+            if (typeof source.contributionId !== 'string') return null;
+            const [kind, owner, name] = source.contributionId.split(':');
+            try {
+              const value = kind === 'instructions' || kind === 'message' ? owner : kind === 'context' || kind === 'section' ? name : '';
+              return value ? decodeURIComponent(value).trim() || null : null;
+            } catch { return null; }
+          };
+          let current, dispose;
+          const update = () => {
+            const native = events.entries().find(definition => definition.kind === 'input-message' && definition.target === 'chat');
+            if (native === current) return;
+            current = native;
+            dispose?.(); dispose = undefined;
+            if (!native) return;
+            dispose = events.register({
+              ...native, kind: 'tool-wrap/context-message',
+              match(event) {
+                if (event.type !== 'user/message' || event.data.source.kind !== 'prompt-composition' && !hidden(event.data)) return null;
+                const match = native.match(event);
+                return match ? { ...match, exclusive: true } : null;
+              },
+              start(context, match, reader) {
+                const state = native.start(context, match, reader), name = label(match.event.data.source);
+                return state?.producer && name ? { ...state, producer: { ...state.producer, label: name } } : state;
+              },
+              buildViewNode(context) {
+                return hidden(context.start?.event.data) ? null : native.buildViewNode(context);
+              },
+            });
+          };
+          scope.effect(() => {
+            const unsubscribe = events.subscribe(update);
+            update();
+            return () => { unsubscribe(); dispose?.(); };
+          });
+        });
         const locale = ctx.locale;
         for (const [lang, dictionary] of Object.entries(dictionaries)) {
           ctx.effect(() => locale.register('dsh-tool-discovery', lang, dictionary));
