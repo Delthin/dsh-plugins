@@ -1,5 +1,13 @@
 # Changelog / 变更日志
 
+## 0.1.6
+
+### Patch Changes
+
+- 修复 Fast 档位反复将固定指令按未缓存输入计费的问题。Fast 继续请求优先档位，并将固定指令保留在可复用的对话前缀中。
+
+  Fix repeated uncached billing for stable instructions in Fast mode. Fast still requests priority service and keeps stable instructions in the reusable conversation prefix.
+
 ## 0.1.5
 
 ### Patch Changes

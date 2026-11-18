@@ -173,8 +173,11 @@ test('billion rewritten requests keep compression first and build Codex only aft
   assert.equal(upstream[0].body.service_tier, 'default')
   assert.equal(upstream[1].path, '/backend-api/codex/responses')
   assert.equal(upstream[1].body.service_tier, 'priority')
-  assert.equal(upstream[1].body.instructions, 'system survives in transcript')
-  assert.equal(upstream[1].body.input[0].content[0].text, 'compressed by billion')
+  assert.equal(upstream[1].body.instructions, '')
+  assert.deepEqual(upstream[1].body.input, [
+    body.input[0],
+    { role: 'user', content: [{ type: 'input_text', text: 'compressed by billion' }] },
+  ])
   assert.deepEqual(upstream[1].body.tools, body.tools)
   assert.deepEqual(upstream[1].body.reasoning, body.reasoning)
   assert.equal(upstream[1].headers.authorization, 'Bearer synthetic-only')
@@ -293,7 +296,7 @@ test('Codex envelope preserves tools, images, reasoning, auth and billion sessio
     res.end(chunks[2])
   })
   const input = [
-    { role: 'developer', content: [{ type: 'input_text', text: 'Follow system rules' }] },
+    { role: 'system', content: [{ type: 'input_text', text: 'Follow system rules' }] },
     { role: 'user', content: [{ type: 'input_image', image_url: 'data:image/png;base64,bG9jYWw=' }, { type: 'input_text', text: 'read' }] },
     { type: 'reasoning', id: 'r1', encrypted_content: 'opaque', summary: [] },
     { type: 'function_call', call_id: 'c0', name: 'read', arguments: '{"path":"a"}' },
@@ -302,7 +305,7 @@ test('Codex envelope preserves tools, images, reasoning, auth and billion sessio
   const tools = [{ type: 'function', name: 'read', strict: true, parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'], additionalProperties: false } }]
   const reasoning = { effort: 'high', summary: 'detailed' }
   const values = await collect(f.transport.wrap(async function* () {
-    const response = await f.post('/v1/responses', { model: 'test-model', input, tools, reasoning, max_output_tokens: 123, prompt_cache_retention: '24h', prompt_cache_options: { ttl: '30m' }, prompt_cache_key: 'conversation', store: true }, {
+    const response = await f.post('/v1/responses', { model: 'test-model', input, instructions: 'Only for this request', tools, reasoning, max_output_tokens: 123, prompt_cache_retention: '24h', prompt_cache_options: { ttl: '30m' }, prompt_cache_key: 'conversation', store: true }, {
       headers: { 'content-type': 'application/json', authorization: 'Bearer synthetic-test-only', 'x-bili-plugin-conversation': 'session-a', 'x-bili-pf-count': '4', 'proxy-authorization': 'local-control' },
     })
     assert.equal(response.headers.get('x-bili-pf-seq'), '42')
@@ -324,10 +327,10 @@ test('Codex envelope preserves tools, images, reasoning, auth and billion sessio
   assert.equal(received.headers['x-bili-plugin-conversation'], 'session-a')
   assert.equal(received.headers['x-bili-pf-count'], '4')
   for (const name of ['x-dsh-fast-proxy-token', 'x-service-tier', 'proxy-authorization']) assert.equal(received.headers[name], undefined)
-  assert.deepEqual(received.body.input, input.slice(1))
+  assert.deepEqual(received.body.input, [{ ...input[0], role: 'developer' }, ...input.slice(1)])
   assert.deepEqual(received.body.tools, tools)
   assert.deepEqual(received.body.reasoning, reasoning)
-  assert.equal(received.body.instructions, 'Follow system rules')
+  assert.equal(received.body.instructions, 'Only for this request')
   assert.equal(received.body.service_tier, 'priority')
   assert.equal(received.body.store, false)
   assert.equal(received.body.stream, true)

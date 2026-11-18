@@ -66,24 +66,13 @@ function forwardingHeaders(input) {
 function codexBody(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new TypeError('Expected JSON object')
   const result = { ...body }
-  let input = body.input
-  const instructions = []
-  if (Array.isArray(input)) {
-    let firstUser = 0
-    while (firstUser < input.length && ['system', 'developer'].includes(input[firstUser]?.role)) {
-      const content = input[firstUser].content
-      if (typeof content === 'string') instructions.push(content)
-      else if (Array.isArray(content)) {
-        for (const part of content) if (typeof part.text === 'string') instructions.push(part.text)
-      }
-      firstUser++
-    }
-    input = input.slice(firstUser)
-  } else if (typeof input === 'string') {
-    input = [{ role: 'user', content: [{ type: 'input_text', text: input }] }]
+  if (Array.isArray(body.input)) {
+    // Codex accepts developer messages in input; GPT-6.2 cannot cache top-level instructions.
+    result.input = body.input.map(item => item?.role === 'system' ? { ...item, role: 'developer' } : item)
+  } else if (typeof body.input === 'string') {
+    result.input = [{ role: 'user', content: [{ type: 'input_text', text: body.input }] }]
   }
-  result.input = input
-  result.instructions = body.instructions || instructions.join('\n\n') || 'You are a helpful assistant.'
+  result.instructions ??= ''
   result.store = false
   result.stream = true
   result.service_tier = 'priority'
