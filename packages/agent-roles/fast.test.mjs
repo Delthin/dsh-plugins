@@ -51,6 +51,26 @@ async function boot(dir,agents=[],config={fastProviders:['test']}) {
   }};
 }
 
+test('本机预置正文通过目录 API 加载，配置错误时仍能读取已有角色',()=>temporary(async dir=>{
+  await catalog(dir);
+  const app=await boot(dir);
+  const before=(await app.api('list')).value;
+  assert.equal(before.presetPrompts,undefined);
+  const file=join(dir,'preset-prompts.json');
+  const prompts={'docs-research':'第一段\n\n第二段'};
+  await writeFile(file,JSON.stringify(prompts));
+  const updated=await app.api('list');
+  assert.equal(updated.status,200);
+  assert.deepEqual(updated.value.presetPrompts,prompts);
+  assert.deepEqual(updated.value.catalog,before.catalog);
+  await writeFile(file,JSON.stringify({...prompts,'code-review':{prompt:'invalid'}}));
+  const invalid=await app.api('list');
+  assert.equal(invalid.status,200);
+  assert.match(invalid.value.presetError,/preset-prompts.json/);
+  assert.equal(invalid.value.presetPrompts,undefined);
+  assert.deepEqual(invalid.value.catalog,before.catalog);
+}));
+
 test('Fast 保存与新启动受支持清单限制，旧非法快照保留不变',()=>temporary(async dir=>{
   await catalog(dir,[{...role,fast:true}]);
   const legacy={sessionId:'existing',role:{...role,fast:true},selection:{provider:'test',model:'same-model',reasoningEffort:'high',fast:true}};

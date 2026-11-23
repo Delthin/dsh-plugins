@@ -333,7 +333,7 @@ export async function apply(ctx,config) {
     if(['running','provisioning'].includes(record.status)&&!ctx.agents.get(record.sessionId)){record.status='inactive';observed(record);}
   }
   async function dispatch(body) {
-    if(body.action==='list') return {catalog:store.catalog,tools:TOOLS,...delegationSettings(configContext,delegationRules()),persistenceError};
+    if(body.action==='list') return {catalog:store.catalog,tools:TOOLS,...delegationSettings(configContext,delegationRules()),...await store.presetPrompts(),persistenceError};
     if(body.action==='saveSettings') return saveDelegationSettings(configContext,body.revision,body.delegationRules);
     if(body.action==='models') return {...await modelDirectory(ctx.llm),fastProviders:fastProviders()};
     if(body.action==='skills') return {skills:await skillDirectory(ctx.skills,{cwd:ctx.workingDirectory.defaultDirectory})};

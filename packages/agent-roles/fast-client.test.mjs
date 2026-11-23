@@ -2,16 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
+import {TOOLS,validateRole} from './store.js';
 
 const source=await readFile(new URL('./client.js',import.meta.url),'utf8');
 const role={id:'test',name:'test',displayName:'测试角色',description:'职责',prompt:'任务',enabled:true,provider:'test',model:'same-model',reasoningEffort:'',tools:[]};
-function panel(draft=role,fastProviders=['test']) {
-  const state=[{revision:1,roles:[draft]},[{provider:'test',id:'same-model'},{provider:'backup',id:'backup-model'},{provider:'third',id:'third-model'}],[],draft,JSON.stringify(draft),{},false,'','','roles','config','','',[],null,null,[],'','',false,fastProviders];
+function panel(draft=role,fastProviders=['test'],settings) {
+  const state=[{revision:1,roles:[draft]},[{provider:'test',id:'same-model'},{provider:'backup',id:'backup-model'},{provider:'third',id:'third-model'}],TOOLS,draft,JSON.stringify(draft),{},false,'','','roles','config','','',[],null,null,[],'','',false,fastProviders,settings];
   let cursor=0,entry,module,request;
   const h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)});
   const primitives=Object.fromEntries(['Button','Switch','Checkbox','SegmentedControl','Modal'].map(name=>[name,()=>{}]));
   const React={createElement:h,useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return [state[i],value=>{state[i]=typeof value==='function'?value(state[i]):value;}];},useEffect(){}};
-  runInNewContext(source,{document:{createElement:()=>({dataset:{},remove(){}}),head:{appendChild(){}}},window:{__ModuleLoader__:{load(value){module=value.factory(name=>name==='react'?React:primitives);}}},crypto:{randomUUID:()=> 'new-role'},fetch:async(_url,options)=>{request=JSON.parse(options.body);return {ok:true,json:async()=>({catalog:{revision:2,roles:[request.role]}})};}});
+  runInNewContext(source,{document:{createElement:()=>({dataset:{},remove(){}}),head:{appendChild(){}}},window:{__ModuleLoader__:{load(value){module=value.factory(name=>name==='react'?React:primitives);}}},crypto:{randomUUID:()=> 'new-role'},fetch:async(_url,options)=>{request=JSON.parse(options.body);return {ok:true,json:async()=>({catalog:{revision:2,roles:[...state[0].roles.filter(r=>r.id!==request.role.id),validateRole(request.role)]}})};}});
   module.apply({effect(){},slots:{inject(_key,fn){fn();},register(options,render){if(options.key==='agent-roles')entry=render();}},uiWorkspace:{}});
   return {state,primitives,render(){cursor=0;return entry.type(entry.props);},get request(){return request;}};
 }
@@ -71,4 +72,37 @@ test('不支持供应商禁止开启 Fast，但标准按钮始终可恢复；支
   tree=existing.render();assert.equal(tier(tree,'标准').props['aria-pressed'],true);assert.equal(tier(tree,'Fast').props.disabled,true);
   const loading=panel(role,[]);
   assert.equal(tier(loading.render(),'Fast').props.disabled,true);
+});
+
+test('预置需明确选择模型并保存，保留既有角色和只读权限',async()=>{
+  const override='私有预置第一段\n\n私有预置第二段';
+  const app=panel(role,['test'],{presetPrompts:{'code-review':override,'code-search':'过时的本机预置'}});
+  const preset=label=>{
+    nodes(app.render()).find(n=>n.type===app.primitives.Button&&n.children.includes('从预置创建')).props.onClick();
+    const modal=nodes(app.render()).find(n=>n.type===app.primitives.Modal&&n.props.open);
+    assert.equal(nodes(modal).filter(n=>n.props.className==='ar-role').length,5);
+    assert.doesNotMatch(text(modal),/代码检索/);
+    nodes(modal).find(n=>n.type==='button'&&nodes(n).some(s=>s.children.includes(label))).props.onClick();
+  };
+  const save=()=>nodes(app.render()).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});
+  preset('代码审查');
+  assert.equal(app.state[3].name,'code-review');
+  assert.equal(app.state[3].enabled,false);
+  assert.deepEqual(Array.from(app.state[3].tools),['read','glob','grep']);
+  assert.equal(app.state[3].prompt,override);
+  save();
+  assert.equal(app.request,undefined);
+  nodes(app.render()).find(n=>n.props.id==='ar-role-model').props.onChange({target:{value:'test/same-model'}});
+  save();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.request.role.model,'same-model');
+  assert.equal(app.request.role.prompt,override);
+  assert.equal(app.request.role.fallbacks,undefined);
+  assert.deepEqual(app.state[0].roles.map(r=>r.id),[role.id,'new-role']);
+  preset('代码审查');
+  assert.equal(app.state[3],app.state[0].roles[1]);
+  nodes(app.render()).find(n=>n.type===app.primitives.Switch).props.onChange(true);
+  save();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.request.role.enabled,true);
 });

@@ -10,7 +10,7 @@
 
 基于 DSH `>= 0.2.2-rc.3` 原生 Agent Team 的角色管理插件。**角色（Role）**是可复用的配置模板，保存职责提示词、模型与思考强度、工具白名单和 Skills；**成员（Member）**是主代理按角色启动的运行实例。主代理能看到所有已启用角色的信息，按任务自行决定何时创建成员。
 
-首次安装是**空角色目录**，不含任何作者预设；升级已有安装则保留本地数据。原独立仓库与历史发布保留在[旧仓库](https://github.com/Delthin/dsh-agent-roles)与[旧发布](https://github.com/Delthin/dsh-agent-roles/releases)。
+首次安装不会自动启用角色；升级已有安装会保留本地数据。原独立仓库与历史发布保留在[旧仓库](https://github.com/Delthin/dsh-agent-roles)与[旧发布](https://github.com/Delthin/dsh-agent-roles/releases)。
 
 ## 安装
 
@@ -23,6 +23,12 @@ npm install @delthin/dsh-agent-roles
 从 `0.6.1` 起要求 DSH `>= 0.2.2-rc.3`。仍使用 DSH `0.2.2-rc.1` 时，请安装兼容旧版：`npm install @delthin/dsh-agent-roles@0.5.1`。
 
 ## 配置角色
+
+打开「多智能体 → 角色 → 从预置创建」，可以选用资料查证、需求梳理、方案审查、代码实现或代码审查。选择后会打开草稿并填好提示词和工具；选定一个模型后再保存。用编辑器里的「启用角色」开关启停，保存后生效。预置分工参考 [Oh My OpenAgent](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/docs/guide/orchestration.md)。
+
+如需替换本机预置的提示词，在角色数据目录中添加 `preset-prompts.json`，例如 `{"code-review":"你的提示词"}`，然后刷新角色列表。键是预置的分发名称；这只影响新建草稿，不改变工具权限或已保存的角色。
+
+也可以从头创建：
 
 1. 「多智能体 → 角色 → 新增角色」：填写显示名称、分发名称（小写字母、数字、连字符）和职责描述——职责描述供主代理判断何时选用该角色。
 2. 选择模型供应商、模型和思考强度；需要时在下方「添加备用模型」配置有序回退链（最多 15 项）。
@@ -90,7 +96,7 @@ npm install @delthin/dsh-agent-roles
 
 ## 常见问题
 
-- **作者预设与已有数据。** 不带作者预设，首次安装始终是空目录；升级保留原数据。
+- **角色预置与已有数据。** 预置在保存后才会加入目录；升级保留已有角色和运行记录。
 - **设置页只读。** 在线保存委派规则依赖宿主 `configEditor` 服务，缺失时请直接改 profile 的 `cordis.patch.yml`。
 - **Fast 开关不可用。** `fastProviders` 默认为空，需显式配置支持 priority 传输的供应商 ID。
 

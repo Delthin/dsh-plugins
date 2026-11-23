@@ -10,7 +10,7 @@
 
 Role management on top of the native DSH `>= 0.2.2-rc.3` Agent Team. A **role** is a reusable template holding a responsibility prompt, model and reasoning effort, tool whitelist, and skills; a **member** is a running instance the lead agent starts from a role. The lead sees all enabled roles and decides when to spawn members based on the task.
 
-First install ships an **empty role catalog** — no author presets. Upgrades keep your local data. The original standalone repo and its releases remain at [the old repository](https://github.com/Delthin/dsh-agent-roles) and [old releases](https://github.com/Delthin/dsh-agent-roles/releases).
+No role is enabled automatically on a fresh install. Upgrades keep your local data. The original standalone repo and its releases remain at [the old repository](https://github.com/Delthin/dsh-agent-roles) and [old releases](https://github.com/Delthin/dsh-agent-roles/releases).
 
 ## Installation
 
@@ -23,6 +23,12 @@ No scripts, no build step. Import and enable it via your host (e.g. `cordis.patc
 Version `0.6.1` and later require DSH `>= 0.2.2-rc.3`. For DSH `0.2.2-rc.1`, install the compatible release: `npm install @delthin/dsh-agent-roles@0.5.1`.
 
 ## Configuring roles
+
+Open「多智能体 → 角色 → 从预置创建」to pick Documentation Research, Requirements Review, Plan Review, Code Implementation, or Code Review. A preset opens an editable draft with its prompt and allowed tools already filled in. Pick one model and save. Use「启用角色」in the editor and save to enable or disable the role. The division of work is inspired by [Oh My OpenAgent](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/docs/guide/orchestration.md).
+
+To override preset prompts on your local installation, add `preset-prompts.json` to the role data directory, for example `{"code-review":"Your prompt"}`, then refresh the role list. Use preset dispatch names as keys. Overrides only affect new drafts; tool permissions and saved roles stay unchanged.
+
+To start from scratch:
 
 1. "Agents → Roles → New": set a display name, dispatch name (lowercase letters, digits, hyphens), and a responsibility description the lead agent uses to decide when to pick this role.
 2. Choose a provider, model, and reasoning effort; optionally build an ordered fallback chain below (up to 15 entries).
@@ -90,7 +96,7 @@ Shared-task limits follow the host's native `agent-team` configuration; member e
 
 ## FAQ
 
-- **Author presets and existing data.** First install is an empty catalog with no author presets; upgrades keep your data.
+- **Presets and existing data.** A preset only joins your catalog after you save it. Upgrades keep saved roles and member records.
 - **Read-only settings page.** Saving delegation rules online requires the host `configEditor` service; otherwise edit `cordis.patch.yml` directly.
 - **Fast toggle unavailable.** `fastProviders` is empty by default; configure provider IDs with a priority transport adapter first.
 

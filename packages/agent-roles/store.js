@@ -1,4 +1,5 @@
-import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { readFile, writeFile, rename, mkdir, open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 
@@ -57,6 +58,21 @@ export class RoleStore {
     if(JSON.stringify(items)!==JSON.stringify(this.runs.items)) {
       const next={...this.runs,items}; await this.atomic('runs.json',next); this.runs=next;
     }
+  }
+  async presetPrompts() {
+    let file;
+    try {
+      file=await open(join(this.directory,'preset-prompts.json'),constants.O_RDONLY|(constants.O_NOFOLLOW??0)|(constants.O_NONBLOCK??0));
+      const info=await file.stat();
+      if(!info.isFile()||info.size>1048576)throw new Error();
+      const bytes=await file.readFile();
+      if(bytes.length>1048576)throw new Error();
+      const map=JSON.parse(bytes.toString('utf8'));
+      if(!map||typeof map!=='object'||Array.isArray(map)||Object.entries(map).some(([name,prompt])=>!(/^[a-z][a-z0-9-]{0,63}$/.test(name))||typeof prompt!=='string'||!prompt.trim()||prompt.length>100000))throw new Error();
+      return {presetPrompts:map};
+    } catch(e) {
+      return e.code==='ENOENT'?{}:{presetError:'无法读取本机预置提示词。请检查 preset-prompts.json 后刷新。'};
+    } finally {await file?.close();}
   }
   async atomic(name,value) {
     const path=join(this.directory,name), temporary=path+'.'+randomUUID()+'.tmp';

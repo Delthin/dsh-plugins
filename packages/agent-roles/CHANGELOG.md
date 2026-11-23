@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+### Minor Changes
+
+- Add five optional role presets with editable prompts and scoped tools. Local prompt overrides apply only to new drafts, and each saved role can be enabled or disabled independently.
+
 ## 0.6.1
 
 ### Patch Changes
