@@ -146,6 +146,18 @@ export function project(schemas, config, runtime) {
   const beforeChars = original.length;
   return { text, directory, hidden, estimate: { beforeChars, afterChars, savedChars: beforeChars - afterChars, estimatedSavedTokens: Math.round((beforeChars - afterChars) / 4), hiddenCount: hidden.length } };
 }
+export function previewConfig(schemas, config, runtime) {
+  const projected = project(schemas, config, runtime);
+  const hidden = new Set(hiddenTools(schemas, { ...config, enabled: true }).map(tool => tool.name));
+  const packs = catalog(schemas, config).filter(group => config.groups.length < 512 || config.groups.includes(group.id) || group.tools.some(tool => hidden.has(tool.name))).map(group => {
+    const names = new Set(group.tools.map(tool => tool.name));
+    const selected = group.tools.some(tool => hidden.has(tool.name));
+    const next = { ...config, groups: selected ? config.groups.filter(id => id !== group.id) : [...new Set([...config.groups, group.id])],
+      tools: config.tools.filter(name => !names.has(name)), exclude: config.exclude.filter(name => !names.has(name)) };
+    return { id: group.id, action: selected ? 'remove' : 'add', savedCharsDelta: project(schemas, next, runtime).estimate.savedChars - projected.estimate.savedChars };
+  });
+  return { estimate: projected.estimate, packs };
+}
 export function discover(schemas, config, runtime, args = {}) {
   if (!args || typeof args !== 'object' || Array.isArray(args) || Object.keys(args).some(key => !['plugin', 'tool', 'format'].includes(key))) throw new DiscoveryError('发现参数字段无效');
   if (args.format !== undefined && args.format !== 'schema' && args.format !== 'full') throw new DiscoveryError('format 必须是 schema 或 full');

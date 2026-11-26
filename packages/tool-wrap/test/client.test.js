@@ -40,6 +40,10 @@ async function mount(data = fixture(), language = 'zh', options = {}) {
     fetch: async (url, request) => {
       const call = { url, method: request.method, body: request.body && JSON.parse(request.body), signal: request.signal, headers: request.headers };
       calls.push(call);
+      if (url.endsWith('/preview')) {
+        const result = options.preview ? await options.preview(call) : { estimate: data.estimate, packs: [{ id: 'browser-plugin', action: 'remove', savedCharsDelta: 100 }] };
+        return { ok: !result.error, json: async () => clone(result) };
+      }
       if (url.endsWith('/generate')) {
         const result = options.generate ? await options.generate(call) : { description: 'Generated browser description' };
         return { ok: !result.error, json: async () => clone(result) };
@@ -581,7 +585,9 @@ test('effective roles split mixed plugins and reset only local roles while prese
   assert.equal(inRole('user', 'opaque:b'), true, 'a local rule overrides the owner');
   assert.equal(inRole('user', 'grouped:note'), true, 'group overrides take precedence over owner rules');
   assert.equal(inRole('user', 'context:browser-plugin-looking'), true);
-  assert.doesNotMatch(ui.text(), /Empty metadata|Absent saved source/);
+  assert.doesNotMatch(ui.text(), /Empty metadata/);
+  assert.equal(ui.nodes().some(node => node.props['data-prompt-id'] === 'absent:kept'), false, 'absent settings never become active prompt rows');
+  assert.ok(ui.find(node => node.props['aria-label'] === '忘记此来源设置 · Absent saved source'), 'absent settings remain reachable only for explicit cleanup');
   assert.equal(ui.nodes().some(node => node.props['data-prompt-id'] === owner), false, 'plugin metadata cannot fabricate a prompt row');
   assert.equal(descendants(ui.find(node => node.props['data-role-zone'] === 'user')).some(node => node.props['data-source-id'] === owner), false, 'tool packs stay outside role lists');
   click(ui, '查看提示词 · Unknown origin');
@@ -726,6 +732,32 @@ test('partial saves update only successful baselines; retry and cancel retain th
     assert.equal(ui.calls.filter(call => call.method === 'PUT').length, 3, 'retry sends only the still-dirty endpoint');
     assert.equal(ui.find(button('保存设置')).props.disabled, true);
   }
+});
+
+test('preview requests stay unsaved, show pack impact and expire when the draft changes', async () => {
+  const ui = await mount();
+  ui.selectPlugin(); ui.editDescription('Preview draft');
+  await ui.find(button('预估当前草稿')).props.onClick(); ui.render();
+  assert.equal(ui.calls.filter(call => call.url.endsWith('/preview')).length, 1);
+  assert.equal(ui.calls.some(call => call.method === 'PUT'), false);
+  assert.match(ui.text(), /当前草稿 · 全局工具/);
+  assert.match(ui.text(), /减少 100 字符/);
+  ui.editDescription('Changed after preview');
+  assert.doesNotMatch(ui.text(), /减少 100 字符/);
+});
+
+test('forgetting one absent source removes only its saved rule and order and remains cancellable', async () => {
+  const data = withComposition();
+  data.promptComposition.config.sourceOrder = ['absent:kept', 'opaque:a'];
+  const ui = await mount(data);
+  click(ui, '忘记此来源设置 · Absent saved source');
+  assert.equal(ui.nodes().some(node => node.props['aria-label'] === '忘记此来源设置 · Absent saved source'), false);
+  ui.find(button('取消更改')).props.onClick(); ui.render();
+  click(ui, '忘记此来源设置 · Absent saved source'); await ui.save();
+  const saved = ui.calls.find(call => call.method === 'PUT').body;
+  const expected = clone(data.promptComposition.config);
+  delete expected.rules['absent:kept']; expected.order = expected.order.filter(id => id !== 'absent:kept'); expected.sourceOrder = ['opaque:a'];
+  assert.deepEqual(saved, expected);
 });
 
 test('conflicts retain drafts and revisions; oversized UTF-8 drafts cannot be submitted', async () => {

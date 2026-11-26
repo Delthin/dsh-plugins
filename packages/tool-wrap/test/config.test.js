@@ -174,6 +174,33 @@ test('stale settings versions cannot overwrite persisted custom descriptions or 
   }
 });
 
+test('draft preview is authenticated, bounded, global-only and never writes settings', async t => {
+  const { ctx, request } = await hostFixture(t);
+  const path = '/api/tool-discovery/preview';
+  const before = (await request()).body;
+  let changes = 0; ctx.on('system-prompt/change', () => changes++);
+  const draft = { ...before.config, groups: ['dsh-ego-browser'] };
+  assert.equal((await request('POST', draft, { 'x-fixture-reject': 'yes' }, path)).statusCode, 403);
+  assert.equal((await request('GET', undefined, {}, path)).statusCode, 405);
+  assert.equal((await request('POST', 'x'.repeat(65537), {}, path)).statusCode, 413);
+  const result = await request('POST', draft, {}, path);
+  assert.equal(result.statusCode, 200);
+  assert.deepEqual(Object.keys(result.body).sort(), ['estimate', 'packs']);
+  const pack = result.body.packs.find(pack => pack.id === 'dsh-ego-browser');
+  assert.equal(pack.action, 'remove');
+  const disabled = await request('POST', { ...draft, enabled: false }, {}, path);
+  assert.equal(disabled.body.packs.find(pack => pack.id === 'dsh-ego-browser').action, 'remove');
+  assert.equal(disabled.body.estimate.savedChars, 0);
+  assert.equal((await request('POST', { ...draft, groups: Array.from({ length: 512 }, (_, i) => 'absent-' + i) }, {}, path)).statusCode, 200);
+  assert.deepEqual((await request()).body.config, before.config);
+  assert.equal((await request()).body.revision, before.revision);
+  assert.equal(changes, 0);
+  const saved = await request('PUT', draft);
+  assert.deepEqual(result.body.estimate, saved.body.estimate);
+  const removed = await request('PUT', { ...draft, groups: [] });
+  assert.equal(removed.body.estimate.savedChars - result.body.estimate.savedChars, pack.savedCharsDelta);
+});
+
 test('same-version stale saves and queued conflicts preserve the first write, with UTF-8 budgets', async t => {
   const { request } = await hostFixture(t);
   const initial = (await request()).body;

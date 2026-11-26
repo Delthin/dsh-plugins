@@ -1,7 +1,7 @@
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { registeredPlugins, toolOrigin } from './origins.js';
 import { generationStatus, generateDescription } from './summaries.js';
-import { ConfigStore, DiscoveryError, DISCOVER, LEGACY_DISCOVER, isDiscoveryTool, sdkSchemas, renderSdk, project, catalog, discover, digest, MAX_CONFIG_BYTES, requireRevision } from './core.js';
+import { ConfigStore, DiscoveryError, DISCOVER, LEGACY_DISCOVER, isDiscoveryTool, sdkSchemas, renderSdk, project, catalog, discover, digest, MAX_CONFIG_BYTES, requireRevision, validateConfig, assertConfigBudget, previewConfig } from './core.js';
 
 import { CompositionStore, validateComposition, validateCapabilities } from './prompt-composition.js';
 import { CompositionRuntime } from './composition-runtime.js';
@@ -174,6 +174,21 @@ export async function apply(ctx) {
         if (!res.destroyed) respond(res, safe.status, { error: { message: safe.message } });
       }
     }
+    async function previewHandler(req, res) {
+      const rejection = routeCtx.connection.requestRejection(req);
+      if (rejection !== undefined) return respond(res, rejection, { error: { message: '请通过已登录的 DSH 同源页面访问' } });
+      if (req.method !== 'POST') return respond(res, 405, { error: { message: '预估仅支持 POST' } });
+      try {
+        const value = await readJson(req);
+        if (value?.version !== 3) throw new DiscoveryError('请刷新设置页面后重试', 409);
+        const config = validateConfig(value);
+        assertConfigBudget(config);
+        return respond(res, 200, previewConfig(sdkSchemas(tools), config, runtime() ?? { language: 'typescript', programFormat: 'function-body' }));
+      } catch (error) {
+        const safe = error instanceof DiscoveryError ? error : new DiscoveryError('无法预估，请重试', 500);
+        if (!res.destroyed) respond(res, safe.status, { error: { message: safe.message } });
+      }
+    }
     let generating = false;
     async function generationHandler(req, res) {
       const rejection = routeCtx.connection.requestRejection(req);
@@ -212,6 +227,7 @@ export async function apply(ctx) {
     }
     routeCtx.effect(() => routeCtx.webServer.register({ kind: 'exact', path: API + '/prompt-composition', handler: compositionHandler }), 'tool-discovery:prompt-composition-api');
     routeCtx.effect(() => routeCtx.webServer.register({ kind: 'exact', path: API, handler }), 'tool-discovery:api');
+    routeCtx.effect(() => routeCtx.webServer.register({ kind: 'exact', path: API + '/preview', handler: previewHandler }), 'tool-discovery:preview-api');
     routeCtx.effect(() => routeCtx.webServer.register({ kind: 'exact', path: API + '/generate', handler: generationHandler }), 'tool-discovery:generate-api');
   });
 }

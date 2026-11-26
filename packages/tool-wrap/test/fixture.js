@@ -176,13 +176,13 @@ export async function hostFixture(t, { mode = 'ptc', config = enabledConfig(), n
     key.ctx = scope.ctx;
     return key;
   };
-  const request = async (method = 'GET', value, headers = {}) => {
+  const request = async (method = 'GET', value, headers = {}, path = '/api/tool-discovery') => {
     const body = value === undefined ? [] : [typeof value === 'string' ? value : JSON.stringify(value)];
     const req = Readable.from(body);
     req.method = method;
     req.headers = { 'content-type': 'application/json', ...(method === 'PUT' ? { 'if-match': (await request()).body.revision } : {}), ...headers };
     const res = { statusCode: 0, headers: {}, destroyed: false, setHeader(key, value) { this.headers[key] = value; }, end(body) { this.body = JSON.parse(body); } };
-    await routes.get('/api/tool-discovery')(req, res);
+    await routes.get(path)(req, res);
     return res;
   };
   return { ctx, dir, tools, calls, events, execute, agent, request, mount, routes };
