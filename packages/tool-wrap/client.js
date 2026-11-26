@@ -32,7 +32,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
         generatedDraft: '简介草稿已生成，可继续编辑；保存后生效。', generationCancelled: '已取消生成，原草稿保留。',
         nativeUnchanged: '此次使用原生模式，工具说明保持完整。', discoveryDisabled: '此次未启用按需发现，工具说明保持完整。', notApplied: '此次工具说明保持完整，具体状态见下方核查信息。',
         ptc: 'PTC', native: '原生', requestFailed: '请求失败，请重试。', invalidJson: '宿主返回了无效响应，请重新读取。',
-        networkError: '无法读取宿主响应，请检查连接后重试。', timeout: '请求超时，请重试。', restartRequired: '更新需重启服务：简介编辑需要配置版本 3，请重启 DSH 后重新读取。',
+        networkError: '无法读取宿主响应，请检查连接后重试。', timeout: '请求超时，请重试。', restartRequired: '插件已更新，服务仍在运行旧版本。请通过 DSH 管理重启服务后重新读取。',
       },
       en: {
         previewDraft: 'Estimate current draft', previewEstimate: 'Tool description size (current draft · global tools)', previewAdd: 'Move this pack in', previewRemove: 'Move this pack out', previewLess: 'Reduce by {value} characters', previewMore: 'Increase by {value} characters', missingSettings: 'Saved settings for absent sources', forgetSetting: 'Forget source settings', sdkMissing: 'Host tool definitions are missing. Check PTC configuration and reload the plugin.', sdkChanged: 'Tool definitions differ from the host format. Check other tool-presentation plugins and host compatibility.', unwrapUnavailable: 'This caller cannot use unwrap. Check the conversation tool restrictions.', nativeHint: 'Native tool mode is active. Switch to PTC to defer tool definitions.', latestScope: 'Latest assembly record (possibly from another conversation): ', reloadDiscard: 'Discard draft and reload', capacity: 'Configuration size {used}/{limit} bytes', capacityExceeded: 'Configuration exceeds capacity. Shorten descriptions or remove old settings. Largest field: {field}', systemPrompts: 'System prompts', userContext: 'User context', userFixed: 'User (fixed)', userState: 'User (state)', moveToFixed: 'Move to user (fixed)', moveToState: 'Move to user (state)', resetGrouping: 'Reset default group', emptyRole: 'Drop a prompt here to change its role.', promptDetails: 'View prompt', morePrompt: 'More', moveToSystem: 'Move to system prompts', moveToUser: 'Move to user context', resetRole: 'Reset default role', invalidRole: 'Role needs recovery', roleMoveDraft: 'Role and order updated. Save to apply.',
@@ -63,7 +63,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
         generatedDraft: 'Description draft generated. Edit as needed, then save to apply.', generationCancelled: 'Generation cancelled. Your previous draft is unchanged.',
         nativeUnchanged: 'This conversation used native mode. Tool descriptions were kept in full.', discoveryDisabled: 'On-demand discovery was off. Tool descriptions were kept in full.', notApplied: 'Tool descriptions were kept in full. See the verification details below.',
         ptc: 'PTC', native: 'Native', requestFailed: 'Request failed. Please try again.', invalidJson: 'The host returned an invalid response. Reload settings.',
-        networkError: 'Could not read the host response. Check your connection and try again.', timeout: 'Request timed out. Please try again.', restartRequired: 'The host is still running the previous version. This update requires a service restart: restart DSH for configuration version 3, then reload settings.',
+        networkError: 'Could not read the host response. Check your connection and try again.', timeout: 'Request timed out. Please try again.', restartRequired: 'The plugin was updated but the service is still running the previous version. Restart DSH through your service manager, then reload settings.',
       },
     };
     const styles = `
@@ -457,6 +457,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
                 if (typeof data?.description !== 'string' || !data.description.trim() || data.description.length > 2000) throw new Error(t('invalidJson'));
                 return data;
               }
+              if (!/^[a-f0-9]{64}$/.test(data?.revision ?? '') || data.promptComposition && !/^[a-f0-9]{64}$/.test(data.promptComposition.revision ?? '')) throw new Error(t('restartRequired'));
               if (options.composition) {
                 if (!validComposition(data)) throw new Error(t('invalidJson'));
                 return data;

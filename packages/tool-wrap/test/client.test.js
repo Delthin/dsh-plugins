@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 const source = await readFile(new URL('../client.js', import.meta.url), 'utf8');
 const clone = value => JSON.parse(JSON.stringify(value));
 const fixture = () => ({
+  revision: 'a'.repeat(64),
   config: { version: 3, enabled: true, groups: ['browser-plugin', 'scoped-plugin'], tools: ['retained_tool'], exclude: ['retained_exclusion'], descriptions: { 'scoped-plugin': 'Retain hidden description', 'absent-plugin': 'Retain absent description' } },
   groups: [
     { id: 'browser-plugin', label: 'browser-plugin', description: 'Developer browser description', developerDescription: 'Developer browser description', descriptionSource: 'developer', tools: [{ name: 'open_page', description: 'Open a browser page' }, { name: 'read_page', description: 'Read page content' }] },
@@ -267,17 +268,23 @@ test('unmount aborts generation and ignores a late result', async () => {
   assert.equal(ui.calls.some(call => call.method === 'PUT'), false);
 });
 
-test('version 2 requires a service restart and never renders the new form', async () => {
-  const data = fixture(); data.config.version = 2;
-  const ui = await mount(data);
-  assert.match(ui.text(), /更新需重启服务/);
-  assert.equal(ui.nodes().some(node => node.type === 'form' || node.type === 'textarea'), false);
+test('old configuration or missing revision support requires a restart without exposing writes or previews', async () => {
+  const old = fixture(); old.config.version = 2;
+  const missingTools = fixture(); delete missingTools.revision;
+  const missingPrompts = withComposition(); delete missingPrompts.promptComposition.revision;
+  for (const data of [old, missingTools, missingPrompts]) {
+    const ui = await mount(data);
+    assert.match(ui.text(), /重启服务/);
+    assert.equal(ui.nodes().some(node => node.type === 'form' || node.type === 'textarea' || button('预估当前草稿')(node)), false);
+    assert.equal(ui.calls.some(call => call.method !== 'GET'), false);
+  }
 });
 
 const ownerId = owner => 'owner:' + encodeURIComponent(owner);
 const sourceEntry = (id, label, owner, kind = 'section', extra = {}) => ({ id, label, owner, kind, groupId: ownerId(owner || '@host/unknown'), groupLabel: owner || 'Unknown origin', defaultRole: kind === 'context' ? 'user' : 'system', roles: ['inherit', 'system', 'user'], deliveryModes: ['inherit', 'always', 'pack'], ...extra });
 const sourceGroup = (owner, label) => sourceEntry(ownerId(owner), label, owner, 'group', { defaultRole: 'inherit' });
 const withComposition = () => ({ ...fixture(), promptComposition: {
+  revision: 'b'.repeat(64),
   config: { version: 1, enabled: true, order: ['absent:kept'], rules: { 'absent:kept': { role: 'user', delivery: 'always' }, [ownerId('browser-plugin')]: { role: 'system', delivery: 'inherit' } } },
   capabilities: { admission: true, roles: ['inherit', 'system', 'user'], developer: false, delivery: true, structuredInstructions: true },
   sources: [
