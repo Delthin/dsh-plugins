@@ -35,10 +35,10 @@ async function mount(data = fixture(), language = 'zh', options = {}) {
   };
   vm.runInNewContext(source, {
     window: { __ModuleLoader__: { load: module => { factory = module.factory; } } },
-    AbortController, clearTimeout,
+    AbortController, TextEncoder, clearTimeout,
     setTimeout: (fn, delay) => { timers.push({ fn, delay }); return setTimeout(fn, delay); },
     fetch: async (url, request) => {
-      const call = { url, method: request.method, body: request.body && JSON.parse(request.body), signal: request.signal };
+      const call = { url, method: request.method, body: request.body && JSON.parse(request.body), signal: request.signal, headers: request.headers };
       calls.push(call);
       if (url.endsWith('/generate')) {
         const result = options.generate ? await options.generate(call) : { description: 'Generated browser description' };
@@ -726,4 +726,19 @@ test('partial saves update only successful baselines; retry and cancel retain th
     assert.equal(ui.calls.filter(call => call.method === 'PUT').length, 3, 'retry sends only the still-dirty endpoint');
     assert.equal(ui.find(button('保存设置')).props.disabled, true);
   }
+});
+
+test('conflicts retain drafts and revisions; oversized UTF-8 drafts cannot be submitted', async () => {
+  const data = fixture(); data.revision = 'a'.repeat(64); data.maxConfigBytes = 65536;
+  const ui = await mount(data, 'zh', { toolsSave: () => ({ error: { message: '设置已被其他页面修改' } }) });
+  ui.selectPlugin(); ui.editDescription('local draft'); await ui.save();
+  assert.equal(ui.calls.find(call => call.method === 'PUT').headers['If-Match'], data.revision);
+  assert.equal(ui.find(node => node.type === 'textarea').props.value, 'local draft');
+  assert.match(ui.text(), /放弃草稿并重新读取/);
+  const large = fixture(); large.config.descriptions = Object.fromEntries(Array.from({ length: 12 }, (_, i) => ['plugin' + i, '中'.repeat(2000)]));
+  const budget = await mount(large);
+  budget.find(checkbox).props.onChange({ target: { checked: false } }); budget.render();
+  assert.equal(budget.find(button('保存设置')).props.disabled, true);
+  assert.match(budget.text(), /配置超出容量/);
+  await budget.save(); assert.equal(budget.calls.some(call => call.method === 'PUT'), false);
 });

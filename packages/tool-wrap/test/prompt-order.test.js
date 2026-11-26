@@ -21,7 +21,7 @@ assert.ok(PATCHES, `No audited patches for test host ${HOST_VERSION}`);
 const config = overrides => ({ version: 1, enabled: false, order: [], rules: {}, ...overrides });
 async function request(host, method = 'GET', value, headers = {}) {
   const req = Readable.from(value === undefined ? [] : [JSON.stringify(value)]);
-  req.method = method; req.headers = { 'content-type': 'application/json', ...headers };
+  req.method = method; req.headers = { 'content-type': 'application/json', ...(method === 'PUT' ? { 'if-match': (await request(host)).body.revision } : {}), ...headers };
   const res = { statusCode: 0, destroyed: false, setHeader() {}, end(body) { this.body = JSON.parse(body); } };
   await host.routes.get('/api/tool-discovery/prompt-composition')(req, res);
   return res;

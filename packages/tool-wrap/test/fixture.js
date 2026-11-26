@@ -180,7 +180,7 @@ export async function hostFixture(t, { mode = 'ptc', config = enabledConfig(), n
     const body = value === undefined ? [] : [typeof value === 'string' ? value : JSON.stringify(value)];
     const req = Readable.from(body);
     req.method = method;
-    req.headers = { 'content-type': 'application/json', ...headers };
+    req.headers = { 'content-type': 'application/json', ...(method === 'PUT' ? { 'if-match': (await request()).body.revision } : {}), ...headers };
     const res = { statusCode: 0, headers: {}, destroyed: false, setHeader(key, value) { this.headers[key] = value; }, end(body) { this.body = JSON.parse(body); } };
     await routes.get('/api/tool-discovery')(req, res);
     return res;

@@ -83,7 +83,7 @@ export class CompositionRuntime {
     for (const id of new Set([...this.store.config.order, ...(this.store.config.sourceOrder ?? []), ...Object.keys(this.store.config.rules)])) if (!present.has(id)) sources.push({ id, label: id, owner: null, kind: 'unavailable', groupId: id, groupLabel: id, defaultRole: 'inherit', defaultPlacement: 'state', placements: ['inherit'], canToggleInjection: false, roles: ['inherit'], deliveryModes: ['inherit'], reason: 'source-unavailable' });
     return sources;
   }
-  status() { return { config: structuredClone(this.store.config), sources: this.sources(), capabilities: this.capabilities() }; }
+  status() { return { config: structuredClone(this.store.config), revision: this.store.revision, sources: this.sources(), capabilities: this.capabilities() }; }
   collectAssembly(assembly) {
     const renderedContexts = new Map(renderContextSections(assembly).map(section => [section.name, section.text]));
     const collect = (item, kind) => {

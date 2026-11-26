@@ -139,6 +139,7 @@ test('another plugin owning tools:sdk triggers fail-open compatibility fallback'
   assert.match(renderPrompt(assembly), /OTHER_PLUGIN_SDK exact bytes \{\{literal\}\}/);
   assert.deepEqual(tools.schemas(a).filter(tool => !['unwrap', 'discover_tools'].includes(tool.name)), definitions);
   assert.equal((await request()).body.lastAssembly.status, 'incompatible-sdk');
+  assert.equal((await request()).body.lastAssembly.reason, 'sdk-changed');
 });
 
 test('restricted discovery transport leaves original full SDK intact rather than hiding unusable definitions', async t => {
@@ -150,6 +151,7 @@ test('restricted discovery transport leaves original full SDK intact rather than
   assert.match(sdkSection(assembly), /ego_visit:/);
   assert.doesNotMatch(sdkSection(assembly), /# On-demand tools/);
   assert.equal((await request()).body.lastAssembly.status, 'incompatible-sdk');
+  assert.equal((await request()).body.lastAssembly.reason, 'unwrap-unavailable');
 });
 
 test('host complete persona is restored after waterfall; lastAssembly records projection, not final request', async t => {

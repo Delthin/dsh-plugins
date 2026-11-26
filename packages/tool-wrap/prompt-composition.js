@@ -1,7 +1,7 @@
 import { readFile, writeFile, rename, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { DiscoveryError } from './core.js';
+import { DiscoveryError, configRevision, assertConfigBudget } from './core.js';
 
 export const DEFAULT_COMPOSITION = Object.freeze({ version: 1, enabled: false, order: Object.freeze([]), rules: Object.freeze({}) });
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -58,9 +58,14 @@ export class CompositionStore {
     }
     return structuredClone(this.config);
   }
-  save(value) {
+  get revision() { return configRevision(this.config); }
+  save(value, expectedRevision) {
     const next = validateComposition(value);
     const job = this.queue.then(async () => {
+      if (expectedRevision !== undefined) {
+        if (expectedRevision !== this.revision) throw new DiscoveryError('设置已被其他页面修改，请保留所需内容，放弃草稿并重新读取后再编辑', 409);
+        assertConfigBudget(next);
+      }
       const temp = this.path + '.' + randomUUID() + '.tmp';
       try {
         await writeFile(temp, JSON.stringify(next, null, 2) + '\n', { flag: 'wx', mode: 0o600 });

@@ -4,6 +4,7 @@ import { mkdir, readFile, readdir, rmdir, stat, writeFile } from 'node:fs/promis
 import { join } from 'node:path';
 import { ConfigStore, DEFAULT_CONFIG, DiscoveryError, validateConfig } from '../core.js';
 import { enabledConfig, hostFixture, temporaryDirectory } from './fixture.js';
+import { CompositionStore } from '../prompt-composition.js';
 
 const invalidConfigs = () => [
   null, [], 'true', {},
@@ -170,6 +171,28 @@ test('stale settings versions cannot overwrite persisted custom descriptions or 
     assert.equal(await readFile(path, 'utf8'), original);
     assert.deepEqual((await request()).body.config, config);
     assert.equal(changes, 0);
+  }
+});
+
+test('same-version stale saves and queued conflicts preserve the first write, with UTF-8 budgets', async t => {
+  const { request } = await hostFixture(t);
+  const initial = (await request()).body;
+  const changed = { ...initial.config, descriptions: { browser: 'first tab' } };
+  assert.equal((await request('PUT', changed, { 'if-match': initial.revision })).statusCode, 200);
+  assert.equal((await request('PUT', initial.config, { 'if-match': initial.revision })).statusCode, 409);
+  assert.equal((await request()).body.config.descriptions.browser, 'first tab');
+  assert.equal((await request('PUT', changed, { 'if-match': '' })).statusCode, 428);
+  const large = { ...changed, descriptions: Object.fromEntries(Array.from({ length: 12 }, (_, i) => ['plugin' + i, '中'.repeat(2000)])) };
+  assert.equal((await request('PUT', large)).statusCode, 413);
+  for (const Store of [ConfigStore, CompositionStore]) {
+    const store = new Store(await temporaryDirectory(t));
+    await store.load();
+    const revision = store.revision;
+    const first = store.save({ ...store.config, enabled: true }, revision);
+    const second = store.save({ ...store.config }, revision);
+    await first;
+    await assert.rejects(second, error => error.status === 409);
+    assert.equal(store.config.enabled, true);
   }
 });
 

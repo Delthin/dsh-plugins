@@ -13,6 +13,16 @@ export const DEFAULT_CONFIG = Object.freeze({ version: 3, enabled: false, groups
 export class DiscoveryError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
 }
+export const MAX_CONFIG_BYTES = 65536;
+export const configRevision = config => createHash('sha256').update(JSON.stringify(config)).digest('hex');
+export function assertConfigBudget(config) {
+  if (Buffer.byteLength(JSON.stringify(config), 'utf8') > MAX_CONFIG_BYTES) throw new DiscoveryError('配置超过 64 KiB，请缩短简介或移除不再使用的设置', 413);
+}
+export function requireRevision(req) {
+  const revision = req.headers['if-match'];
+  if (typeof revision !== 'string' || !/^[a-f0-9]{64}$/.test(revision)) throw new DiscoveryError('请重新读取设置后再保存', 428);
+  return revision;
+}
 const protectedNames = new Set(['run_code', DISCOVER, LEGACY_DISCOVER]);
 const brief = tool => ({ name: tool.name, description: tool.description.replace(/\s+/g, ' ').slice(0, 150) });
 const sorted = names => [...new Set(names)].sort();
@@ -54,9 +64,14 @@ export class ConfigStore {
     } catch (error) { if (error.code !== 'ENOENT') throw new DiscoveryError('无法读取 tool-discovery.json，请检查配置', 500); }
     return structuredClone(this.config);
   }
-  save(value) {
+  get revision() { return configRevision(this.config); }
+  save(value, expectedRevision) {
     const next = validateConfig(value);
     const job = this.queue.then(async () => {
+      if (expectedRevision !== undefined) {
+        if (expectedRevision !== this.revision) throw new DiscoveryError('设置已被其他页面修改，请保留所需内容，放弃草稿并重新读取后再编辑', 409);
+        assertConfigBudget(next);
+      }
       const temp = this.path + '.' + randomUUID() + '.tmp';
       // Both rename targets are the fixed profile config and its same-directory temp file.
       try {

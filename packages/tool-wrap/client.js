@@ -4,7 +4,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
     const h = React.createElement;
     const dictionaries = {
       zh: {
-        systemPrompts: '系统提示词', userContext: '用户上下文', userFixed: '用户（固定）', userState: '用户（状态）', moveToFixed: '移到用户（固定）', moveToState: '移到用户（状态）', resetGrouping: '恢复默认分区', emptyRole: '拖入提示词以改变归属。', promptDetails: '查看提示词', morePrompt: '更多', moveToSystem: '移到系统提示词', moveToUser: '移到用户上下文', resetRole: '恢复默认角色', invalidRole: '角色待恢复', roleMoveDraft: '角色与顺序已调整，保存后生效。',
+        sdkMissing: '未找到宿主工具说明，请检查 PTC 配置并重新加载插件。', sdkChanged: '工具说明与宿主格式不一致，请检查其他工具展示插件或宿主兼容版本。', unwrapUnavailable: '当前调用者不能使用 unwrap，请检查该会话的工具限制。', nativeHint: '当前使用原生工具模式；切换到 PTC 后才能按需加载工具定义。', latestScope: '最近组装记录（可能来自其他会话）：', reloadDiscard: '放弃草稿并重新读取', capacity: '配置容量 {used}/{limit} 字节', capacityExceeded: '配置超出容量；请缩短简介或清理旧设置。最大占用：{field}', systemPrompts: '系统提示词', userContext: '用户上下文', userFixed: '用户（固定）', userState: '用户（状态）', moveToFixed: '移到用户（固定）', moveToState: '移到用户（状态）', resetGrouping: '恢复默认分区', emptyRole: '拖入提示词以改变归属。', promptDetails: '查看提示词', morePrompt: '更多', moveToSystem: '移到系统提示词', moveToUser: '移到用户上下文', resetRole: '恢复默认角色', invalidRole: '角色待恢复', roleMoveDraft: '角色与顺序已调整，保存后生效。',
         intro: "按插件查看提示词与工具，拖动把手调整顺序。", enabled: "工具按需发现", discoveryHint: "先提供插件索引，调用时再加载工具定义。", compositionHint: "系统、用户固定与用户状态分别排序；状态更新追加到对话末尾。", groupHint: "固定内容保留原位，变化状态追加到对话末尾；跨区拖动调整归属，工具包独立管理。", compositionScope: "组设置作用于组内提示词；单段可覆盖，暂未出现的来源保留设置。", search: "搜索插件、工具或提示词", noResults: "没有匹配的插件、工具或提示词。", sourceDetails: "查看提示词与工具", dragHint: "拖动排序；也可按 Alt + ↑ / ↓", orderUnavailable: "当前来源暂不支持排序", orderDraft: "顺序已调整，保存后生效。", wholePackage: "整包按需加载（含今后新增工具）", toolCheck: "选择工具包", prompts: "提示词分段", toolsTitle: "工具", noTools: "此来源没有可执行工具。", promptDefault: "整组设置", adjustPrompt: "调整此段", promptHint: "各段按此顺序排列；系统与用户消息分别排序。", descriptionSection: "插件简介 · 用于按需发现索引", dynamicPreview: "随会话动态生成。", unavailablePreview: "正文暂无预览，宿主仅提供来源信息。", emptyPreview: "此段当前注册的文本为空。", staticPreview: "注册文本", showFull: "展开全文", collapseFull: "收起全文", injection: "注入", injectionOn: "启用", injectionOff: "停用", inheritInjection: "继承组设置", noPromptPreview: "仅工具", detailsLabel: "来源详情", defaultOption: "默认", onDemandPacks: "按需工具包", packCount: "插件 {count}", toolSelectionCount: "工具 {selected}/{total}", promptsTab: "提示词",
         collapseZone: '收起', expandZone: '展开', directoryPreview: '按当前会话可见工具与按需配置生成，实际目录在请求组装时填入。',
         injectedTab: '注入', sectionSettings: '逐段设置', editGroup: '调整', collapseGroup: '收起', archive: '不注入', archivePrompt: '移到不注入', restorePrompt: '恢复', emptyArchive: '暂无不注入的提示词。', addPack: '移入按需工具包', removePack: '移出按需工具包', moveIn: '移入', moveOut: '移出', addPackHint: '移入按需工具包，整包工具改为按需加载（含今后新增工具）。', removePackHint: '移出按需工具包，清除此包的按需工具选择，恢复直接提供工具定义。', emptyPacks: '在来源旁点击“移入”添加工具包。', resetInjection: '重置停用设置', archivedOnly: '请在“不注入”中恢复提示词。',
@@ -35,7 +35,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
         networkError: '无法读取宿主响应，请检查连接后重试。', timeout: '请求超时，请重试。', restartRequired: '更新需重启服务：简介编辑需要配置版本 3，请重启 DSH 后重新读取。',
       },
       en: {
-        systemPrompts: 'System prompts', userContext: 'User context', userFixed: 'User (fixed)', userState: 'User (state)', moveToFixed: 'Move to user (fixed)', moveToState: 'Move to user (state)', resetGrouping: 'Reset default group', emptyRole: 'Drop a prompt here to change its role.', promptDetails: 'View prompt', morePrompt: 'More', moveToSystem: 'Move to system prompts', moveToUser: 'Move to user context', resetRole: 'Reset default role', invalidRole: 'Role needs recovery', roleMoveDraft: 'Role and order updated. Save to apply.',
+        sdkMissing: 'Host tool definitions are missing. Check PTC configuration and reload the plugin.', sdkChanged: 'Tool definitions differ from the host format. Check other tool-presentation plugins and host compatibility.', unwrapUnavailable: 'This caller cannot use unwrap. Check the conversation tool restrictions.', nativeHint: 'Native tool mode is active. Switch to PTC to defer tool definitions.', latestScope: 'Latest assembly record (possibly from another conversation): ', reloadDiscard: 'Discard draft and reload', capacity: 'Configuration size {used}/{limit} bytes', capacityExceeded: 'Configuration exceeds capacity. Shorten descriptions or remove old settings. Largest field: {field}', systemPrompts: 'System prompts', userContext: 'User context', userFixed: 'User (fixed)', userState: 'User (state)', moveToFixed: 'Move to user (fixed)', moveToState: 'Move to user (state)', resetGrouping: 'Reset default group', emptyRole: 'Drop a prompt here to change its role.', promptDetails: 'View prompt', morePrompt: 'More', moveToSystem: 'Move to system prompts', moveToUser: 'Move to user context', resetRole: 'Reset default role', invalidRole: 'Role needs recovery', roleMoveDraft: 'Role and order updated. Save to apply.',
         intro: "Inspect prompts and tools by plugin. Drag handles to reorder.", enabled: "On-demand tools", discoveryHint: "Show a plugin index first; load tool definitions when needed.", compositionHint: "Order system, fixed user and state prompts separately. Changed state goes at the history tail.", groupHint: "Unchanged fixed prompts stay in place; changed state follows dialogue history. Drag to change groups; tool packs remain separate.", compositionScope: "Group rules apply to their prompts; individual sections can override them. Absent sources retain saved settings.", search: "Search plugins, tools or prompts", noResults: "No matching plugins, tools or prompts.", sourceDetails: "View prompts and tools", dragHint: "Drag to reorder, or press Alt + ↑ / ↓", orderUnavailable: "Ordering is unavailable for this source", orderDraft: "Order updated. Save to apply.", wholePackage: "Defer the whole pack (including future tools)", toolCheck: "Select tool pack", prompts: "Prompt sections", toolsTitle: "Tools", noTools: "This source has no executable tools.", promptDefault: "Group settings", adjustPrompt: "Adjust this section", promptHint: "Sections follow this order; system and user messages are ordered separately.", descriptionSection: "Plugin description · on-demand index", dynamicPreview: "Generated per conversation.", unavailablePreview: "No body preview; the host provides source metadata only.", emptyPreview: "The registered text is currently empty.", staticPreview: "Registered text", showFull: "Expand full text", collapseFull: "Collapse text", injection: "Injection", injectionOn: "Enabled", injectionOff: "Disabled", inheritInjection: "Inherit group", noPromptPreview: "Tools only", detailsLabel: "Source details", defaultOption: "Default", onDemandPacks: "On-demand packs", packCount: "Packs {count}", toolSelectionCount: "Tools {selected}/{total}", promptsTab: "Prompts",
         collapseZone: 'Collapse', expandZone: 'Expand', directoryPreview: 'Generated from the tools visible to the current conversation and on-demand settings when assembling a request.',
         injectedTab: 'Injected', sectionSettings: 'Per-prompt settings', editGroup: 'Edit', collapseGroup: 'Close', archive: 'Excluded', archivePrompt: 'Exclude prompt', restorePrompt: 'Restore', emptyArchive: 'No excluded prompts.', addPack: 'Move into on-demand packs', removePack: 'Move out of on-demand packs', moveIn: 'Move in', moveOut: 'Move out', addPackHint: 'Defer the whole pack, including future tools.', removePackHint: 'Clear this pack’s on-demand tool selections and provide its tool definitions directly.', emptyPacks: 'Use Move in beside a source to add a tool pack.', resetInjection: 'Reset exclusion', archivedOnly: 'Restore prompts from the Excluded tab.',
@@ -377,10 +377,15 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
           const mounted = React.useRef(true);
           const controllers = React.useRef(new Set());
           const operation = React.useRef(0);
+          const revisions = React.useRef({});
           const settingsElement = React.useRef(null);
           const refreshLayout = React.useRef(null);
           const toolsDirty = Boolean(form && baseline && configKey(form) !== configKey(baseline));
           const dirty = toolsDirty || compositionDirty;
+          const byteSize = value => new TextEncoder().encode(JSON.stringify(value)).length;
+          const limit = snapshot?.maxConfigBytes ?? 65536;
+          const sizes = [form && { label: 'toolsSettings', config: copyConfig(form) }, compositionForm && { label: 'promptSettings', config: copyComposition(compositionForm) }].filter(Boolean).map(item => ({ ...item, bytes: byteSize(item.config) }));
+          const overBudget = sizes.some(item => item.bytes > limit);
           const text = (key, values = {}) => Object.entries(values).reduce((value, [name, replacement]) => value.replace('{' + name + '}', String(replacement)), t(key));
           const number = value => typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString() : '—';
           async function request(method = 'GET', body, options = {}) {
@@ -390,7 +395,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
             try {
               const response = await fetch('/api/tool-discovery' + (options.generate ? '/generate' : options.composition ? '/prompt-composition' : ''), {
                 method, credentials: 'same-origin', signal: controller.signal,
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...(method === 'PUT' ? { 'If-Match': revisions.current[options.composition ? 'composition' : 'tools'] || '' } : {}) },
                 ...(body === undefined ? {} : { body: JSON.stringify(body) }),
               });
               const data = await response.json().catch(() => { throw new Error(t('invalidJson')); });
@@ -427,8 +432,8 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
           }
           function accept(data, initial) {
             setSnapshot(data);
-            if (data.promptComposition && (initial || !compositionDirty)) { setCompositionForm(copyComposition(data.promptComposition.config)); setCompositionBaseline(copyComposition(data.promptComposition.config)); }
-            if (initial || !toolsDirty) { setForm(copyConfig(data.config)); setBaseline(copyConfig(data.config)); }
+            if (data.promptComposition && (initial || !compositionDirty)) { revisions.current.composition = data.promptComposition.revision; setCompositionForm(copyComposition(data.promptComposition.config)); setCompositionBaseline(copyComposition(data.promptComposition.config)); }
+            if (initial || !toolsDirty) { revisions.current.tools = data.revision; setForm(copyConfig(data.config)); setBaseline(copyConfig(data.config)); }
           }
           async function load(initial = false) {
             if (generation.current) return;
@@ -503,7 +508,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
           React.useEffect(() => { refreshLayout.current?.(); });
           async function save(event) {
             event.preventDefault();
-            if (busy || generation.current || !dirty) return;
+            if (busy || generation.current || !dirty || overBudget) return;
             const id = ++operation.current;
             const active = () => mounted.current && operation.current === id;
             setBusy('save'); setError(''); setNotice('');
@@ -512,7 +517,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
               try {
                 const data = await request('PUT', copyConfig(form));
                 if (!active()) return;
-                setSnapshot(data); setForm(copyConfig(data.config)); setBaseline(copyConfig(data.config)); saved++;
+                revisions.current.tools = data.revision; setSnapshot(data); setForm(copyConfig(data.config)); setBaseline(copyConfig(data.config)); saved++;
               } catch (err) { failures.push(t('toolsSettings') + '：' + err.message); }
             }
             if (!active()) return;
@@ -521,7 +526,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
                 const data = await request('PUT', copyComposition(compositionForm), { composition: true });
                 if (!active()) return;
                 setSnapshot(current => ({ ...current, promptComposition: data }));
-                setCompositionForm(copyComposition(data.config)); setCompositionBaseline(copyComposition(data.config)); saved++;
+                revisions.current.composition = data.revision; setCompositionForm(copyComposition(data.config)); setCompositionBaseline(copyComposition(data.config)); saved++;
               } catch (err) { failures.push(t('promptSettings') + '：' + err.message); }
             }
             if (active()) {
@@ -1012,7 +1017,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
           };
           return h('section', { ref: settingsElement, className: 'td-settings', 'aria-label': t('title'), 'aria-busy': Boolean(busy) },
             h('style', null, styles), h('div', { className: 'td-topbar' }, h('h2', null, t('title'))),
-            error && h('p', { className: 'td-error', role: 'alert' }, error),
+            error && h('div', { className: 'td-error', role: 'alert' }, h('p', null, error), h('button', { type: 'button', disabled: Boolean(busy || generating), onClick: () => load(true) }, t('reloadDiscard'))),
             !form ? (busy ? h('p', { role: 'status' }, t('loading')) : h('button', { onClick: () => load(true) }, t('retry'))) :
             h(React.Fragment, null,
               h('form', { onSubmit: save },
@@ -1023,6 +1028,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
                   compositionForm && h('label', { className: 'td-switch-card', title: t('compositionHint') }, h('span', { className: 'td-switch-title' }, t('compositionEnable')),
                     h('input', { type: 'checkbox', role: 'switch', className: 'td-switch', checked: compositionForm.enabled, disabled: Boolean(busy || generating) || (!capabilities?.admission && !compositionForm.enabled), 'aria-label': t('compositionEnable'),
                       onChange: event => { const enabled = event.target.checked; changeComposition(current => ({ ...current, enabled })); } }))),
+                form.enabled && assembly && (assembly.reason || assembly.status === 'native-unchanged') && h('p', { className: 'td-muted', role: 'status' }, t('latestScope') + t(({ 'sdk-missing': 'sdkMissing', 'sdk-changed': 'sdkChanged', 'unwrap-unavailable': 'unwrapUnavailable' })[assembly.reason] || (assembly.status === 'native-unchanged' ? 'nativeHint' : 'notApplied'))),
                 compositionReason && h('p', { className: 'td-muted', role: 'status' }, compositionReason),
                 compositionForm && !compositionForm.enabled && capabilities?.admission && h('p', { className: 'td-muted' }, t('compositionInactive')),
                 !compositionForm && h('p', { className: 'td-muted' }, t('compositionMissing')),
@@ -1039,17 +1045,19 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
                     h('div', { className: 'td-master-panel', id: listPanelId('tools'), role: 'tabpanel', 'aria-labelledby': listPanelId('tools') + '-tab', hidden: currentView !== 'tools' },
                       h('ul', { className: 'td-master-list td-tools-master-list', ...scrollDragProps }, outerRows.filter(row => visibleRows.includes(row)).map(row => renderRow(row)), showPacks && renderPacks()))),
                   renderDetail(activeRow)),
+                sizes.filter(item => item.bytes > limit).map(item => h('p', { key: item.label, className: 'td-error', role: 'alert' }, t(item.label) + ' · ' + text('capacityExceeded', { field: Object.keys(item.config).sort((a, b) => byteSize(item.config[b]) - byteSize(item.config[a]))[0] }))),
                 h('div', { className: 'td-actions' },
                   h('p', { className: 'td-feedback' + (notice && notice !== 'partialSaved' ? ' td-success' : ' td-muted'), role: 'status' }, notice ? t(notice) : dirty ? (orderNotice || t('dirty')) : ''),
                   compositionForm && h('button', { type: 'button', disabled: Boolean(busy || generating), onClick: () => { changeComposition(() => ({ version: 1, enabled: false, order: [], rules: {} })); setNotice('compositionDefaultDraft'); } }, t('compositionDefault')),
                   h('button', { type: 'button', disabled: Boolean(busy) || (!dirty && !generating), onClick: cancelChanges }, t('cancel')),
-                  h('button', { type: 'submit', className: 'td-primary', disabled: Boolean(busy || generating) || !dirty }, t(busy === 'save' ? 'saving' : 'save')))),
+                  h('button', { type: 'submit', className: 'td-primary', disabled: Boolean(busy || generating) || !dirty || overBudget }, t(busy === 'save' ? 'saving' : 'save')))),
               h('details', { className: 'td-help', onToggle: () => refreshLayout.current?.() }, h('summary', null, t('help')),
                 h('p', { className: 'td-muted' }, t('scope')), h('p', { className: 'td-muted' }, t('hiddenHint')),
                 h('p', { className: 'td-muted' }, t('groupHint')),
                 compositionForm && h('p', { className: 'td-muted' }, t('compositionScope')),
                 snapshot.warnings.length > 0 && h('div', { role: 'status', 'aria-label': t('warnings') }, snapshot.warnings.map((warning, index) => h('p', { className: 'td-muted', key: index }, warning))),
                 h('div', { className: 'td-heading' }, h('h3', null, t('observations'))),
+                sizes.map(item => h('p', { key: item.label, className: 'td-muted' }, t(item.label) + ' · ' + text('capacity', { used: number(item.bytes), limit: number(limit) }))),
                 h('h4', null, t('estimate')),
                 toolsDirty && h('p', { className: 'td-muted', role: 'status' }, t('estimateDraft')),
                 estimate?.savedChars < 0 && h('p', { className: 'td-muted' }, t('netIncrease')),

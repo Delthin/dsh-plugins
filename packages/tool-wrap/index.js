@@ -1,7 +1,7 @@
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { registeredPlugins, toolOrigin } from './origins.js';
 import { generationStatus, generateDescription } from './summaries.js';
-import { ConfigStore, DiscoveryError, DISCOVER, LEGACY_DISCOVER, isDiscoveryTool, sdkSchemas, renderSdk, project, catalog, discover, digest } from './core.js';
+import { ConfigStore, DiscoveryError, DISCOVER, LEGACY_DISCOVER, isDiscoveryTool, sdkSchemas, renderSdk, project, catalog, discover, digest, MAX_CONFIG_BYTES, requireRevision } from './core.js';
 
 import { CompositionStore, validateComposition, validateCapabilities } from './prompt-composition.js';
 import { CompositionRuntime } from './composition-runtime.js';
@@ -16,7 +16,7 @@ async function readJson(req) {
   const chunks = []; let bytes = 0;
   for await (const chunk of req) {
     bytes += Buffer.byteLength(chunk);
-    if (bytes > 65536) throw new DiscoveryError('请求最多 64 KiB', 413);
+    if (bytes > MAX_CONFIG_BYTES) throw new DiscoveryError('请求最多 64 KiB', 413);
     chunks.push(Buffer.from(chunk));
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new DiscoveryError('无效 JSON'); }
@@ -51,7 +51,7 @@ export async function apply(ctx) {
     const grouped = new Set(groups.flatMap(group => group.tools.map(tool => tool.name)));
     const unknown = schemas.filter(tool => !isDiscoveryTool(tool.name) && !tool.plugin).length;
     return {
-      config: structuredClone(store.config), groups, promptComposition: composition.status(),
+      config: structuredClone(store.config), revision: store.revision, maxConfigBytes: MAX_CONFIG_BYTES, groups, promptComposition: composition.status(),
       otherTools: schemas.filter(tool => !isDiscoveryTool(tool.name) && !grouped.has(tool.name)).map(tool => ({ name: tool.name, description: tool.description.slice(0, 150) })),
       estimate: project(schemas, store.config, runtime() ?? { language: 'typescript', programFormat: 'function-body' }).estimate,
       lastAssembly, discoveryCalls, generation: generationStatus(ctx),
@@ -114,7 +114,7 @@ export async function apply(ctx) {
     // or the caller cannot invoke the discovery tool. Never change runtime capability visibility.
     const exactSdk = section && section.text === renderSdk(schemas, runtime());
     if (!exactSdk || !schemas.some(tool => tool.name === DISCOVER)) {
-      lastAssembly = { mode, status: 'incompatible-sdk', beforeChars: 0, afterChars: 0, savedChars: 0, hash: '', hiddenCount: 0 };
+      lastAssembly = { mode, status: 'incompatible-sdk', reason: !section ? 'sdk-missing' : !exactSdk ? 'sdk-changed' : 'unwrap-unavailable', beforeChars: 0, afterChars: 0, savedChars: 0, hash: '', hiddenCount: 0 };
       // Still hide the compatibility binding when the primary transport is restricted.
       // Never rewrite another plugin's SDK or defer tools without a callable unwrap.
       const sections = assembly.sections.filter(item => item.name !== DIRECTORY_NAME);
@@ -146,7 +146,7 @@ export async function apply(ctx) {
         if (req.method === 'PUT') {
           const value = await readJson(req);
           if (value?.version !== 3) throw new DiscoveryError('配置页面已更新，请刷新后重新保存', 409);
-          await store.save(value);
+          await store.save(value, requireRevision(req));
           // Explicit settings changes can change the prefix. Discovery itself never emits this event.
           ctx.emit('system-prompt/change');
         }
@@ -165,7 +165,7 @@ export async function apply(ctx) {
           const value = await readJson(req);
           const config = validateComposition(value);
           validateCapabilities(config, composition.sources(), composition.capabilities(), compositionStore.config);
-          await compositionStore.save(config);
+          await compositionStore.save(config, requireRevision(req));
           ctx.emit('system-prompt/change');
         }
         return respond(res, 200, composition.status());
