@@ -1,6 +1,6 @@
 {
   "name": "@delthin/dsh-agent-roles",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Manage reusable roles, per-role models, fallback chains, tools, and skills for native DSH Agent Teams.",
   "type": "module",
   "main": "index.js",

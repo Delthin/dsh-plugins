@@ -43,11 +43,15 @@ The lead calls `spawn_role`; members run in fresh, independent sessions with no 
 
 Members capture a snapshot of the role prompt, model settings, and skill texts at startup; later role edits don't affect running members. "Request details" records the actual model, effort, and tool list, and verifies that system prompt, role prompt, and skills loaded in full.
 
+Active members appear first, followed by recent records. Search by the current model and expand a member to load its full saved output summary and request details. Automatic refresh pauses while the browser page is hidden. If「成员记录尚未保存」appears, restore disk space or write permissions, then click「重试保存」to retry.
+
+The role catalog loads independently of model providers. If edits from another page cause a conflict, refresh and edit again. Refreshing an unsaved draft asks for confirmation, and editing is temporarily disabled during a save.
+
 ## Model fallback chain
 
 Each fallback entry picks its own provider, model, reasoning effort, and standard/Fast tier, applied in order:
 
-- **Quota exhausted**: switch to the next entry immediately.
+- **Quota exhausted, authentication failure, or model error**: switch to the next entry immediately.
 - **Other request errors**: retry at 1 / 2 / 4 seconds (3 retries), then switch; at most 4 requests per model.
 - Switching keeps the same member and native session history, including submitted tool results; if the whole chain fails, the last error is kept and the run ends.
 - The chain is frozen at startup; later role edits only affect new members. Roles without fallbacks keep single-model behavior. The member list shows the current model and switch history.
@@ -60,6 +64,8 @@ Fallback relies on the public model-selection and inbox APIs of DSH `>= 0.2.2-rc
 Selected skills are read through the native skill service at startup and injected into the member's system prompt as `<skill_content>`. Skills are text instructions only — they grant no tool permissions; commands and dependencies a skill needs must be configured in the host and the tool whitelist separately. A missing skill fails startup with its name reported.
 
 The tool whitelist constrains which tools the model may call; file and command execution remains governed by DSH's global permissions and file policies — the two are configured separately.
+
+For long-running commands, explicitly select「读取作业结果」(job output) and「停止后台作业」(stop job) under Tools so the role can collect background results or cancel a job. Existing roles do not receive these permissions automatically. The role directory shows configured tools; roles without tools need complete materials from the lead.
 
 ## Usage costs
 

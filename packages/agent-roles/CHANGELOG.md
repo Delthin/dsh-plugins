@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.0
+
+### Minor Changes
+
+- Add explicit background-job output and cancellation permissions without changing existing roles. Show each role’s configured tools to the lead agent.
+
+  Protect unsaved edits from stale catalog revisions and in-flight saves. Load role editing independently of slow or unavailable model providers, and skip futile retries for authentication and model errors.
+
+  Keep active members visible, search their current models, load run details only when expanded, and pause automatic refresh in background pages. Surface unsaved run records with an explicit retry action that clears after successful persistence.
+
 ## 0.7.0
 
 ### Minor Changes
