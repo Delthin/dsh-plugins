@@ -252,9 +252,9 @@ export async function apply(ctx,config) {
     const directoryText=(model=currentModel(agent))=>{
       const rules=delegationRules();
       const roles=store.catalog.roles.filter(r=>r.enabled && roleModelChain(r).every(candidate=>!delegationDenial(model,candidate.model,rules)));
-      return '可用角色（DSH 原生 Agent Team）\n'+roles.map(r=>r.name+' — '+r.description+' ['+r.provider+'/'+r.model+'; '+(r.reasoningEffort||'模型默认')+']'+(r.skills?.length?' 技能：'+r.skills.join(', '):'')).join('\n')+
+      return '可用角色（DSH 原生 Agent Team）\n'+roles.map(r=>r.name+' — '+r.description+' ['+r.provider+'/'+r.model+'; '+(r.reasoningEffort||'模型默认')+'] 工具：'+(r.tools.length?r.tools.join(', '):'无；需提供完整材料')+(r.skills?.length?' 技能：'+r.skills.join(', '):'')).join('\n')+
         rules.filter(rule=>rule.leaderModel===model).map(rule=>'\n委派限制：当前主代理 '+model+'，禁止创建或唤醒 '+rule.denyModels.join('、')+' 成员。不得改用通用委派工具绕过；如需升级模型，请交由用户切换主代理。').join('')+
-        '\n按任务需要自主选择角色，用 spawn_role 创建有明确任务边界的后台成员；不要用通用 subagent 或 subagent_fork 代替角色分发。独立任务可并行，写文件范围避免重叠。成员没有你的历史，必须提供目标、材料、路径、授权和验收条件。小任务直接完成。使用原生 list_agents 查看成员，send_message({agent:成员名称,message:反馈}) 继续沟通，interrupt_agent 中断。结果由原生后台通知回到本会话；仍需要结果时用 wait_agent 等待，不忙轮询。writer/designer 没有工具，应提供完整材料。';
+        '\n按任务需要自主选择角色，用 spawn_role 创建有明确任务边界的后台成员；不要用通用 subagent 或 subagent_fork 代替角色分发。独立任务可并行，写文件范围避免重叠。成员没有你的历史，必须提供目标、材料、路径、授权和验收条件。小任务直接完成。使用原生 list_agents 查看成员，send_message({agent:成员名称,message:反馈}) 继续沟通，interrupt_agent 中断。结果由原生后台通知回到本会话；仍需要结果时用 wait_agent 等待，不忙轮询。';
     };
     add(agent.ctx.systemPrompt.context({name:'agent-roles:directory',order:130,required:true,interpolate:false,text:()=>directoryText()}));
     // Use the just-assembled model when a session switches routes before its next request.

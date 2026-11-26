@@ -10,7 +10,7 @@ const fixture=JSON.parse(await readFile(new URL('./fixtures/roles.json',import.m
 async function setup(fn,config={delegationRules:rules}) {
   const dir=await mkdtemp(join(tmpdir(),'agent-roles-delegation-'));
   try {
-    const roles=['lead-small','target-mid','target-large','target-other'].map((model,i)=>({...fixture,id:'role-'+i,name:'role-'+i,enabled:true,provider:'test',model}));
+    const roles=['lead-small','target-mid','target-large','target-other'].map((model,i)=>({...fixture,id:'role-'+i,name:'role-'+i,enabled:true,provider:'test',model,tools:i===1?[]:fixture.tools}));
     await writeFile(join(dir,'roles.json'),JSON.stringify({version:1,revision:1,roles}));
     await writeFile(join(dir,'runs.json'),JSON.stringify({version:1,items:[{sessionId:'old-large',role:roles[0],selection:{model:'target-large',fast:false}}]}));
     let model='lead-small',spawns=0,modelChecks=0;
@@ -74,6 +74,8 @@ test('当轮提示目录用新选模型过滤，而非旧 header 或冻结 optio
     const result=await assemble({},undefined,async()=>next);
     assert.equal(result.contexts[0].text.includes('role-1 —'),true);assert.equal(result.contexts[0].text.includes('role-2 —'),!blocked);
     assert.ok(result.contexts[0].text.includes('role-0 —'));assert.equal(result.contexts[1].text,'preserved');
+    assert.match(result.contexts[0].text,/工具：read, glob, grep/);assert.match(result.contexts[0].text,/工具：无；需提供完整材料/);
+    assert.doesNotMatch(result.contexts[0].text,/writer\/designer/);
   }
 }));
 
