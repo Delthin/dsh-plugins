@@ -6,17 +6,42 @@ import {TOOLS,validateRole} from './store.js';
 
 const source=await readFile(new URL('./client.js',import.meta.url),'utf8');
 const role={id:'test',name:'test',displayName:'测试角色',description:'职责',prompt:'任务',enabled:true,provider:'test',model:'same-model',reasoningEffort:'',tools:[]};
-function panel(draft=role,fastProviders=['test'],settings) {
+function panel(draft=role,fastProviders=['test'],settings,respond) {
   const state=[{revision:1,roles:[draft]},[{provider:'test',id:'same-model'},{provider:'backup',id:'backup-model'},{provider:'third',id:'third-model'}],TOOLS,draft,JSON.stringify(draft),{},false,'','','roles','config','','',[],null,null,[],'','',false,fastProviders,settings];
   let cursor=0,entry,module,request;
   const h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)});
   const primitives=Object.fromEntries(['Button','Switch','Checkbox','SegmentedControl','Modal'].map(name=>[name,()=>{}]));
   const React={createElement:h,useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return [state[i],value=>{state[i]=typeof value==='function'?value(state[i]):value;}];},useEffect(){}};
-  runInNewContext(source,{document:{createElement:()=>({dataset:{},remove(){}}),head:{appendChild(){}}},window:{__ModuleLoader__:{load(value){module=value.factory(name=>name==='react'?React:primitives);}}},crypto:{randomUUID:()=> 'new-role'},fetch:async(_url,options)=>{request=JSON.parse(options.body);return {ok:true,json:async()=>({catalog:{revision:2,roles:[...state[0].roles.filter(r=>r.id!==request.role.id),validateRole(request.role)]}})};}});
+  runInNewContext(source,{document:{createElement:()=>({dataset:{},remove(){}}),head:{appendChild(){}}},window:{__ModuleLoader__:{load(value){module=value.factory(name=>name==='react'?React:primitives);}}},crypto:{randomUUID:()=> 'new-role'},fetch:async(_url,options)=>{const args=JSON.parse(options.body);request=args;if(respond)return {ok:true,json:()=>respond(args)};return {ok:true,json:async()=>({catalog:{revision:2,roles:[...state[0].roles.filter(r=>r.id!==request.role.id),validateRole(request.role)]}})};}});
   module.apply({effect(){},slots:{inject(_key,fn){fn();},register(options,render){if(options.key==='agent-roles')entry=render();}},uiWorkspace:{}});
   return {state,primitives,render(){cursor=0;return entry.type(entry.props);},get request(){return request;}};
 }
 function nodes(tree) {return !tree||typeof tree!=='object'?[]:[tree,...tree.children.flatMap(nodes)];}
+test('刷新同步重载草稿版本；保存期间锁住编辑并拒绝重复提交',async()=>{
+  const latest={...role,prompt:'另一页面更新的正文'},pending=Promise.withResolvers();let saves=0;
+  const app=panel(role,['test'],undefined,async request=>{
+    if(request.action==='list')return {catalog:{revision:2,roles:[latest]},tools:TOOLS};
+    if(request.action==='models')return {models:[{provider:'test',id:role.model}]};
+    saves++;await pending.promise;return {catalog:{revision:2,roles:[request.role]}};
+  });
+  app.render();
+  app.state[0]={revision:2,roles:[latest]};
+  nodes(app.render()).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});
+  assert.equal(app.request.revision,1,'草稿不能借用后来加载的目录版本');
+  const saving=app.render();
+  assert.equal(nodes(saving).find(n=>n.type==='fieldset').props.disabled,true);
+  assert.equal(nodes(saving).find(n=>n.props['aria-current']).props.disabled,true);
+  nodes(saving).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(saves,1);
+  pending.resolve();await new Promise(resolve=>setImmediate(resolve));
+  app.state[3]={...app.state[3],description:'未保存修改'};
+  nodes(app.render()).find(n=>n.props['aria-label']==='刷新').props.onClick();
+  assert.match(app.state[15].title,/放弃/);
+  await app.state[15].action();
+  assert.equal(app.state[3].prompt,latest.prompt);assert.equal(app.state[3].description,latest.description);
+  assert.equal(app.state[24],2);assert.equal(JSON.stringify(app.state[3]),app.state[4]);
+});
+
 function text(tree) {return !tree||typeof tree==='boolean'?'':typeof tree!=='object'?String(tree):tree.children.map(text).join(' ');}
 
 test('备用模型按序增删移动并保存各自档位，不改动首选模型',async()=>{
