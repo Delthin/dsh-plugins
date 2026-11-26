@@ -123,7 +123,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-agent-roles',factory:(require)=>{
     const remove=()=>setConfirm({title:'删除角色“'+draft.displayName+'”？',button:'删除角色',destructive:true,action:()=>act(async()=>{const v=await api('delete',{revision:draftRevision,id:draft.id});setCatalog(v.catalog);const r=v.catalog.roles[0]??null;setDraft(r);setSaved(JSON.stringify(r));setDraftRevision(v.catalog.revision);setEditorTab('config');setNotice('已删除');})});
     const openRun=r=>act(()=>ctx.uiWorkspace.openSession({parentSessionId:r.parentSessionId,childSessionId:r.sessionId,mode:'continuable'}));
     const filtered=(catalog?.roles??[]).filter(r=>(r.name+' '+r.displayName+' '+r.model).toLowerCase().includes(query.toLowerCase()));
-    const filteredRuns=runs.filter(r=>((r.memberName||'')+' '+r.role.name+' '+r.role.model).toLowerCase().includes(runQuery.toLowerCase()));
+    const filteredRuns=runs.filter(r=>((r.memberName||'')+' '+r.role.name+' '+r.role.displayName+' '+(r.selection?.provider??r.role.provider)+' '+(r.selection?.model??r.role.model)).toLowerCase().includes(runQuery.toLowerCase()));
     const selectedSkills=draft?.skills??[];
     const skillRows=[...skills,...selectedSkills.filter(name=>!skills.some(s=>s.name===name)).map(name=>({name,description:'当前目录中不可用；请取消选择或恢复技能。',missing:true}))].filter(s=>(s.name+' '+s.description).toLowerCase().includes(skillQuery.toLowerCase()));
     const efforts=info?.reasoning?.efforts??[],noEffort=!!info&&!info.reasoning,fastSupported=fastProviders.includes(draft?.provider);

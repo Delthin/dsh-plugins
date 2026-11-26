@@ -341,12 +341,16 @@ export async function apply(ctx,config) {
     if(body.action==='skills') return {skills:await skillDirectory(ctx.skills,{cwd:ctx.workingDirectory.defaultDirectory})};
     if(body.action==='modelInfo') return ctx.llm.resolveModelInfo(body.provider,body.model);
     if(body.action==='runs') {
+      const items=store.runs.items.toReversed();
+      const active=items.filter(r=>['running','provisioning'].includes(project(liveRecords.get(r.sessionId)??r).status));
+      const activeIds=new Set(active.map(r=>r.sessionId));
+      const visible=[...active,...items.filter(r=>!activeIds.has(r.sessionId))].slice(0,Math.max(200,active.length));
       const members=new Map();
-      for(const record of store.runs.items.slice(-200))if(record.parentSessionId&&!members.has(record.parentSessionId)){
+      for(const record of visible)if(record.parentSessionId&&!members.has(record.parentSessionId)){
         try{members.set(record.parentSessionId,await ctx.subagents.listDescendants(record.parentSessionId));}
         catch(error){if(error.code!=='SESSION_QUERY_SESSION_NOT_FOUND')throw error;members.set(record.parentSessionId,[]);}
       }
-      return {runs:store.runs.items.slice(-200).reverse().map(r=>{
+      return {runs:visible.map(r=>{
         const member=members.get(r.parentSessionId)?.find(member=>member.id===r.sessionId);
         const {skillSnapshot,...summary}=project(liveRecords.get(r.sessionId)??r,member);
         return summary;

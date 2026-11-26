@@ -98,6 +98,16 @@ test('Fast 保存与新启动受支持清单限制，旧非法快照保留不变
   assert.equal((await disabled.api('save',{revision:2,role:{...role,fast:true}})).status,400);
 }));
 
+test('最早的活动成员保留在最近记录列表顶部',()=>temporary(async dir=>{
+  await catalog(dir);const active=agent('old-running');active.status='running';
+  const items=Array.from({length:202},(_,i)=>({sessionId:i?'done-'+i:active.id,parentSessionId:'parent',role,selection:{provider:'test',model:'same-model',fast:false},status:i?'inactive':'running',audit:{},output:'result'}));
+  await writeFile(join(dir,'runs.json'),JSON.stringify({version:1,items}));
+  const app=await boot(dir,[active]);const result=await app.api('runs');
+  assert.equal(result.status,200);assert.equal(result.value.runs.length,200);
+  assert.equal(result.value.runs[0].sessionId,active.id);assert.equal(result.value.runs[0].status,'running');
+  assert.equal(result.value.runs[1].sessionId,'done-201');
+}));
+
 test('写盘故障通过列表显现，重试保存后恢复且保留最新记录',t=>temporary(async dir=>{
   await catalog(dir);const app=await boot(dir),atomic=RoleStore.prototype.atomic;let fail=true;
   t.mock.method(RoleStore.prototype,'atomic',async function(name,value){
