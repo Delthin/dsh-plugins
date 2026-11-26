@@ -31,12 +31,15 @@ export function roleSystem(role) {
     (role.tools.length ? '使用分配给本角色的工具，遵守任务范围与授权。' : '本角色没有工具；主代理应直接提供正文、材料和必要技能要点，负责检索、落盘与验证。');
 }
 export async function modelDirectory(llm) {
-  const models=[], errors=[];
-  for(const provider of llm.listProviders()) {
-    try { for(const model of await llm.listModels(provider.id)) models.push({...model,provider:provider.id}); }
-    catch(e) { errors.push({provider:provider.id,error:String(e.message??e)}); }
-  }
-  return {models,errors};
+  const results=await Promise.all(llm.listProviders().map(async provider=>{
+    let timer;
+    try {
+      const models=await Promise.race([llm.listModels(provider.id),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('模型目录读取超时，请刷新重试')),10000);})]);
+      return {models:models.map(model=>({...model,provider:provider.id})),errors:[]};
+    } catch(error) {return {models:[],errors:[{provider:provider.id,error:String(error.message??error)}]};}
+    finally {clearTimeout(timer);}
+  }));
+  return {models:results.flatMap(r=>r.models),errors:results.flatMap(r=>r.errors)};
 }
 function validateFastProvider(role,fastProviders) {
   if(role.fast===true && !fastProviders.includes(role.provider)) throw new Error('供应商不支持 Fast：'+role.provider+'；请关闭 Fast 或选择支持的供应商');

@@ -64,6 +64,16 @@ test('备用模型按序增删移动并保存各自档位，不改动首选模�
   assert.equal(app.state[3].fallbacks.length,1);assert.equal(app.state[3].fallbacks[0].provider,'backup');
 });
 
+test('角色刷新不等待模型目录，模型异常不覆盖角色编辑状态',async()=>{
+  const pending=Promise.withResolvers(),latest={...role,prompt:'最新正文'};
+  const app=panel(role,[],undefined,async request=>request.action==='models'?pending.promise:{catalog:{revision:2,roles:[latest]},tools:TOOLS});
+  nodes(app.render()).find(n=>n.props['aria-label']==='刷新').props.onClick();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.state[3].prompt,latest.prompt);assert.equal(app.state[6],false);
+  pending.resolve({models:[],errors:[{provider:'offline',error:'unavailable'}]});
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(app.state[7],'');assert.match(text(app.render()),/unavailable/);
+});
+
 test('后台作业权限显式勾选后保存，已有 bash 权限不会自动扩大',async()=>{
   const app=panel({...role,tools:['bash']});app.state[10]='tools';
   let tree=app.render();assert.match(text(tree),/耗时命令/);

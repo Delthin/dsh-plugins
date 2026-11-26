@@ -4,7 +4,7 @@ import {mkdtemp,readFile,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {RoleStore,validateRole} from './store.js';
-import {validateModel,selectionFor,roleSystem} from './index.js';
+import {validateModel,selectionFor,roleSystem,modelDirectory} from './index.js';
 const seed=JSON.parse(await readFile(new URL('./fixtures/roles.json',import.meta.url),'utf8'));
 
 test('旧角色目录移除模式与来源字段，保留正文、选择和历史快照',async()=>{
@@ -58,6 +58,14 @@ test('观察写入合并且在途队列有界；关键落盘失败保留最新�
   assert.deepEqual(disk.items,[history,record]);assert.equal(disk.items[1].error,undefined);
  } finally {assert.ok(dir.startsWith(join(tmpdir(),'agent-roles-writes-')));await rm(dir,{recursive:true,force:true});}
 });
+test('模型目录并行查询，失效和超时供应商不丢弃可用模型',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});const started=[];
+ const result=modelDirectory({listProviders:()=>['slow','good','broken'].map(id=>({id})),listModels:async id=>{started.push(id);if(id==='slow')return new Promise(()=>{});if(id==='broken')throw new Error('offline');return [{id:'ready'}];}});
+ assert.deepEqual(started,['slow','good','broken']);await new Promise(resolve=>setImmediate(resolve));
+ t.mock.timers.tick(10000);const value=await result;
+ assert.deepEqual(value.models,[{id:'ready',provider:'good'}]);assert.equal(value.errors.length,2);assert.match(value.errors[0].error,/超时/);
+});
+
 test('模型和推理档位精确校验，无隐式供应商替换',async()=>{
  const llm={listProviders:()=>[{id:'cpa'},{id:'gemini-web'}],listModels:async p=>[{id:p==='cpa'?'model':'gemini'}],resolveModelInfo:async p=>p==='cpa'?{reasoning:{efforts:[{id:'high'}]}}:{}};
  const role={...seed[0],provider:'cpa',model:'model',reasoningEffort:'high'};assert.deepEqual(selectionFor(role,await validateModel(llm,role)),{provider:'cpa',model:'model',reasoningEffort:'high',fast:false});await assert.rejects(validateModel(llm,{...role,model:'absent'}),/清单/);await assert.rejects(validateModel(llm,{...role,reasoningEffort:'off'}),/不支持/);const gemini={...role,provider:'gemini-web',model:'gemini',reasoningEffort:'off'};assert.deepEqual(selectionFor(gemini,await validateModel(llm,gemini)),{provider:'gemini-web',model:'gemini',fast:false});
