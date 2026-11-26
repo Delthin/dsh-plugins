@@ -154,13 +154,13 @@ export class CompositionRuntime {
     }
     return new Set(session.snapshotEvents().filter(event => (event.type === PACK_ADMITTED || event.type === LEGACY_PACK_ADMITTED) && event.data.version === 1 && visible.has(event.data.rootCallId)).map(event => event.data.plugin));
   }
-  delivery(source, schemas, config, toolsConfig, canDefer) {
+  delivery(source, config, deferredPlugins, canDefer) {
     if (!canDefer || !source.attributed || source.owner === UNWRAP_OWNER || source.kind === 'instructions' || source.complete) return 'always';
     const rule = effectiveRule(config, source);
     if (rule.delivery === 'always') return 'always';
     // Independent state snapshots remain present unless deliberately deferred.
     if (source.kind === 'message' && source.form !== 'instructions' && rule.delivery !== 'pack') return 'always';
-    return hiddenTools(schemas, toolsConfig).some(tool => tool.plugin?.id === source.owner) ? 'pack' : 'always';
+    return deferredPlugins.has(source.owner) ? 'pack' : 'always';
   }
   async admit(input) {
     const { assembly, agent, messages, toolSet, signal } = input;
@@ -169,11 +169,12 @@ export class CompositionRuntime {
     const toolsConfig = structuredClone(assembly.toolDiscoveryProjection?.config ?? this.toolsConfig.config);
     const schemas = sdkSchemas(this.ctx.tools, agent, toolSet);
     const canDefer = assembly.tools?.length === 1 && assembly.tools[0].name === 'run_code' && schemas.some(tool => tool.name === DISCOVER) && assembly.sections.some(section => section.name === DIRECTORY_NAME && section.text);
+    const deferredPlugins = new Set(canDefer ? hiddenTools(schemas, toolsConfig).map(tool => tool.plugin?.id).filter(Boolean) : []);
     const assembled = this.collectAssembly(assembly);
     messages.forEach(message => this.observeInstructions(message));
     const injected = this.injectedMessages(agent, messages);
     const contributions = [...assembled, ...this.instructions(agent, messages), ...injected];
-    if (toolSet) this.stepAssemblies.set(toolSet, { agent, assembly, config, toolsConfig, canDefer, contributions });
+    if (toolSet) this.stepAssemblies.set(toolSet, { agent, assembly, config, toolsConfig, canDefer, contributions, deferredPlugins });
     if (!config.enabled) return undefined;
     const loaded = this.loadedPlugins(agent);
     const ordered = orderContributions(contributions, config);
@@ -182,7 +183,7 @@ export class CompositionRuntime {
       const rule = effectiveRule(config, source);
       // The unwrap directory remains resident even if a stored parent draft predates it.
       const entrypoint = source.owner === UNWRAP_OWNER && source.name === DIRECTORY_NAME;
-      if (!rule.enabled && !entrypoint || this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack' && !loaded.has(source.owner)) { excludedIds.push(source.id); continue; }
+      if (!rule.enabled && !entrypoint || this.delivery(source, config, deferredPlugins, canDefer) === 'pack' && !loaded.has(source.owner)) { excludedIds.push(source.id); continue; }
       const role = rule.role === 'inherit' ? source.defaultRole : rule.role;
       if (!['system', 'user'].includes(role)) throw new Error('Unsupported trusted prompt-composition role');
       if (role === 'system') { excludedIds.push(source.id); if (source.text) { system.push(source.text); systemSourceIds.push(source.id); } }
@@ -195,7 +196,7 @@ export class CompositionRuntime {
       if (present.has(observed.id) || observed.owner === UNWRAP_OWNER && observed.name === DIRECTORY_NAME) continue;
       const source = { ...observed, attributed: Boolean(observed.owner) }, rule = effectiveRule(config, source);
       const role = rule.role === 'inherit' ? source.kind === 'section' ? 'system' : 'user' : rule.role;
-      if (!rule.enabled || role === 'system' || this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack' && !loaded.has(source.owner)) excludedIds.push(source.id);
+      if (!rule.enabled || role === 'system' || this.delivery(source, config, deferredPlugins, canDefer) === 'pack' && !loaded.has(source.owner)) excludedIds.push(source.id);
     }
     // Direct source rules also revoke unavailable legacy sources after process restart,
     // before their producer has supplied identity metadata to this runtime instance.
@@ -215,9 +216,8 @@ export class CompositionRuntime {
     const accepted = this.accepted(execution);
     if (!accepted) return [];
     execution.signal.throwIfAborted();
-    const schemas = sdkSchemas(this.ctx.tools, execution.agent, execution.toolSet);
-    const { config, toolsConfig, canDefer } = accepted;
-    return orderContributions(accepted.contributions, config).filter(source => source.owner === plugin && source.text && (!config.enabled || effectiveRule(config, source).enabled && this.delivery(source, schemas, config, toolsConfig, canDefer) === 'pack')).map(source => {
+    const { config, deferredPlugins, canDefer } = accepted;
+    return orderContributions(accepted.contributions, config).filter(source => source.owner === plugin && source.text && (!config.enabled || effectiveRule(config, source).enabled && this.delivery(source, config, deferredPlugins, canDefer) === 'pack')).map(source => {
       const rule = config.enabled ? effectiveRule(config, source) : { role: 'inherit', placement: 'inherit' };
       return { id: source.id, kind: source.kind, role: rule.role === 'inherit' ? source.defaultRole : rule.role, placement: rule.placement === 'inherit' ? source.defaultPlacement ?? 'state' : rule.placement, text: source.text };
     });

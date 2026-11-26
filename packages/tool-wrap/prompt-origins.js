@@ -1,7 +1,7 @@
 import { symbols } from '@deepseek-ai/cordis';
 import { SystemPrompt } from '@deepseek-ai/dsh-system-prompt';
 import { scopeOf, scopeChainOf } from '@deepseek-ai/dsh-scope';
-import { sourceId, ownerId } from './prompt-composition.js';
+import { sourceId } from './prompt-composition.js';
 
 const definitionOrigins = new WeakMap();
 const registryOrigins = new WeakMap();
@@ -83,7 +83,6 @@ export function registeredPromptSources(registry) {
 
 let installation;
 const originalOf = value => value?.[symbols.original] ?? value;
-const tableOf = (runtime, scope) => (scope === undefined ? runtime.layers.global : runtime.layers.peek(scope))?.sections;
 function ownerOf(ctx) {
   const seen = new Set();
   for (let fiber = ctx?.fiber; fiber && !seen.has(fiber); fiber = fiber.parent?.fiber) {
@@ -100,25 +99,11 @@ export function installPromptOrigins() {
     const descriptor = Object.getOwnPropertyDescriptor(SystemPrompt.prototype, 'section');
     const contextDescriptor = Object.getOwnPropertyDescriptor(SystemPrompt.prototype, 'context');
     if (typeof descriptor?.value !== 'function' || typeof contextDescriptor?.value !== 'function') throw new Error('Unsupported SystemPrompt registration contract');
-    const epoch = { active: true, references: 0, runtimes: new WeakMap() };
+    const epoch = { active: true, references: 0 };
     const wrapper = function (...args) {
       const result = Reflect.apply(descriptor.value, this, args);
       if (!epoch.active) return result;
       observeRegistration(this, args[0], 'section');
-      try {
-        const runtime = originalOf(this);
-        const scope = scopeOf(this.ctx);
-        const definition = args[0];
-        if (tableOf(runtime, scope)?.get(definition.name) !== definition) return result;
-        let state = epoch.runtimes.get(runtime);
-        if (!state) epoch.runtimes.set(runtime, state = { global: new Map(), scoped: new WeakMap() });
-        let records = state.global;
-        if (scope !== undefined) {
-          records = state.scoped.get(scope);
-          if (!records) state.scoped.set(scope, records = new Map());
-        }
-        records.set(definition.name, { reference: new WeakRef(definition), owner: ownerOf(this.ctx) });
-      } catch { /* Unsupported metadata stays unknown, without affecting the host. */ }
       return result;
     };
     const contextWrapper = function (...args) {
@@ -138,78 +123,8 @@ export function installPromptOrigins() {
     active = false;
     if (--current.epoch.references) return;
     current.epoch.active = false;
-    current.epoch.runtimes = new WeakMap();
     if (SystemPrompt.prototype.section === current.wrapper) Object.defineProperty(SystemPrompt.prototype, 'section', current.descriptor);
     if (SystemPrompt.prototype.context === current.contextWrapper) Object.defineProperty(SystemPrompt.prototype, 'context', current.contextDescriptor);
     if (installation === current) installation = undefined;
   };
-}
-
-function registration(runtime, name, scope) {
-  const state = installation?.epoch.runtimes.get(runtime);
-  for (const key of [...scopeChainOf(scope), undefined]) {
-    const definition = tableOf(runtime, key)?.get(name);
-    if (definition === undefined) continue;
-    const records = key === undefined ? state?.global : state?.scoped.get(key);
-    const record = records?.get(name);
-    // An unobserved shadow is unknown even if it reuses an ancestor's exact definition.
-    if (record?.reference.deref() !== definition) {
-      records?.delete(name);
-      return { definition, owner: null };
-    }
-    return { definition, owner: record.owner };
-  }
-  return null;
-}
-function metadata(name, record) {
-  const plugin = record?.owner ?? null;
-  const reserved = /^(harness|deployment|tools?|policy|permissions?|approval|sandbox|persona|identity|team|plan|structured-output)(:|$)/i.test(name);
-  const locked = !plugin || plugin.startsWith('@deepseek-ai/') || reserved || record?.definition.complete === true;
-  return { id: name, plugin, locked, reason: !plugin ? 'unknown-source' : locked ? 'protected' : 'plugin' };
-}
-
-/** Global registration metadata only. Never assemble/evaluate providers or enumerate scopes. */
-export function globalPromptSections(registry) {
-  try {
-    const runtime = originalOf(registry);
-    return [...runtime.layers.global.sections.entries()]
-      .sort(([, a], [, b]) => a.order - b.order || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-      .map(([name]) => metadata(name, registration(runtime, name)));
-  } catch { return []; }
-}
-
-/** Capture only this call's original objects; dynamic replacements cannot inherit attribution. */
-export function capturePromptSections(registry, sections, scope) {
-  const captured = new Map();
-  try {
-    const runtime = originalOf(registry);
-    for (const section of sections) captured.set(section, {
-      ...metadata(section.name, registration(runtime, section.name, scope)),
-      name: section.name, text: section.text, interpolate: section.interpolate, hasInterpolate: Object.hasOwn(section, 'interpolate'),
-    });
-  } catch { captured.clear(); /* Fail closed: no eligible objects on an unsupported host. */ }
-  return captured;
-}
-
-/** In-place edits, like replacement objects, cannot inherit a captured source. */
-export function capturedPromptMetadata(captured, section) {
-  const record = captured.get(section);
-  return record && section.name === record.name && section.text === record.text && section.interpolate === record.interpolate && Object.hasOwn(section, 'interpolate') === record.hasInterpolate ? record : null;
-}
-
-/** A pure stable permutation of eligible slots; fixed sections retain their exact positions. */
-export function orderPromptSections(sections, config, metadataOf) {
-  if (!config.enabled || !config.plugins.length) return sections;
-  const ranks = new Map(config.plugins.map((id, index) => [id, index]));
-  const eligible = sections.filter(section => metadataOf(section)?.locked === false);
-  const sorted = eligible.map((section, index) => ({ section, index, rank: ranks.get(metadataOf(section).plugin) ?? Infinity }))
-    .sort((a, b) => a.rank - b.rank || a.index - b.index).map(item => item.section);
-  if (eligible.every((section, index) => section === sorted[index])) return sections;
-  let index = 0;
-  return sections.map(section => metadataOf(section)?.locked === false ? sorted[index++] : section);
-}
-
-export function promptOrderPreview(registry, config) {
-  const sections = globalPromptSections(registry);
-  return orderPromptSections(sections, config, section => section);
 }

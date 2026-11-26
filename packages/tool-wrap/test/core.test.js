@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToolsSdk } from '@deepseek-ai/dsh-tool-executor-ptc';
 import { defineTool } from '@deepseek-ai/dsh-tools';
-import { hiddenTools, discover, overview, sdkSchemas, validateConfig, DiscoveryError } from '../core.js';
+import { hiddenTools, discover, overview, sdkSchemas, validateConfig, DiscoveryError, project } from '../core.js';
 import { enabledConfig, fixturePlugin, fixtureTool, hostFixture, tsRuntime } from './fixture.js';
 
 const names = tools => tools.map(tool => tool.name).sort();
@@ -15,6 +15,15 @@ test('group selection, exact tool selection and exclusion have independent prece
   assert.deepEqual(names(hiddenTools(schemas, enabledConfig({ groups: ['dsh-ego-browser'], tools: ['virtual_echo', 'ego_visit'], exclude: ['ego_visit', 'virtual_echo'] }))), ['ego_capture', 'ego_secret']);
   assert.deepEqual(hiddenTools(schemas, enabledConfig({ enabled: false })), []);
   assert.deepEqual(hiddenTools(schemas, enabledConfig({ groups: [], tools: [] })), []);
+  for (const config of [enabledConfig({ groups: [], tools: [] }), enabledConfig({ groups: ['missing'] }), enabledConfig({ exclude: names(hiddenTools(schemas, enabledConfig())) })]) {
+    for (const language of ['typescript', 'python']) {
+      const runtime = { ...tsRuntime, language };
+      const result = project(schemas, config, runtime);
+      assert.equal(result.text, project(schemas, { ...config, enabled: false }, runtime).text);
+      assert.equal(result.directory, '');
+      assert.equal(result.estimate.savedChars, 0);
+    }
+  }
   assert.throws(() => hiddenTools(schemas, enabledConfig({ tools: ['run_code', 'unwrap', 'discover_tools'] })), DiscoveryError);
   const protectedSchemas = ['run_code', 'unwrap', 'discover_tools'].map(name => ({ name, plugin: { id: 'dsh-ego-browser', label: 'Protected fixture' } }));
   assert.deepEqual(hiddenTools([...schemas, ...protectedSchemas], enabledConfig()).filter(tool => ['run_code', 'unwrap', 'discover_tools'].includes(tool.name)), []);

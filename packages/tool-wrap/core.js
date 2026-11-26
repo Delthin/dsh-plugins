@@ -122,12 +122,13 @@ export function overview(hidden, runtime, config = DEFAULT_CONFIG) {
 }
 export function project(schemas, config, runtime) {
   const hidden = hiddenTools(schemas, config);
+  const original = renderSdk(schemas.filter(tool => !isDiscoveryTool(tool.name)), runtime);
+  if (!hidden.length) return { text: original, directory: '', hidden, estimate: { beforeChars: original.length, afterChars: original.length, savedChars: 0, estimatedSavedTokens: 0, hiddenCount: 0 } };
   const hiddenNames = new Set(hidden.map(tool => tool.name));
-  const text = renderSdk(schemas.filter(tool => !hiddenNames.has(tool.name) && tool.name !== LEGACY_DISCOVER && (config.enabled || !isDiscoveryTool(tool.name))), runtime);
-  const directory = hidden.length ? overview(hidden, runtime, config) : '';
-  // The directory has its own contribution identity, not the tools registry's owner.
-  const afterChars = text.length + (directory ? directory.length + 2 : 0);
-  const beforeChars = renderSdk(schemas.filter(tool => !isDiscoveryTool(tool.name)), runtime).length;
+  const text = renderSdk(schemas.filter(tool => !hiddenNames.has(tool.name) && tool.name !== LEGACY_DISCOVER), runtime);
+  const directory = overview(hidden, runtime, config);
+  const afterChars = text.length + directory.length + 2;
+  const beforeChars = original.length;
   return { text, directory, hidden, estimate: { beforeChars, afterChars, savedChars: beforeChars - afterChars, estimatedSavedTokens: Math.round((beforeChars - afterChars) / 4), hiddenCount: hidden.length } };
 }
 export function discover(schemas, config, runtime, args = {}) {
