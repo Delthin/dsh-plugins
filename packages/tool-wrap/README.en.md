@@ -20,7 +20,7 @@ npm install @delthin/dsh-tool-wrap
 
 Load `@delthin/dsh-tool-wrap/origin-bootstrap` and the main plugin via your host's plugin import mechanism, then restart DSH. `origin-bootstrap` must load before other tool plugins register (see FAQ below).
 
-Note that installing from npm does not perform the host adaptation for prompt composition: full composition (prompt roles, ordering, exclusion, and pack descriptions entering real messages) requires manually reviewing and running the adapter described in [host-support](host-support/README.md). Without it those features stay unavailable; tool folding itself is unaffected.
+Install the prompt-composition host adapter separately: full composition (prompt roles, ordering, exclusion, and pack descriptions entering real messages) requires manually reviewing and running the adapter described in [host-support](host-support/README.md). Without it those features stay unavailable; tool folding itself is unaffected.
 
 ### Upgrading from `dsh-tool-discovery`
 
@@ -43,6 +43,12 @@ Enable the plugin, then open "Tools & Prompts" from the left navigation or setti
 5. Click "Save". Everything is a draft until saved; saved settings apply to subsequent prompt assembly for all sessions of the profile. In-flight requests are unaffected.
 
 Tool configuration and prompt composition are independent: moving prompts never changes tool selection or plugin ownership.
+
+Under **How it works and context size**, click **Estimate current draft** to compare total character usage and the impact of moving each pack in or out before saving. Estimates use global tools only, do not save settings and make no model calls. Recalculate after editing the draft.
+
+In the same section, **Saved settings for absent sources** lets you forget an individual source’s rules and ordering. Changes remain cancellable until saved; temporarily removing a plugin never clears its settings automatically. If another page saves first, stale writes are rejected and your draft is retained. Copy any changes you need before choosing **Discard draft and reload**.
+
+Tool settings and prompt settings each have a 64 KiB UTF-8 JSON budget. The page shows byte usage, identifies the largest field when over budget and prevents submission. Per-entry length and count limits also apply.
 
 ### On-demand loading on the model side
 
@@ -90,7 +96,7 @@ Stored as `tool-discovery.json` in the current profile:
 
 - `groups`: plugin IDs folded as whole packs; tools added later are included automatically.
 - `tools` / `exclude`: exact tool names to include or exclude; `exclude` wins and such tools always render fully.
-- `run_code`, `unwrap`, and `discover_tools` are never folded.
+- `run_code`, `unwrap`, and `discover_tools` cannot be selected for folding. When no tools are deferred in the caller’s session, no extra `unwrap` definition is displayed.
 - Legacy `v1`/`v2` configs migrate automatically on read; saves are atomic via a temp file with `0600` permissions; corrupted files raise an error instead of being silently overwritten.
 
 ## FAQ
