@@ -25,7 +25,7 @@ async function catalog(dir,roles=[role]) {
 }
 function agent(id) {
   const listeners=new Map();let selection;
-  return {id,listeners,model:{current:()=>selection&&structuredClone(selection),select:value=>{selection=structuredClone(value);}},ctx:{tools:{presentAs:()=>noop,guard:()=>noop,get:()=>undefined,restrict:()=>noop},systemPrompt:{section:()=>noop},on(name,fn){const list=listeners.get(name)??[];list.push(fn);listeners.set(name,list);return noop;}}};
+  return {id,listeners,model:{current:()=>selection&&structuredClone(selection),select:value=>{selection=structuredClone(value);}},ctx:{tools:{setExecutor:()=>noop,guard:()=>noop,get:()=>undefined,restrict:()=>noop},systemPrompt:{section:()=>noop},on(name,fn){const list=listeners.get(name)??[];list.push(fn);listeners.set(name,list);return noop;}}};
 }
 async function boot(dir,agents=[],config={fastProviders:['test']}) {
   const providers=new Map(),events=new Map();

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile, realpath, rm, watch } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, realpath, rm } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { tmpdir } from 'node:os';
 import { join, dirname, basename } from 'node:path';
@@ -20,6 +20,7 @@ import { NativeToolExecutor } from '@deepseek-ai/dsh-tool-executor-native';
 import * as NativeRetry from '@deepseek-ai/dsh-llm-retry';
 import * as Roles from './index.js';
 import { installRoleFallback, runModelChain } from './fallback.js';
+import { RoleStore } from './store.js';
 
 const primary={provider:'primary',model:'first',reasoningEffort:'high',fast:false};
 const backup={provider:'backup',model:'second',fast:true};
@@ -94,6 +95,14 @@ function* completed(text) {
 async function nativeHost(t,stream,{role,prepare,delegationRules=[]}={}) {
   const parent=await realpath(tmpdir()),directory=await mkdtemp(join(parent,'roles-fallback-'));
   const ctx=new Context(),calls=[],events=[],settlements=[],logs=[];
+  const waiting=Promise.withResolvers(),atomic=RoleStore.prototype.atomic;
+  t.mock.method(RoleStore.prototype,'atomic',async function(name,value){
+    await atomic.call(this,name,value);
+    if(this.directory===directory&&name==='runs.json'){
+      const record=value.items.find(record=>record.retry?.status==='waiting');
+      if(record)waiting.resolve(record);
+    }
+  });
   t.after(async()=>{await ctx.fiber.dispose();const target=await realpath(directory);assert.equal(dirname(target),parent);assert.ok(basename(target).startsWith('roles-fallback-'));await rm(target,{recursive:true,force:true});});
   ctx.on('session/event',(session,event)=>events.push({sessionId:session.id,...event}));
   ctx.on('subagent/end',event=>settlements.push(event));
@@ -133,15 +142,7 @@ async function nativeHost(t,stream,{role,prepare,delegationRules=[]}={}) {
       const res={statusCode:200,setHeader(){},end(value){this.body=value;}};
       await handler(req,res);return {status:res.statusCode,...JSON.parse(res.body)};
     },
-    async waiting() {
-      const changes=watch(directory,{signal:AbortSignal.timeout(5000)});
-      try {
-        for await(const _change of changes) {
-          let records;try{records=await this.runs();}catch(error){if(error.code==='ENOENT')continue;throw error;}
-          const record=records.find(record=>record.retry?.status==='waiting');if(record)return record;
-        }
-      } finally {await changes.return();}
-    },
+    waiting:()=>waiting.promise,
   };
 }
 

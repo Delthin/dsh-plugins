@@ -103,11 +103,6 @@
     "@deepseek-ai/dsh-tools": "0.2.2-rc.3",
     "@deepseek-ai/schemastery": "3.19.0"
   },
-  "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-tool-executor-native": {
-      "optional": true
-    }
-  },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
