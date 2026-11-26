@@ -7,13 +7,13 @@ import {TOOLS,validateRole} from './store.js';
 const source=await readFile(new URL('./client.js',import.meta.url),'utf8');
 const role={id:'test',name:'test',displayName:'测试角色',description:'职责',prompt:'任务',enabled:true,provider:'test',model:'same-model',reasoningEffort:'',tools:[]};
 function panel(draft=role,fastProviders=['test'],settings,respond) {
-  const state=[{revision:1,roles:[draft]},[{provider:'test',id:'same-model'},{provider:'backup',id:'backup-model'},{provider:'third',id:'third-model'}],TOOLS,draft,JSON.stringify(draft),{},false,'','','roles','config','','',[],null,null,[],'','',false,fastProviders,settings];
+  const state=[{revision:1,roles:[draft]},[{provider:'test',id:'same-model'},{provider:'backup',id:'backup-model'},{provider:'third',id:'third-model'}],TOOLS,draft,JSON.stringify(draft),{},false,'','','roles','config','','',[],null,null,[],'','',false,fastProviders,{apiVersion:2,...settings}];
   let cursor=0,entry,module,request;const effects=[],events=new Map();
   const document={hidden:false,createElement:()=>({dataset:{},remove(){}}),head:{appendChild(){}},addEventListener:(n,f)=>events.set(n,f),removeEventListener:n=>events.delete(n)};
   const h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)});
   const primitives=Object.fromEntries(['Button','Switch','Checkbox','SegmentedControl','Modal'].map(name=>[name,()=>{}]));
   const React={createElement:h,useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return [state[i],value=>{state[i]=typeof value==='function'?value(state[i]):value;}];},useEffect(fn,deps){effects.push({fn,deps});}};
-  runInNewContext(source,{document,AbortController,setTimeout,clearTimeout,window:{__ModuleLoader__:{load(value){module=value.factory(name=>name==='react'?React:primitives);}}},crypto:{randomUUID:()=> 'new-role'},fetch:async(_url,options)=>{const args=JSON.parse(options.body);request=args;if(respond)return {ok:true,json:()=>respond(args)};return {ok:true,json:async()=>({catalog:{revision:2,roles:[...state[0].roles.filter(r=>r.id!==request.role.id),validateRole(request.role)]}})};}});
+  runInNewContext(source,{document,AbortController,setTimeout,clearTimeout,window:{__ModuleLoader__:{load(value){module=value.factory(name=>name==='react'?React:primitives);}}},crypto:{randomUUID:()=> 'new-role'},fetch:async(_url,options)=>{const args=JSON.parse(options.body);request=args;if(respond)return {ok:true,json:async()=>{const value=await respond(args);return args.action==='list'?{apiVersion:2,...value}:value;}};return {ok:true,json:async()=>({catalog:{revision:2,roles:[...state[0].roles.filter(r=>r.id!==request.role.id),validateRole(request.role)]}})};}});
   module.apply({effect(){},slots:{inject(_key,fn){fn();},register(options,render){if(options.key==='agent-roles')entry=render();}},uiWorkspace:{}});
   return {state,primitives,document,events,effects,render(){cursor=0;effects.length=0;return entry.type(entry.props);},get request(){return request;}};
 }
@@ -63,6 +63,11 @@ test('备用模型按序增删移动并保存各自档位，不改动首选模�
   assert.equal(app.request.role.fallbacks[0].reasoningEffort,'high');assert.equal(app.request.role.fallbacks[0].fast,true);
   rows=nodes(chain()).filter(n=>typeof n.type==='function'&&n.props.route);rows[0].props.onRemove();
   assert.equal(app.state[3].fallbacks.length,1);assert.equal(app.state[3].fallbacks[0].provider,'backup');
+});
+
+test('更新后旧后台要求重启，不显示不能保存的新编辑器',()=>{
+  const app=panel();app.state[21]={};const tree=app.render();
+  assert.match(text(tree),/请重启 DSH/);assert.equal(nodes(tree).some(n=>n.type==='form'),false);
 });
 
 test('成员轮询不重叠，后台暂停且离开时取消请求',async()=>{

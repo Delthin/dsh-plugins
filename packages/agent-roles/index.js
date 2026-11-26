@@ -335,7 +335,7 @@ export async function apply(ctx,config) {
   }
   async function dispatch(body) {
     if(body.action==='retryPersistence'){await store.flushRuns();return {persistenceError:store.persistenceError??null};}
-    if(body.action==='list') return {catalog:store.catalog,tools:TOOLS,...delegationSettings(configContext,delegationRules()),...await store.presetPrompts(),persistenceError:store.persistenceError??null};
+    if(body.action==='list') return {apiVersion:2,catalog:store.catalog,tools:TOOLS,...delegationSettings(configContext,delegationRules()),...await store.presetPrompts(),persistenceError:store.persistenceError??null};
     if(body.action==='saveSettings') return saveDelegationSettings(configContext,body.revision,body.delegationRules);
     if(body.action==='models') return {...await modelDirectory(ctx.llm),fastProviders:fastProviders()};
     if(body.action==='skills') return {skills:await skillDirectory(ctx.skills,{cwd:ctx.workingDirectory.defaultDirectory})};
