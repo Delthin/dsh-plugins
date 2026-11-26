@@ -96,3 +96,75 @@ test('composition chat presentation hides bookkeeping, keeps native messages and
   cleanups.reverse().forEach(dispose => dispose?.());
   assert.equal(adapted(), undefined); assert.equal(listeners.size, 0);
 });
+
+test('contiguous context rows share one disclosure without crossing native transcript boundaries', () => {
+  const entries = [], listeners = new Set(), cleanups = [];
+  const notify = () => { for (const listener of [...listeners]) listener(); };
+  const slots = {
+    inject(name, apply) { if (name === 'conversation.chat.node') cleanups.push(apply()); },
+    entries: () => entries,
+    subscribe(_name, fn) { listeners.add(fn); return () => listeners.delete(fn); },
+    register(options, component) {
+      const { locale, inject, store, children, ...storedOptions } = options;
+      const entry = { options: storedOptions, component, locale, inject, store, children }; entries.push(entry); notify();
+      return () => { entries.splice(entries.indexOf(entry), 1); notify(); };
+    },
+  };
+  const h = (type, props, ...children) => ({ type, props: props ?? {}, children: children.flat() });
+  let factory;
+  vm.runInNewContext(source, { window: { __ModuleLoader__: { load(module) { factory = module.factory; } } } });
+  factory(() => ({ createElement: h })).apply({ slots, locale: { register() {}, bind: () => key => key }, effect: fn => fn() });
+  assert.equal(entries.length, 0, 'wait for the native renderer');
+  const Native = () => {};
+  const removeNative = slots.register({ name: 'conversation.chat.node', key: 'context', priority: 0, locale: 'chat' }, Native);
+  const wrapper = () => entries.find(entry => entry.component !== Native);
+  assert.ok(wrapper(), 'wrap the native keyed renderer');
+  assert.equal(wrapper().locale, 'chat');
+  assert.ok(wrapper().options.priority < 0, 'the wrapper wins without replacing the native registration');
+  const node = (key, kind = 'context', turn = 1, step = 0) => ({ key, kind, visibility: 'visible', location: { kind: 'step', turn: { turn }, step: { step } }, data: { source: { kind: key }, content: [{ type: 'text', text: key }] } });
+  let nodes = Array.from({ length: 9 }, (_, index) => node('context-' + index));
+  const render = current => wrapper().component({ node: current, t: key => key, useChat: select => select({ order: nodes.map(item => item.key), nodes: { get: key => nodes.find(node => node.key === key) } }) });
+  const original = JSON.stringify(nodes);
+  const group = render(nodes[0]);
+  assert.equal(group.type, 'details');
+  assert.notEqual(group.props.open, true, 'the single opening row is collapsed by default');
+  const children = group.children[1].children;
+  assert.equal(children.length, 9, 'include fixed, approval, memory and state rows, not only state');
+  assert.ok(children.every((child, index) => child.type === Native && child.props.node === nodes[index]), 'retain each original native renderer and payload');
+  assert.ok(nodes.slice(1).every(item => render(item) === null), 'do not leave nine outer rows');
+  assert.equal(JSON.stringify(nodes), original, 'no model or persisted data changes');
+  nodes = JSON.parse(original);
+  assert.equal(render(nodes[0]).children[1].children.length, 9, 'serialized replay uses current transcript order');
+  const full = nodes;
+  nodes = full.slice(5);
+  assert.equal(render(nodes[0]).children[1].children.length, 4, 'a page starting mid-run retains every available source');
+  nodes = full;
+  assert.equal(render(nodes[5]), null, 'prepending the head restores one complete disclosure');
+  nodes = [node('a'), node('b'), node('question', 'user'), node('c'), node('d'), node('answer', 'assistant-step'), node('e'), node('f'), node('call', 'tool'), node('g'), node('h')];
+  assert.equal(nodes.filter(item => item.kind === 'context').map(render).filter(Boolean).length, 4, 'never swallow user, assistant or tool boundaries');
+  nodes = [node('a'), node('b'), node('c', 'context', 2), node('d', 'context', 2)];
+  assert.equal(render(nodes[0]).children[1].children.length, 2, 'adjacent turns remain separate');
+  assert.equal(render(nodes[2]).children[1].children.length, 2);
+  nodes = [node('a'), node('b')]; nodes[0].location = { kind: 'turn', turn: { turn: 1 } };
+  assert.equal(render(nodes[0]).children[1].children.length, 2, 'turn prelude and its first step share the opening disclosure');
+  nodes = [node('a'), node('b', 'context', 1, 1)];
+  assert.equal(render(nodes[0]).type, Native, 'separate steps cannot share a disclosure');
+  nodes = [node('a'), node('b')]; nodes[0].location = { kind: 'pending' };
+  assert.equal(render(nodes[0]).type, Native, 'unresolved history keeps its native row');
+  nodes = [node('a'), node('b')];
+  nodes[1] = { ...nodes[1], data: { ...nodes[1].data, content: [{ type: 'image', url: 'image:test' }] } };
+  assert.equal(render(nodes[0]).children[1].children[1].props.node, nodes[1], 'live updates and opaque content remain available');
+  const many = Array.from({ length: 1000 }, (_, i) => node(String(i), i < 100 ? 'context' : 'assistant-step'));
+  const byKey = new Map(many.map(item => [item.key, item])); let reads = 0;
+  const shared = { order: many.map(item => item.key), nodes: { get(key) { reads++; return byKey.get(key); } } };
+  for (const item of many.slice(0, 100)) wrapper().component({ node: item, t: key => key, useChat: select => select(shared) });
+  assert.equal(reads, 1000, 'one scan per publication, shared by all context rows');
+  const other = { ...shared };
+  wrapper().component({ node: many[0], t: key => key, useChat: select => select(other) });
+  assert.equal(reads, 2000, 'a fresh publication invalidates grouping even with a stable keyed store');
+  removeNative(); assert.equal(entries.length, 0);
+  slots.register({ name: 'conversation.chat.node', key: 'context' }, Native);
+  assert.ok(wrapper(), 'recover after native renderer reload');
+  cleanups.reverse().forEach(dispose => dispose?.());
+  assert.equal(entries.length, 1); assert.equal(listeners.size, 0);
+});

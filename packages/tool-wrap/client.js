@@ -343,6 +343,49 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-tool-wrap',
             return () => { unsubscribe(); dispose?.(); };
           });
         });
+        ctx.slots.inject('conversation.chat.node', () => {
+          if (typeof ctx.slots.entries !== 'function' || typeof ctx.slots.subscribe !== 'function') return;
+          const name = 'conversation.chat.node';
+          let current, component, dispose;
+          const grouped = new WeakMap();
+          const groupsFor = snapshot => {
+            if (grouped.has(snapshot)) return grouped.get(snapshot);
+            const groups = new Map();
+            let run = [], turn, step;
+            for (const key of snapshot.order) {
+              const node = snapshot.nodes.get(key), location = node?.location;
+              const nextTurn = location?.kind === 'turn' || location?.kind === 'step' ? location.turn.turn : undefined;
+              const nextStep = location?.kind === 'step' ? location.step.step : undefined;
+              if (node?.kind !== 'context' || !Number.isSafeInteger(nextTurn)) { run = []; turn = undefined; step = undefined; continue; }
+              if (run.length && (nextTurn !== turn || step !== undefined && nextStep !== undefined && nextStep !== step)) { run = []; step = undefined; }
+              turn = nextTurn; step = nextStep ?? step;
+              run.push(node); groups.set(key, run);
+            }
+            grouped.set(snapshot, groups);
+            return groups;
+          };
+          const update = () => {
+            const native = ctx.slots.entries(name).find(entry => entry.options.key === 'context' && entry.component !== component);
+            if (native === current) return;
+            current = native;
+            dispose?.();
+            dispose = undefined;
+            if (!native) return;
+            component = function ContextDisclosure(props) {
+              const members = props.useChat(snapshot => groupsFor(snapshot).get(props.node.key));
+              if (!members || members.length < 2) return h(native.component, props);
+              if (members[0].key !== props.node.key) return null;
+              return h('details', { 'data-context-group': '', style: { minWidth: 0 } },
+                h('summary', { style: { width: 'fit-content', maxWidth: '100%', cursor: 'pointer', color: 'var(--dsw-alias-label-secondary)', font: 'inherit', fontSize: 'var(--dsh-content-font-size-secondary,13px)', lineHeight: 'calc(24px + var(--dsh-content-font-delta,0px))' } }, props.t('message.contextInjection'), ' · ', members.length),
+                h('div', { style: { minWidth: 0, margin: '4px 0 4px 16px', display: 'grid', gap: 4 } }, members.map(node => h(native.component, { ...props, key: node.key, node }))));
+            };
+            dispose = ctx.slots.register({ ...native.options, name, priority: (native.options.priority ?? 0) - 1,
+              locale: native.locale, inject: native.inject, children: native.children, store: native.store }, component);
+          };
+          const unsubscribe = ctx.slots.subscribe(name, update);
+          update();
+          return () => { unsubscribe(); dispose?.(); };
+        });
         const locale = ctx.locale;
         for (const [lang, dictionary] of Object.entries(dictionaries)) {
           ctx.effect(() => locale.register('dsh-tool-discovery', lang, dictionary));
