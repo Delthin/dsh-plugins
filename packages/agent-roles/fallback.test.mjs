@@ -244,7 +244,7 @@ test('native live config preserves an owned retry; disposal drains its final nat
       const config={dataDir:h.directory,fastProviders:['primary','backup'],delegationRules:[{leaderModel:'unrelated',denyModels:['second']}]};
       await h.roleMount.update(config);
       assert.equal(h.ctx.get('roleTiers'),bridge,'ordinary policy updates must retain the instance');
-      const active=(await h.api('runs')).runs.find(record=>record.sessionId===member.id);
+      const active=(await h.api('run',{sessionId:member.id})).run;
       assert.equal(active.status,'running');assert.equal(active.retry.status,'waiting');
       assert.deepEqual((await h.api('models')).fastProviders,['primary','backup']);
       await settled.promise;await agent.whenIdle();await h.root.whenIdle();
@@ -257,7 +257,7 @@ test('native live config preserves an owned retry; disposal drains its final nat
       await h.roleMount.update({...config,dataDir:h.directory+'/.',delegationRules:[]});
       assert.notEqual(h.ctx.get('roleTiers'),bridge,'structural config changes remount');
       assert.deepEqual(h.ctx.get('roleTiers').get(member.id),{fast:true,locked:true,source:'role'});
-      const api=(await h.api('runs')).runs.find(record=>record.sessionId===member.id);
+      const api=(await h.api('run',{sessionId:member.id})).run;
       assert.equal(api.status,'inactive');assert.equal(api.nativeStatus,'inactive');assert.equal(api.turnEndReason.kind,'completed');
       await h.roleMount.dispose();
       const record=(await h.runs()).find(record=>record.sessionId===member.id);

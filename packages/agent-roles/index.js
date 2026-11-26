@@ -340,6 +340,12 @@ export async function apply(ctx,config) {
     if(body.action==='models') return {...await modelDirectory(ctx.llm),fastProviders:fastProviders()};
     if(body.action==='skills') return {skills:await skillDirectory(ctx.skills,{cwd:ctx.workingDirectory.defaultDirectory})};
     if(body.action==='modelInfo') return ctx.llm.resolveModelInfo(body.provider,body.model);
+    if(body.action==='run') {
+      if(typeof body.sessionId!=='string'||!body.sessionId||body.sessionId.length>200)throw new Error('成员标识无效');
+      const record=liveRecords.get(body.sessionId)??store.run(body.sessionId);
+      if(!record)throw new Error('未找到成员记录');
+      const {skillSnapshot,...run}=project(record);return {run};
+    }
     if(body.action==='runs') {
       const items=store.runs.items.toReversed();
       const active=items.filter(r=>['running','provisioning'].includes(project(liveRecords.get(r.sessionId)??r).status));
@@ -352,8 +358,8 @@ export async function apply(ctx,config) {
       }
       return {runs:visible.map(r=>{
         const member=members.get(r.parentSessionId)?.find(member=>member.id===r.sessionId);
-        const {skillSnapshot,...summary}=project(liveRecords.get(r.sessionId)??r,member);
-        return summary;
+        const run=project(liveRecords.get(r.sessionId)??r,member),{name,displayName,provider,model}=run.role;
+        return {sessionId:run.sessionId,parentSessionId:run.parentSessionId,memberName:run.memberName,role:{name,displayName,provider,model},selection:run.selection,status:run.status,nativeStatus:run.nativeStatus,createdAt:run.createdAt,updatedAt:run.updatedAt,fallbackIndex:run.fallbackIndex,preview:(run.error||run.output||'').slice(0,300)};
       }),persistenceError:store.persistenceError??null};
     }
     if(body.action==='save') {

@@ -100,12 +100,15 @@ test('Fast 保存与新启动受支持清单限制，旧非法快照保留不变
 
 test('最早的活动成员保留在最近记录列表顶部',()=>temporary(async dir=>{
   await catalog(dir);const active=agent('old-running');active.status='running';
-  const items=Array.from({length:202},(_,i)=>({sessionId:i?'done-'+i:active.id,parentSessionId:'parent',role,selection:{provider:'test',model:'same-model',fast:false},status:i?'inactive':'running',audit:{},output:'result'}));
+  const items=Array.from({length:202},(_,i)=>({sessionId:i?'done-'+i:active.id,parentSessionId:'parent',role:{...role,prompt:'p'.repeat(4000)},selection:{provider:'test',model:'same-model',fast:false},status:i?'inactive':'running',audit:{tools:['read']},output:'o'.repeat(4000)}));
   await writeFile(join(dir,'runs.json'),JSON.stringify({version:1,items}));
   const app=await boot(dir,[active]);const result=await app.api('runs');
   assert.equal(result.status,200);assert.equal(result.value.runs.length,200);
   assert.equal(result.value.runs[0].sessionId,active.id);assert.equal(result.value.runs[0].status,'running');
   assert.equal(result.value.runs[1].sessionId,'done-201');
+  assert.equal(result.value.runs[0].preview.length,300);assert.equal(result.value.runs[0].role.prompt,undefined);assert.equal(result.value.runs[0].audit,undefined);
+  const detail=await app.api('run',{sessionId:active.id});assert.equal(detail.value.run.output,items[0].output);assert.deepEqual(detail.value.run.audit.tools,['read']);
+  assert.equal((await app.api('run',{sessionId:'missing'})).status,400);assert.equal((await app.api('run',{sessionId:{}})).status,400);
 }));
 
 test('写盘故障通过列表显现，重试保存后恢复且保留最新记录',t=>temporary(async dir=>{

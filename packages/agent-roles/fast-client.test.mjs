@@ -8,13 +8,14 @@ const source=await readFile(new URL('./client.js',import.meta.url),'utf8');
 const role={id:'test',name:'test',displayName:'测试角色',description:'职责',prompt:'任务',enabled:true,provider:'test',model:'same-model',reasoningEffort:'',tools:[]};
 function panel(draft=role,fastProviders=['test'],settings,respond) {
   const state=[{revision:1,roles:[draft]},[{provider:'test',id:'same-model'},{provider:'backup',id:'backup-model'},{provider:'third',id:'third-model'}],TOOLS,draft,JSON.stringify(draft),{},false,'','','roles','config','','',[],null,null,[],'','',false,fastProviders,settings];
-  let cursor=0,entry,module,request;
+  let cursor=0,entry,module,request;const effects=[],events=new Map();
+  const document={hidden:false,createElement:()=>({dataset:{},remove(){}}),head:{appendChild(){}},addEventListener:(n,f)=>events.set(n,f),removeEventListener:n=>events.delete(n)};
   const h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)});
   const primitives=Object.fromEntries(['Button','Switch','Checkbox','SegmentedControl','Modal'].map(name=>[name,()=>{}]));
-  const React={createElement:h,useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return [state[i],value=>{state[i]=typeof value==='function'?value(state[i]):value;}];},useEffect(){}};
-  runInNewContext(source,{document:{createElement:()=>({dataset:{},remove(){}}),head:{appendChild(){}}},window:{__ModuleLoader__:{load(value){module=value.factory(name=>name==='react'?React:primitives);}}},crypto:{randomUUID:()=> 'new-role'},fetch:async(_url,options)=>{const args=JSON.parse(options.body);request=args;if(respond)return {ok:true,json:()=>respond(args)};return {ok:true,json:async()=>({catalog:{revision:2,roles:[...state[0].roles.filter(r=>r.id!==request.role.id),validateRole(request.role)]}})};}});
+  const React={createElement:h,useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return [state[i],value=>{state[i]=typeof value==='function'?value(state[i]):value;}];},useEffect(fn,deps){effects.push({fn,deps});}};
+  runInNewContext(source,{document,AbortController,setTimeout,clearTimeout,window:{__ModuleLoader__:{load(value){module=value.factory(name=>name==='react'?React:primitives);}}},crypto:{randomUUID:()=> 'new-role'},fetch:async(_url,options)=>{const args=JSON.parse(options.body);request=args;if(respond)return {ok:true,json:()=>respond(args)};return {ok:true,json:async()=>({catalog:{revision:2,roles:[...state[0].roles.filter(r=>r.id!==request.role.id),validateRole(request.role)]}})};}});
   module.apply({effect(){},slots:{inject(_key,fn){fn();},register(options,render){if(options.key==='agent-roles')entry=render();}},uiWorkspace:{}});
-  return {state,primitives,render(){cursor=0;return entry.type(entry.props);},get request(){return request;}};
+  return {state,primitives,document,events,effects,render(){cursor=0;effects.length=0;return entry.type(entry.props);},get request(){return request;}};
 }
 function nodes(tree) {return !tree||typeof tree!=='object'?[]:[tree,...tree.children.flatMap(nodes)];}
 test('刷新同步重载草稿版本；保存期间锁住编辑并拒绝重复提交',async()=>{
@@ -62,6 +63,20 @@ test('备用模型按序增删移动并保存各自档位，不改动首选模�
   assert.equal(app.request.role.fallbacks[0].reasoningEffort,'high');assert.equal(app.request.role.fallbacks[0].fast,true);
   rows=nodes(chain()).filter(n=>typeof n.type==='function'&&n.props.route);rows[0].props.onRemove();
   assert.equal(app.state[3].fallbacks.length,1);assert.equal(app.state[3].fallbacks[0].provider,'backup');
+});
+
+test('成员轮询不重叠，后台暂停且离开时取消请求',async()=>{
+  const pending=Promise.withResolvers();let requests=0;
+  const app=panel(role,[],undefined,async()=>{requests++;return pending.promise;});app.state[9]='runs';app.render();
+  const cleanup=app.effects.find(e=>e.deps[0]==='runs').fn();
+  try {
+    await new Promise(resolve=>setImmediate(resolve));assert.equal(requests,1);
+    app.events.get('visibilitychange')();await new Promise(resolve=>setImmediate(resolve));assert.equal(requests,1);
+    app.document.hidden=true;app.events.get('visibilitychange')();pending.resolve({runs:[],persistenceError:'disk failure'});
+    await new Promise(resolve=>setImmediate(resolve));assert.equal(app.state[25],'disk failure');assert.equal(requests,1);
+    app.document.hidden=false;app.events.get('visibilitychange')();await new Promise(resolve=>setImmediate(resolve));assert.equal(requests,2);
+  } finally {cleanup();}
+  assert.equal(app.events.size,0);
 });
 
 test('角色刷新不等待模型目录，模型异常不覆盖角色编辑状态',async()=>{
