@@ -47,7 +47,7 @@ async function restore(manifest) {
     const expectedPath = `node_modules/${PATCHES[index].name}/${PATCHES[index].file ?? 'lib/index.js'}`;
     if (file.path !== expectedPath || file.originalHash !== PATCHES[index].sha256 || typeof file.patchedHash !== 'string') throw new Error('Manifest does not match audited patch targets');
     const target = targetOf(file.path), current = await readRegular(target);
-    if (![file.originalHash, file.patchedHash].includes(digest(current))) throw new Error(`Refusing to overwrite independently modified host file: ${file.path}`);
+    if (![file.originalHash, file.patchedHash, ...(manifest.state === 'prepared' ? [file.previousHash] : [])].includes(digest(current))) throw new Error(`Refusing to overwrite independently modified host file: ${file.path}`);
     const original = await readRegular(join(backup, `${index}.original.js`));
     if (digest(original) !== file.originalHash) throw new Error('Restoration backup hash mismatch');
     prepared.push({ target, original });
@@ -55,7 +55,7 @@ async function restore(manifest) {
   const helperPath = 'node_modules/@deepseek-ai/dsh-agent-loop/lib/tool-wrap-admission.js';
   if (manifest.helper?.path !== helperPath) throw new Error('Invalid helper restoration target');
   const helper = targetOf(helperPath);
-  if (await exists(helper) && digest(await readRegular(helper)) !== manifest.helper.sha256) throw new Error('Refusing to remove independently modified admission helper');
+  if (await exists(helper) && ![manifest.helper.sha256, ...(manifest.state === 'prepared' ? [manifest.helper.previousHash] : [])].includes(digest(await readRegular(helper)))) throw new Error('Refusing to remove independently modified admission helper');
   for (const file of prepared) await atomic(file.target, file.original);
   // Exact audited helper path was resolved and its hash checked above; no recursive deletion.
   if (await exists(helper)) await unlink(helper);
@@ -77,19 +77,20 @@ if (options.mode === '--restore') {
     const current = await readRegular(target);
     let original = current;
     if (digest(current) !== patch.sha256) {
-      if (prior?.root !== root || prior.files?.[index]?.path !== path || prior.files[index].patchedHash !== digest(current)) throw new Error(`Unsupported source hash: ${patch.name}`);
+      if (prior?.root !== root || prior.files?.[index]?.path !== path || ![prior.files[index].patchedHash, ...(prior.state === 'prepared' ? [prior.files[index].previousHash] : [])].includes(digest(current))) throw new Error(`Unsupported source hash: ${patch.name}`);
       original = await readRegular(join(backup, `${index}.original.js`));
       if (digest(original) !== patch.sha256) throw new Error('Original backup hash mismatch');
     }
     const patched = Buffer.from(patchSource(original.toString('utf8'), patch));
-    prepared.push({ path, target, original, patched, originalHash: patch.sha256, patchedHash: digest(patched) });
+    prepared.push({ path, target, original, patched, originalHash: patch.sha256, patchedHash: digest(patched), previousHash: digest(current) });
   }
   const helper = await readRegular(join(here, 'admission.js'));
   const helperPath = 'node_modules/@deepseek-ai/dsh-agent-loop/lib/tool-wrap-admission.js';
   const helperTarget = targetOf(helperPath);
-  if (await exists(helperTarget)) {
-    const currentHash = digest(await readRegular(helperTarget));
-    const recordedHelper = prior?.root === root && prior.helper?.path === helperPath && prior.helper.sha256 === currentHash;
+  const previousHelperHash = await exists(helperTarget) ? digest(await readRegular(helperTarget)) : undefined;
+  if (previousHelperHash !== undefined) {
+    const currentHash = previousHelperHash;
+    const recordedHelper = prior?.root === root && prior.helper?.path === helperPath && [prior.helper.sha256, ...(prior.state === 'prepared' ? [prior.helper.previousHash] : [])].includes(currentHash);
     if (currentHash !== digest(helper) && !recordedHelper) throw new Error('Admission helper target already exists with different content');
   }
   console.log(`Validated ${prepared.length} audited ${hostVersion} host files and all patch anchors.`);
@@ -102,7 +103,8 @@ if (options.mode === '--restore') {
       else await writeFile(path, file.original, { flag: 'wx', mode: 0o600 });
     }
     const manifest = { version: 1, root, state: 'prepared', files: prepared.map(({ path, originalHash, patchedHash }) => ({ path, originalHash, patchedHash })), helper: { path: helperPath, sha256: digest(helper) } };
-    await atomic(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+    const pending = { ...manifest, files: manifest.files.map((file, index) => ({ ...file, previousHash: prepared[index].previousHash })), helper: { ...manifest.helper, previousHash: previousHelperHash } };
+    await atomic(manifestPath, JSON.stringify(pending, null, 2) + '\n');
     try {
       await atomic(helperTarget, helper);
       for (const file of prepared) await atomic(file.target, file.patched);

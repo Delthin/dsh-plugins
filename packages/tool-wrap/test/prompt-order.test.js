@@ -826,6 +826,22 @@ test('audited host assets preserve budgeted file identities and apply/restore on
   assert.equal(JSON.parse(upgradedManifest).helper.sha256, digest(helper));
   assert.deepEqual(JSON.parse(upgradedManifest), manifest, 'helper upgrade retains the exact audited files, packages and restoration metadata');
   for (const [index, patch] of PATCHES.entries()) assert.equal(await readFile(join(backup, `${index}.original.js`), 'utf8'), await originalSource(patch));
+  // Reconstruct every interrupted upgrade boundary, including mixed old/new files.
+  for (let stage = 0; stage <= PATCHES.length + 1; stage++) {
+    const files = [];
+    for (const [index, patch] of PATCHES.entries()) {
+      const current = patchSource(await originalSource(patch), patch);
+      const previous = current + '\n// authenticated previous patch\n';
+      files.push({ ...manifest.files[index], previousHash: digest(previous) });
+      await writeFile(join(root, manifest.files[index].path), index < stage - 1 ? current : previous);
+    }
+    await writeFile(helperTarget, stage > 0 ? helper : oldHelper);
+    await writeFile(manifestPath, JSON.stringify({ ...manifest, state: 'prepared', files, helper: { ...manifest.helper, previousHash: digest(oldHelper) } }));
+    result = run('--check'); assert.equal(result.status, 0, result.stderr);
+    result = run(stage % 2 ? '--restore' : '--apply'); assert.equal(result.status, 0, result.stderr);
+    result = run('--apply'); assert.equal(result.status, 0, result.stderr);
+    assert.equal(await readFile(helperTarget, 'utf8'), helper);
+  }
   const independentHelper = helper + '\n// independent helper edit\n';
   await writeFile(helperTarget, independentHelper);
   for (const mode of ['--apply', '--restore']) {
