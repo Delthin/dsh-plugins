@@ -3,7 +3,7 @@ import { readFile, writeFile, rename, mkdir, open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 
-export const TOOLS = ['read','glob','grep','bash','edit','write','web_search','web_fetch','cache_search','advanced_search','platform_search','domain_search'];
+export const TOOLS = ['read','glob','grep','bash','job_output','job_kill','edit','write','web_search','web_fetch','cache_search','advanced_search','platform_search','domain_search'];
 export const hash = text => createHash('sha256').update(text).digest('hex');
 export function validateRole(input) {
   if (!input || typeof input !== 'object') throw new Error('角色内容必须是对象');

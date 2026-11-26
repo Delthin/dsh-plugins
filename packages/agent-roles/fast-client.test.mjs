@@ -64,6 +64,18 @@ test('备用模型按序增删移动并保存各自档位，不改动首选模�
   assert.equal(app.state[3].fallbacks.length,1);assert.equal(app.state[3].fallbacks[0].provider,'backup');
 });
 
+test('后台作业权限显式勾选后保存，已有 bash 权限不会自动扩大',async()=>{
+  const app=panel({...role,tools:['bash']});app.state[10]='tools';
+  let tree=app.render();assert.match(text(tree),/耗时命令/);
+  assert.deepEqual(app.state[3].tools,['bash']);
+  for(const label of ['读取作业结果','停止后台作业']){
+    tree=app.render();nodes(tree).find(n=>n.type===app.primitives.Checkbox&&text(n.props.label).includes(label)).props.onChange(true);
+  }
+  nodes(app.render()).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(app.request.role.tools,['bash','job_output','job_kill']);
+});
+
 const tier=(tree,name)=>nodes(tree).find(n=>n.type==='button'&&n.children.includes(name));
 test('模型选择器内显示标准 / Fast，切档保持模型并保存布尔值；新增角色默认标准',async()=>{
   const app=panel();
