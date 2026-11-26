@@ -95,7 +95,7 @@ export class RoleStore {
     this.runRevision++;
   }
   saveRun(record) { this.updateRun(record);return this.flushRuns(); }
-  observeRun(record,onError) {
+  observeRun(record,onError=()=>{}) {
     this.updateRun(record);
     // One timer and one in-flight snapshot, regardless of observation count.
     if(this.runTimer||this.runFlush)return;
@@ -112,6 +112,10 @@ export class RoleStore {
           await this.atomic('runs.json',snapshot);
           this.savedRunRevision=revision;
         }
+        this.persistenceError=undefined;
+      } catch(error) {
+        this.persistenceError=String(error.message??error);
+        throw error;
       } finally {this.runFlush=undefined;}
     });
     this.runFlush=task;

@@ -128,8 +128,6 @@ export async function apply(ctx,config) {
   const directory=config.dataDir?resolve(expandHomePath(config.dataDir)):dshHomePath('agent-roles');
   const store=new RoleStore(directory); await store.load([]);
   const providers=new Map(), installed=new Map(), liveRecords=new Map();
-  let persistenceError;
-  const reportPersistence=e=>{persistenceError=String(e.message??e);};
   function project(record,member) {
     const agent=ctx.agents.get(record.sessionId);
     const nativeStatus=agent?(agent.status==='running'?'running':'inactive'):record.status==='provisioning'?'provisioning':member?.activity??'inactive';
@@ -139,7 +137,7 @@ export async function apply(ctx,config) {
     return {...record,nativeStatus,status,memberName:member?.path??member?.name??record.memberName};
   }
   const persist=record=>{ liveRecords.set(record.sessionId,record);Object.assign(record,project(record));return store.saveRun(record); };
-  const observed=record=>{ liveRecords.set(record.sessionId,record);Object.assign(record,project(record));store.observeRun(record,reportPersistence); };
+  const observed=record=>{ liveRecords.set(record.sessionId,record);Object.assign(record,project(record));store.observeRun(record); };
   ctx.provide('roleTiers',Object.freeze({get(sessionId){
     const record=liveRecords.get(sessionId)??store.run(sessionId);
     return record?Object.freeze({fast:record.selection?.fast===true,locked:true,source:'role'}):undefined;
@@ -333,7 +331,8 @@ export async function apply(ctx,config) {
     if(['running','provisioning'].includes(record.status)&&!ctx.agents.get(record.sessionId)){record.status='inactive';observed(record);}
   }
   async function dispatch(body) {
-    if(body.action==='list') return {catalog:store.catalog,tools:TOOLS,...delegationSettings(configContext,delegationRules()),...await store.presetPrompts(),persistenceError};
+    if(body.action==='retryPersistence'){await store.flushRuns();return {persistenceError:store.persistenceError??null};}
+    if(body.action==='list') return {catalog:store.catalog,tools:TOOLS,...delegationSettings(configContext,delegationRules()),...await store.presetPrompts(),persistenceError:store.persistenceError??null};
     if(body.action==='saveSettings') return saveDelegationSettings(configContext,body.revision,body.delegationRules);
     if(body.action==='models') return {...await modelDirectory(ctx.llm),fastProviders:fastProviders()};
     if(body.action==='skills') return {skills:await skillDirectory(ctx.skills,{cwd:ctx.workingDirectory.defaultDirectory})};
@@ -348,7 +347,7 @@ export async function apply(ctx,config) {
         const member=members.get(r.parentSessionId)?.find(member=>member.id===r.sessionId);
         const {skillSnapshot,...summary}=project(liveRecords.get(r.sessionId)??r,member);
         return summary;
-      }),persistenceError};
+      }),persistenceError:store.persistenceError??null};
     }
     if(body.action==='save') {
       const role=validateRole(body.role);

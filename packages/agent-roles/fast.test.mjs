@@ -98,6 +98,20 @@ test('Fast 保存与新启动受支持清单限制，旧非法快照保留不变
   assert.equal((await disabled.api('save',{revision:2,role:{...role,fast:true}})).status,400);
 }));
 
+test('写盘故障通过列表显现，重试保存后恢复且保留最新记录',t=>temporary(async dir=>{
+  await catalog(dir);const app=await boot(dir),atomic=RoleStore.prototype.atomic;let fail=true;
+  t.mock.method(RoleStore.prototype,'atomic',async function(name,value){
+    if(name==='runs.json'&&fail)throw new Error('synthetic disk failure');
+    return atomic.call(this,name,value);
+  });
+  await assert.rejects(app.providers.get('agent-role-'+role.id).prepareContinuable({sessionId:'unsaved',parent:{id:'parent'},signal:new AbortController().signal}),/disk failure/);
+  assert.match((await app.api('runs')).value.persistenceError,/disk failure/);
+  assert.equal((await app.api('retryPersistence')).status,400);
+  fail=false;assert.equal((await app.api('retryPersistence')).value.persistenceError,null);
+  assert.equal((await app.api('runs')).value.persistenceError,null);
+  assert.equal(JSON.parse(await readFile(join(dir,'runs.json'),'utf8')).items[0].sessionId,'unsaved');
+}));
+
 test('Fast 严格布尔校验、缺省标准；字段规范化不丢 Fast',()=>{
   assert.equal(validateRole({...role,fast:undefined}).fast,false);
   for(const fast of [true,false])assert.equal(validateRole({...role,fast}).fast,fast);
