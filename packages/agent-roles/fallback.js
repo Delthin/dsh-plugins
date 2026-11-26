@@ -2,7 +2,7 @@ import { boundContextSummary, createUserMessage, LlmError } from '@deepseek-ai/d
 
 const DELAYS=[1000,2000,4000];
 const CANCEL_CODES=new Set(['ABORTED','CANCELLED','CANCELED']);
-const QUOTA_CODES=new Set(['QUOTA','ACCOUNT_QUOTA']);
+const IMMEDIATE_FALLBACK_CODES=new Set(['QUOTA','ACCOUNT_QUOTA','AUTH','MODEL']);
 const HISTORY_LIMIT=64;
 const summary=value=>String(value??'').slice(0,500);
 const now=()=>new Date().toISOString();
@@ -97,7 +97,7 @@ export function installRoleFallback(agent,record,{persist,observe,assertCandidat
     // Provider mismatch means another owner changed this role's route. Fail
     // closed rather than applying an old snapshot to an unrelated request.
     if(provider!==chain[index].provider)throw new Error('角色请求供应商与活动模型链不一致');
-    if(!QUOTA_CODES.has(code)&&retries<DELAYS.length) {
+    if(!IMMEDIATE_FALLBACK_CODES.has(code)&&retries<DELAYS.length) {
       const delayMs=DELAYS[retries];
       record.retry={turn,step,index,retries:retries+1,maxRetries:DELAYS.length,delayMs,code,reason,status:'waiting',updatedAt:now()};
       await save();

@@ -92,7 +92,7 @@ window.__ModuleLoader__.load({id:'@delthin/dsh-agent-roles',factory:(require)=>{
     const move=(index,delta)=>{const changed=[...routes];[changed[index],changed[index+delta]]=[changed[index+delta],changed[index]];onChange(changed);};
     return h('section',{className:'ar-fallback-chain ar-field-wide','aria-label':'模型降级链'},
       h('div',{className:'ar-fallback-heading'},h('h3',null,'模型降级链'),h(Button,{variant:'outline',type:'button',className:'ar-button',disabled:busy||!next||routes.length>=15,onClick:()=>onChange([...routes,{provider:next.provider,model:next.id,reasoningEffort:'',fast:false}])},h(Glyph,{name:'plus',size:15}),'添加备用模型')),
-      h('p',{className:'ar-muted'},'先调用上方模型，再按顺序使用备用模型。额度耗尽时立即切换；其他调用错误等待 1、2、4 秒各重试一次，再切换。'),
+      h('p',{className:'ar-muted'},'先调用上方模型，再按顺序使用备用模型。额度耗尽、认证或模型错误时立即切换；其他调用错误等待 1、2、4 秒各重试一次，再切换。'),
       routes.length?h('ol',{className:'ar-fallback-list'},...routes.map((route,index)=>h(FallbackRoute,{key:index,route,index,count:routes.length,models,fastProviders,busy,onChange:r=>update(index,r),onMove:delta=>move(index,delta),onRemove:()=>onChange(routes.filter((_,i)=>i!==index))}))):h('p',{className:'ar-muted'},'尚未配置备用模型。'),
       h('p',{className:'ar-muted'},'每个新成员从首选模型开始，切换后保留任务历史。调用链在新成员启动时固定。'));
   }

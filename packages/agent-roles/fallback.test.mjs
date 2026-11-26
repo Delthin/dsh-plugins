@@ -47,17 +47,20 @@ test('bounded retries own the Host waterfall: exactly three extra calls at 1/2/4
   assert.equal(f.queued.length,1);assert.equal(f.continuations.length,0);
   f.idle();assert.equal(f.queued.length,0);assert.equal(f.continuations.length,1);
   assert.equal(f.record.retry.status,'continued');
-  for(let n=0;n<3;n++)assert.deepEqual(await f.fail('MODEL',2),{kind:'retry'});
-  await assert.rejects(f.fail('MODEL',2),/模型链已耗尽/);
+  for(let n=0;n<3;n++)assert.deepEqual(await f.fail('SERVER',2),{kind:'retry'});
+  await assert.rejects(f.fail('SERVER',2),/模型链已耗尽/);
   assert.equal(f.record.retry.status,'exhausted');assert.equal(f.downstream,0);f.dispose();
 });
 
-test('quota skips delays; cancellation and disposal suppress both retry and staged continuation',async()=>{
-  for(const code of ['QUOTA','ACCOUNT_QUOTA']) {
-    const f=controlled(newRecord(),{wait:async()=>assert.fail('quota must not wait')});
+test('quota and permanent failures skip delays; cancellation suppresses retry and continuation',async()=>{
+  for(const code of ['QUOTA','ACCOUNT_QUOTA','AUTH','MODEL']) {
+    const f=controlled(newRecord(),{wait:async()=>assert.fail('permanent errors must not wait')});
     await f.fail(code);assert.equal(f.record.fallbackIndex,1);assert.equal(f.record.retry.retries,0);
     f.controller.abort({kind:'user'});f.idle();await Promise.resolve();assert.equal(f.continuations.length,0);assert.equal(f.queued.length,0);f.dispose();
   }
+  const exhausted=controlled(newRecord(),{wait:async()=>assert.fail('authentication failures must not wait')});
+  await exhausted.fail('AUTH');exhausted.idle();
+  await assert.rejects(exhausted.fail('AUTH'),/模型链已耗尽/);exhausted.dispose();
   for(const code of ['ABORTED','CANCELLED','CANCELED']) {
     const f=controlled();assert.equal(await f.fail(code),undefined);assert.equal(f.selections.length,0);assert.equal(f.downstream,0);f.dispose();
   }
